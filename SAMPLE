@@ -1,0 +1,163 @@
+# Haswell
+
+nid02040:~/armci-mpi$ mpirun -n 9 /global/homes/e/echow/gtfock/pscf/scf                   /global/homes/e/echow/gtfock/data/opt-cc-pvdz/cc-pvdz.gbs                   /global/homes/e/echow/gtfock/data/1hsg/1hsg_28.xyz 3 3 2 5 30
+MPI level: 3
+Job information:
+  molecule:  1hsg_28.xyz
+  basisset:  opt-cc-pvdz
+  charge     = 0
+  #atoms     = 122
+  #shells    = 549
+  #functions = 1159
+  fock build uses   9 (3x3) nodes
+  purification uses 8 (2x2x2) nodes
+  #tasks = 225 (15x15)
+  #nthreads_cpu = 7
+Initializing pfock ...
+**** PFock: screening ...
+**** PFock: takes 0.182 secs
+  FD size (463 463 1159 1159)
+  CPU uses 157.750 MB
+  Done
+Initializing purification ...
+  CPU uses 87.262 MB
+  Done
+Preprocessing one electron matrices ...
+  computing H
+  pdsyev_ takes 0.825 secs
+  takes 1.010 secs
+  Done
+  computing H
+  takes 0.515 secs
+  Done
+Computing SCF ...
+  initialing D ...
+  nuc energy = 9196.2520002789
+  iter 0
+**** PFock: correct F ...
+    fock build takes 81.908 secs
+    energy -2818.5320274800 (-12014.7840277589)
+    diis takes 0.040 secs, 155.224 Gflops
+mu_bar = 4.249003e-01, lambda = 1.274952e+01, hmax = 1.822949e+01, hmin = -3.651391e+01, nobtls = 227
+    purification takes 0.980 secs, 33 iterations, 222.342 Gflops
+  iter 1
+**** PFock: correct F ...
+    fock build takes 81.780 secs
+    energy -2830.4908822460 (-12026.7428825248), 1.195885e+01
+    diis takes 0.038 secs, 163.772 Gflops
+mu_bar = 5.441306e-01, lambda = 1.287279e+01, hmax = 1.817823e+01, hmin = -3.602567e+01, nobtls = 227
+    purification takes 0.925 secs, 30 iterations, 215.396 Gflops
+  iter 2
+**** PFock: correct F ...
+    fock build takes 81.801 secs
+    energy -2831.2382491478 (-12027.4902494267), 7.473669e-01
+    diis takes 0.243 secs, 76.971 Gflops
+mu_bar = 5.322818e-01, lambda = 1.282433e+01, hmax = 1.823301e+01, hmin = -3.618966e+01, nobtls = 227
+    purification takes 0.910 secs, 30 iterations, 218.907 Gflops
+  iter 3
+**** PFock: correct F ...
+    fock build takes 81.816 secs
+    energy -2831.3879172342 (-12027.6399175131), 1.496681e-01
+    diis takes 0.135 secs, 138.431 Gflops
+mu_bar = 5.345155e-01, lambda = 1.283802e+01, hmax = 1.821637e+01, hmin = -3.619592e+01, nobtls = 227
+    purification takes 1.131 secs, 30 iterations, 176.162 Gflops
+  iter 4
+**** PFock: correct F ...
+    fock build takes 81.804 secs
+    energy -2831.5698900495 (-12027.8218903284), 1.819728e-01
+    diis takes 0.125 secs, 149.829 Gflops
+mu_bar = 5.369351e-01, lambda = 1.284273e+01, hmax = 1.821230e+01, hmin = -3.614998e+01, nobtls = 227
+    purification takes 0.910 secs, 30 iterations, 219.033 Gflops
+  iter 5
+**** PFock: correct F ...
+    fock build takes 81.797 secs
+    energy -2831.5723201799 (-12027.8243204587), 2.430130e-03
+    diis takes 0.213 secs, 87.782 Gflops
+mu_bar = 5.360369e-01, lambda = 1.284050e+01, hmax = 1.821448e+01, hmin = -3.617273e+01, nobtls = 227
+    purification takes 0.910 secs, 30 iterations, 219.019 Gflops
+  iter 6
+
+
+
+# KNL
+
+nid02518:~/gtfock$ module load impi
+nid02518:~/gtfock$ vi /proc/cpuinfo
+nid02518:~/gtfock$ 
+nid02518:~/gtfock$ mpirun -n 64 /global/homes/e/echow/gtfock/pscf/scf                   /global/homes/e/echow/gtfock/data/opt-cc-pvdz/cc-pvdz.gbs                   /global/homes/e/echow/gtfock/data/1hsg/1hsg_28.xyz 8 8 4 5 30
+MPI level: 3
+Job information:
+  molecule:  1hsg_28.xyz
+  basisset:  opt-cc-pvdz
+  charge     = 0
+  #atoms     = 122
+  #shells    = 549
+  #functions = 1159
+  fock build uses   64 (8x8) nodes
+  purification uses 64 (4x4x4) nodes
+  #tasks = 1600 (40x40)
+  #nthreads_cpu = 4
+Initializing pfock ...
+**** PFock: screening ...
+**** PFock: takes 1.698 secs
+  FD size (188 188 1159 1159)
+  CPU uses 53.116 MB
+  Done
+Initializing purification ...
+  CPU uses 22.117 MB
+  Done
+Preprocessing one electron matrices ...
+  computing H
+  pdsyev_ takes 4.283 secs
+  takes 4.974 secs
+  Done
+  computing H
+  takes 0.918 secs
+  Done
+Computing SCF ...
+  initialing D ...
+  nuc energy = 9196.2520002789
+  iter 0
+**** PFock: correct F ...
+    fock build takes 136.863 secs
+    energy -2818.5320274800 (-12014.7840277589)
+    diis takes 0.031 secs, 203.671 Gflops
+mu_bar = 4.249003e-01, lambda = 1.274952e+01, hmax = 1.822949e+01, hmin = -3.651391e+01, nobtls = 227
+    purification takes 0.844 secs, 33 iterations, 258.347 Gflops
+  iter 1
+**** PFock: correct F ...
+    fock build takes 134.776 secs
+    energy -2830.4908822460 (-12026.7428825249), 1.195885e+01
+    diis takes 0.024 secs, 254.691 Gflops
+mu_bar = 5.441306e-01, lambda = 1.287279e+01, hmax = 1.817823e+01, hmin = -3.602567e+01, nobtls = 227
+    purification takes 0.761 secs, 30 iterations, 262.028 Gflops
+  iter 2
+**** PFock: correct F ...
+    fock build takes 134.771 secs
+    energy -2831.2382491478 (-12027.4902494267), 7.473669e-01
+    diis takes 0.343 secs, 54.439 Gflops
+mu_bar = 5.322818e-01, lambda = 1.282433e+01, hmax = 1.823301e+01, hmin = -3.618966e+01, nobtls = 227
+    purification takes 0.761 secs, 30 iterations, 261.988 Gflops
+  iter 3
+**** PFock: correct F ...
+    fock build takes 134.744 secs
+    energy -2831.3879172342 (-12027.6399175131), 1.496681e-01
+    diis takes 0.080 secs, 234.200 Gflops
+mu_bar = 5.345155e-01, lambda = 1.283802e+01, hmax = 1.821637e+01, hmin = -3.619592e+01, nobtls = 227
+    purification takes 0.761 secs, 30 iterations, 261.774 Gflops
+  iter 4
+**** PFock: correct F ...
+    fock build takes 134.759 secs
+    energy -2831.5698900495 (-12027.8218903284), 1.819728e-01
+    diis takes 0.081 secs, 230.755 Gflops
+mu_bar = 5.369351e-01, lambda = 1.284273e+01, hmax = 1.821230e+01, hmin = -3.614998e+01, nobtls = 227
+    purification takes 0.759 secs, 30 iterations, 262.411 Gflops
+  iter 5
+**** PFock: correct F ...
+    fock build takes 134.752 secs
+    energy -2831.5723201798 (-12027.8243204587), 2.430130e-03
+    diis takes 0.086 secs, 217.118 Gflops
+mu_bar = 5.360369e-01, lambda = 1.284050e+01, hmax = 1.821448e+01, hmin = -3.617273e+01, nobtls = 227
+    purification takes 0.761 secs, 30 iterations, 262.015 Gflops
+  iter 6
+
