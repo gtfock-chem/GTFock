@@ -5,13 +5,10 @@ export WORK_TOP=$PWD
 
 
 ================================================================
-B. Installing Global Arrays using B0 or B1
+B. Installing Global Arrays with ARMCI-MPI3
 ================================================================
 # Skip this step if Global Arrays has already been installed.
 
-================================================================
-B0. Installing Global Arrays on MPI-3
-================================================================
 1. Installing armci-mpi
 cd $WORK_TOP
 git clone git://git.mpich.org/armci-mpi.git || git clone http://git.mpich.org/armci-mpi.git
@@ -34,13 +31,6 @@ cd ga-5-3
 F77=mpiifort MPIF77=mpiifort FC=mpiifort MPIFC=mpiifort\
 --with-mpi --with-armci=$WORK_TOP/external-armci --prefix=$WORK_TOP/GAlib
 make -j12 install
-
-================================================================
-B1. Installing Global Arrays on ARMCI
-================================================================
-cp config_ga.py $WORK_TOP
-# openib means using Infiniband
-python config_ga.py download openib
 
 
 ===============================================================

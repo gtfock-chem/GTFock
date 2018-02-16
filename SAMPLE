@@ -1,6 +1,10 @@
 # Haswell
+# salloc -N 1 -q debug -C haswell -t 00:10:00
 
-nid02040:~/armci-mpi$ mpirun -n 9 /global/homes/e/echow/gtfock/pscf/scf                   /global/homes/e/echow/gtfock/data/opt-cc-pvdz/cc-pvdz.gbs                   /global/homes/e/echow/gtfock/data/1hsg/1hsg_28.xyz 3 3 2 5 30
+$ module load impi
+$ mpirun -n 9 /global/homes/e/echow/gtfock/pscf/scf \
+              /global/homes/e/echow/gtfock/data/opt-cc-pvdz/cc-pvdz.gbs \
+              /global/homes/e/echow/gtfock/data/1hsg/1hsg_28.xyz 3 3 2 5 30
 MPI level: 3
 Job information:
   molecule:  1hsg_28.xyz
@@ -80,11 +84,12 @@ mu_bar = 5.360369e-01, lambda = 1.284050e+01, hmax = 1.821448e+01, hmin = -3.617
 
 
 # KNL
+# salloc -N 1 -q debug -C knl -t 00:25:00
 
-nid02518:~/gtfock$ module load impi
-nid02518:~/gtfock$ vi /proc/cpuinfo
-nid02518:~/gtfock$ 
-nid02518:~/gtfock$ mpirun -n 64 /global/homes/e/echow/gtfock/pscf/scf                   /global/homes/e/echow/gtfock/data/opt-cc-pvdz/cc-pvdz.gbs                   /global/homes/e/echow/gtfock/data/1hsg/1hsg_28.xyz 8 8 4 5 30
+$ module load impi
+$ mpirun -n 64 /global/homes/e/echow/gtfock/pscf/scf \
+               /global/homes/e/echow/gtfock/data/opt-cc-pvdz/cc-pvdz.gbs \
+               /global/homes/e/echow/gtfock/data/1hsg/1hsg_28.xyz 8 8 4 5 30
 MPI level: 3
 Job information:
   molecule:  1hsg_28.xyz
