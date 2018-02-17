@@ -1,13 +1,12 @@
 ================================================================
 A. Setup
 ================================================================
-export WORK_TOP=$PWD
 
+Set WORK_TOP to where you will install the files.
 
 ================================================================
 B. Installing Global Arrays with ARMCI-MPI3
 ================================================================
-# Skip this step if Global Arrays has already been installed.
 
 1. Installing armci-mpi
 cd $WORK_TOP
@@ -32,17 +31,16 @@ F77=mpiifort MPIF77=mpiifort FC=mpiifort MPIFC=mpiifort\
 --with-mpi --with-armci=$WORK_TOP/external-armci --prefix=$WORK_TOP/GAlib
 make -j12 install
 
-
 ===============================================================
 C. Installing the OptErd library
 ===============================================================
+
 cd $WORK_TOP
-svn co https://github.com/Maratyszcza/OptErd/trunk OptErd
+git clone https://github.com/gtfock-chem/OptErd
 cd $WORK_TOP/OptErd
 make -j12
 prefix=$WORK_TOP/ERDlib make install
 # The ERD libraries will been installed in $WORK_TOP/ERDlib.
-
 
 ===============================================================
 D. Installing GTFock
@@ -86,13 +84,13 @@ mpirun -np <nprocs> ./scf <basis> <xyz> \
 # NOTE: suggested values for ntasks: 3, 4, 5
 
 # <nprocs>: number of MPI processes
-# <basis>:  basis file
+# <basis>:  basis set file
 # <xyz>:    xyz file
 # <nprow>:  number of MPI processes per row
 # <npcol>:  number of MPI processes per col
-# <np2>: number of MPI processes per one dimension for purification (eigenvalue solve)
+# <np2>: number of MPI processes per dimension (of cube) for purification
 # <ntasks>: each MPI process has ntasks x ntasks tasks
-# <niters>: number of SCF iterations
+# <niters>: max number of SCF iterations
 
 # For example, the following command run the SCF code on graphene_12_54_114.xyz
 # with 12 MPI processes for 10 iterations. The number of processes used for
