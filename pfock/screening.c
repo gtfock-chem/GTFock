@@ -18,9 +18,11 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank); 
 
     // create shell pairs values    
-    ERD_t erd;
+    //ERD_t erd;
+    SIMINT_t simint;
     int nthreads = omp_get_max_threads();
-    CInt_createERD(basis, &erd, nthreads);  
+    //CInt_createERD(basis, &erd, nthreads);  
+    CInt_createSIMINT(basis, &simint, nthreads);  
     int nshells = pfock->nshells;
     
     // create global arrays for screening 
@@ -66,7 +68,7 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
                 int dimN = CInt_getShellDim(basis, N);
                 int nints;
                 double *integrals;
-                CInt_computeShellQuartet(basis, erd, tid, M, N, M, N,
+                CInt_computeShellQuartet_SIMINT(basis, simint, tid, M, N, M, N,
                                          &integrals, &nints);            
                 double maxvalue = 0.0;
                 if (nints != 0) {
@@ -99,7 +101,8 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     // max value
     MPI_Allreduce(&maxtmp, &(pfock->maxvalue), 1,
                   MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-    CInt_destroyERD(erd);
+    //CInt_destroyERD(erd);
+    CInt_destroySIMINT(simint);
     PFOCK_FREE(sq_values);
 
     // init shellptr

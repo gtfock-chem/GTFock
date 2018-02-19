@@ -31,18 +31,19 @@ void compute_S(PFock_t pfock, BasisSet_t basis,
                int ldS, double *S)
 {
     int nthreads = omp_get_max_threads();
-    OED_t *oed = (OED_t *)malloc(sizeof(OED_t) * nthreads);
-    assert(oed != NULL);
-    for (int i = 0; i < nthreads; i++) {
-        CInt_createOED(basis, &(oed[i]));
-    }
+//  OED_t *oed = (OED_t *)malloc(sizeof(OED_t) * nthreads);
+//  assert(oed != NULL);
+//  for (int i = 0; i < nthreads; i++) {
+//      CInt_createOED(basis, &(oed[i]));
+//  }
     int start_row_id = pfock->f_startind[startshellrow];
     int start_col_id = pfock->f_startind[startshellcol];
 
-    #pragma omp parallel
+//  simint ovlp calculation may not be thread safe
+//  #pragma omp parallel
     {
         int tid = omp_get_thread_num ();
-        #pragma omp for
+//      #pragma omp for
         for (int A = startshellrow; A <= endshellrow; A++) {
             int row_id_1 = pfock->f_startind[A];
             int row_id_2 = pfock->f_startind[A + 1] - 1;
@@ -55,7 +56,7 @@ void compute_S(PFock_t pfock, BasisSet_t basis,
                 int ncols = col_id_2 - col_id_1 + 1;
                 int nints;
                 double *integrals;
-                CInt_computePairOvl(basis, oed[tid], A, B, &integrals, &nints);
+                CInt_computePairOvl_SIMINT(basis, pfock->simint, tid, A, B, &integrals, &nints);
                 if (nints != 0) {
                     matrix_block_write(S, startrow, startcol, ldS,
                                        integrals, nrows, ncols);
@@ -64,10 +65,10 @@ void compute_S(PFock_t pfock, BasisSet_t basis,
         }
     }
 
-    for (int i = 0; i < nthreads; i++) {
-        CInt_destroyOED(oed[i]);
-    }
-    free(oed);
+//  for (int i = 0; i < nthreads; i++) {
+//      CInt_destroyOED(oed[i]);
+//  }
+//  free(oed);
 }
 
 
@@ -77,18 +78,19 @@ void compute_H(PFock_t pfock, BasisSet_t basis,
                int ldH, double *H)
 {
     int nthreads = omp_get_max_threads();
-    OED_t *oed = (OED_t *)malloc(sizeof(OED_t) * nthreads);
-    assert(oed != NULL);
-    for (int i = 0; i < nthreads; i++) {
-        CInt_createOED(basis, &(oed[i]));
-    }
+//  OED_t *oed = (OED_t *)malloc(sizeof(OED_t) * nthreads);
+//  assert(oed != NULL);
+//  for (int i = 0; i < nthreads; i++) {
+//      CInt_createOED(basis, &(oed[i]));
+//  }
     
     int start_row_id = pfock->f_startind[startshellrow];
     int start_col_id = pfock->f_startind[startshellcol];
-    #pragma omp parallel
+//  simint H core calculation may not be thread safe
+//  #pragma omp parallel
     {
         int tid = omp_get_thread_num ();
-        #pragma omp for
+//      #pragma omp for
         for (int A = startshellrow; A <= endshellrow; A++) {
             int row_id_1 = pfock->f_startind[A];
             int row_id_2 = pfock->f_startind[A + 1] - 1;
@@ -102,7 +104,7 @@ void compute_H(PFock_t pfock, BasisSet_t basis,
                 int ncols = col_id_2 - col_id_1 + 1;
                 int nints;
                 double *integrals;
-                CInt_computePairCoreH(basis, oed[tid],
+                CInt_computePairCoreH_SIMINT(basis, pfock->simint, tid,
                                       A, B, &integrals, &nints);
                 if (nints != 0) {
                     matrix_block_write(H, startrow, startcol, ldH,
@@ -112,10 +114,10 @@ void compute_H(PFock_t pfock, BasisSet_t basis,
         }
     }
 
-    for (int i = 0; i < nthreads; i++) {
-        CInt_destroyOED(oed[i]);
-    }
-    free(oed);
+//  for (int i = 0; i < nthreads; i++) {
+//      CInt_destroyOED(oed[i]);
+//  }
+//  free(oed);
 }
 
 

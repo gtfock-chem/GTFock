@@ -5,7 +5,7 @@
 #include "CInt.h"
 
 
-void fock_task(BasisSet_t basis, ERD_t erd, int ncpu_f, int num_dmat,
+void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                int *shellptr, double *shellvalue,
                int *shellid, int *shellrid, int *f_startind,
                int *rowpos, int *colpos, int *rowptr, int *colptr,

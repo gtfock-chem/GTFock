@@ -84,7 +84,8 @@ struct PFock {
     int icount;
 
     // integrals
-    ERD_t erd;
+    // ERD_t erd;
+    SIMINT_t simint;
     omp_lock_t lock;
     int *f_startind;
     int *s_startind;

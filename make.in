@@ -38,5 +38,7 @@ ARMCI_LIBS = -larmci
 
 ERD_LIBDIR = /global/homes/e/echow/libcint
 ERD_INCDIR = /global/homes/e/echow/libcint
-OLD_ERD_LIBDIR = /global/homes/e/echow/OptErd_Makefile/lib
-ERD_LIBS = ${ERD_LIBDIR}/libcint.a ${OLD_ERD_LIBDIR}/liberd.a ${OLD_ERD_LIBDIR}/liboed.a
+#OLD_ERD_LIBDIR = /global/homes/e/echow/OptErd_Makefile/lib
+#ERD_LIBS = ${ERD_LIBDIR}/libcint.a ${OLD_ERD_LIBDIR}/liberd.a ${OLD_ERD_LIBDIR}/liboed.a
+ERD_LIBS = ${ERD_LIBDIR}/libcint.a /global/homes/e/echow/simint-generator/outdir-enuc/build-avx2/install/lib64/libsimint.a
+

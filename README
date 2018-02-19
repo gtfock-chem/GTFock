@@ -1,3 +1,14 @@
+New: Running GTFock with Simint (on Cori)
+
+Very small test example:
+
+$ salloc -N 1 -q debug -C haswell -t 00:25:00
+$ cd gtfock
+$ module load impi
+$ mpirun -n 9 pscf/scf data/cart/sto-3g.gbs data/cart/water.xyz 3 3 2 5 30
+
+
+
 ================================================================
 A. Setup
 ================================================================

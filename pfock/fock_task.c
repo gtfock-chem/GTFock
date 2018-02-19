@@ -118,7 +118,7 @@ static void update_F(int num_dmat, double *integrals, int dimM, int dimN,
 
 
 // for SCF, J = K
-void fock_task(BasisSet_t basis, ERD_t erd, int ncpu_f, int num_dmat,
+void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                int *shellptr, double *shellvalue,
                int *shellid, int *shellrid, int *f_startind,
                int *rowpos, int *colpos, int *rowptr, int *colptr,
@@ -194,7 +194,7 @@ void fock_task(BasisSet_t basis, ERD_t erd, int ncpu_f, int num_dmat,
                     double *integrals;
                     mynsq += 1.0;
                     mynitl += dimM*dimN*dimP*dimQ;                       
-                    CInt_computeShellQuartet(basis, erd, nt,
+                    CInt_computeShellQuartet_SIMINT(basis, simint, nt,
                                              M, N, P, Q, &integrals, &nints);
                     if (nints != 0) {
                         update_F(num_dmat, integrals, dimM, dimN, dimP, dimQ,

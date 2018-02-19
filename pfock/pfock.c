@@ -947,7 +947,8 @@ PFockStatus_t PFock_create(BasisSet_t basis, int nprow, int npcol, int ntasks,
         return ret;
     }
 
-    CInt_createERD(basis, &(pfock->erd), pfock->nthreads);
+    //CInt_createERD(basis, &(pfock->erd), pfock->nthreads);
+    CInt_createSIMINT(basis, &(pfock->simint), pfock->nthreads);
 
     // statistics
     pfock->mpi_timepass
@@ -1011,7 +1012,8 @@ PFockStatus_t PFock_destroy(PFock_t pfock)
     PFOCK_FREE(pfock->f_startind);
     PFOCK_FREE(pfock->s_startind);
 
-    CInt_destroyERD(pfock->erd);    
+    //CInt_destroyERD(pfock->erd);    
+    CInt_destroySIMINT(pfock->simint);    
     clean_taskq(pfock);
     clean_screening(pfock);
     destroy_GA(pfock);
@@ -1380,7 +1382,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
         int startP = pfock->blkcolptr_sh[pfock->sblk_col + colid];
         int endP = pfock->blkcolptr_sh[pfock->sblk_col + colid + 1] - 1;
         gettimeofday (&tv3, NULL);       
-        fock_task(basis, pfock->erd, pfock->ncpu_f, pfock->num_dmat2,
+        fock_task(basis, pfock->simint, pfock->ncpu_f, pfock->num_dmat2,
                   pfock->shellptr, pfock->shellvalue,
                   pfock->shellid, pfock->shellrid,
                   pfock->f_startind,
@@ -1557,7 +1559,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
             int endP = pfock->blkcolptr_sh[vsblk_col + colid + 1] - 1;
 
             gettimeofday (&tv3, NULL);
-            fock_task(basis, pfock->erd, pfock->ncpu_f, pfock->num_dmat2,
+            fock_task(basis, pfock->simint, pfock->ncpu_f, pfock->num_dmat2,
                       pfock->shellptr, pfock->shellvalue,
                       pfock->shellid, pfock->shellrid,
                       pfock->f_startind,
