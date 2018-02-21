@@ -71,7 +71,8 @@ static void update_F(int num_dmat, double *integrals, int dimM, int dimN,
                         int imp = iM * ldMP + iP;
                         int inp = iN * ldNP + iP;
                         double I = 
-                            integrals[iM + dimM*(iN + dimN * (iP + dimP * iQ))];
+                            integrals[iQ + dimQ*(iP + dimP * (iN + dimN * iM))];//Simint
+                          //integrals[iM + dimM*(iN + dimN * (iP + dimP * iQ))];//OptERD
                         // F(m, n) += D(p, q) * 2 * I(m, n, p, q)
                         // F(n, m) += D(p, q) * 2 * I(n, m, p, q)
                         // F(m, n) += D(q, p) * 2 * I(m, n, q, p)

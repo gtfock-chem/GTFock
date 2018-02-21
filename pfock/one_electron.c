@@ -19,7 +19,8 @@ inline void matrix_block_write(double *matrix, int startrow,
         for (int l = 0; l < ncols; l++) {
             int i = startrow + k;
             int j = startcol + l;
-            matrix[i * ldm + j] = block[k + nrows * l];
+            matrix[i * ldm + j] = block[l + ncols * k];//Simint
+          //matrix[i * ldm + j] = block[k + nrows * l];//OptERD
         }
     }
 }
@@ -39,11 +40,10 @@ void compute_S(PFock_t pfock, BasisSet_t basis,
     int start_row_id = pfock->f_startind[startshellrow];
     int start_col_id = pfock->f_startind[startshellcol];
 
-//  simint ovlp calculation may not be thread safe
-//  #pragma omp parallel
+    #pragma omp parallel
     {
         int tid = omp_get_thread_num ();
-//      #pragma omp for
+        #pragma omp for
         for (int A = startshellrow; A <= endshellrow; A++) {
             int row_id_1 = pfock->f_startind[A];
             int row_id_2 = pfock->f_startind[A + 1] - 1;
@@ -86,11 +86,10 @@ void compute_H(PFock_t pfock, BasisSet_t basis,
     
     int start_row_id = pfock->f_startind[startshellrow];
     int start_col_id = pfock->f_startind[startshellcol];
-//  simint H core calculation may not be thread safe
-//  #pragma omp parallel
+    #pragma omp parallel
     {
         int tid = omp_get_thread_num ();
-//      #pragma omp for
+        #pragma omp for
         for (int A = startshellrow; A <= endshellrow; A++) {
             int row_id_1 = pfock->f_startind[A];
             int row_id_2 = pfock->f_startind[A + 1] - 1;

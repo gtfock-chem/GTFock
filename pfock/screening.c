@@ -11,6 +11,28 @@
 #include "screening.h"
 #include "taskq.h"
 
+/* Note on 4-index permutation to rearrange output from integral library:
+
+If original code accesses an integral as:
+
+  integrals[iM + dimM*(iN + dimN * (iP + dimP * iQ))]
+
+it should be changed to:
+
+  integrals[iQ + dimQ*(iP + dimP * (iN + dimN * iM))];//Simint 
+
+If the original code accesses an integral as:
+  iM * (dimN*dimM*dimN + dimN) + iN * (dimM*dimN+1)
+
+which corresponds to:
+  iN + dimN*(iM + dimM * (iN + dimN * iM))
+
+This should be changed to:
+  iM + dimM*(iN + dimN * (iM + dimM * iN))
+
+which corresponds to:
+  iM * (dimM*dimN+1) + iN * (dimM + dimM*dimN*dimM) //Simint
+*/
 
 int schwartz_screening(PFock_t pfock, BasisSet_t basis)
 {
@@ -75,7 +97,8 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
                     for (int iM = 0; iM < dimM; iM++) {
                         for (int iN = 0; iN < dimN; iN++) {
                             int index = 
-                                iM * (dimN*dimM*dimN+dimN) + iN * (dimM*dimN+1);
+                                iN * (dimM*dimN*dimM+dimM) + iM * (dimN*dimM+1);//Simint
+                              //iM * (dimN*dimM*dimN+dimN) + iN * (dimM*dimN+1);//OptERD
                             if (maxvalue < fabs(integrals[index])) {
                                 maxvalue = fabs(integrals[index]);                    
                             }
