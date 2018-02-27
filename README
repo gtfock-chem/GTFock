@@ -37,7 +37,10 @@ wget http://hpc.pnl.gov/globalarrays/download/ga-5-3.tgz
 tar xzf ga-5-3.tgz
 cd ga-5-3
 # carefully set the mpi executables that you want to use
-./configure CC=mpiicc MPICC=mpiicc CXX=mpiicpc MPICXX=mpiicpc \
+# recommend using a build dir
+mkdir build
+cd build
+../configure CC=mpiicc MPICC=mpiicc CXX=mpiicpc MPICXX=mpiicpc \
 F77=mpiifort MPIF77=mpiifort FC=mpiifort MPIFC=mpiifort\
 --with-mpi --with-armci=$WORK_TOP/external-armci --prefix=$WORK_TOP/GAlib
 make -j12 install
