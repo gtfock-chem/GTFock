@@ -11,7 +11,7 @@ typedef struct
 
 typedef FockQuartetInfo_s* FockQuartetInfo_t;
 
-// A KetShellPairList_s can holds 16 ket side shellpairs
+// A KetShellPairList_s can holds _SIMINT_NSHELL_SIMD ket side shellpairs
 // The ket side shellpairs should have same AM pairs
 typedef struct 
 {
@@ -30,7 +30,6 @@ typedef KetShellPairList_s* KetShellPairList_t;
 
 
 // Different AM shellpair lists
-// Max AM = 7, ket side has at most 8 * 8 = 64 AM pairs
 typedef struct 
 {
     // (M, N) are the shellpair id for bra side
@@ -49,9 +48,9 @@ void init_KetShellPairList(KetShellPairList_s *ket_shellpair_list)
     
     ket_shellpair_list->num_shellpairs = 0;
     
-    ket_shellpair_list->P_list = (int *) malloc(sizeof(int) * 16);
-    ket_shellpair_list->Q_list = (int *) malloc(sizeof(int) * 16);
-    ket_shellpair_list->fock_info_list = (FockQuartetInfo_s *) malloc(sizeof(FockQuartetInfo_s) * 16);
+    ket_shellpair_list->P_list = (int *) malloc(sizeof(int) * _SIMINT_NSHELL_SIMD);
+    ket_shellpair_list->Q_list = (int *) malloc(sizeof(int) * _SIMINT_NSHELL_SIMD);
+    ket_shellpair_list->fock_info_list = (FockQuartetInfo_s *) malloc(sizeof(FockQuartetInfo_s) * _SIMINT_NSHELL_SIMD);
     
     assert(ket_shellpair_list->P_list != NULL);
     assert(ket_shellpair_list->Q_list != NULL);
@@ -85,7 +84,7 @@ int add_KetShellPair(
 )
 {
     int idx = ket_shellpair_list->num_shellpairs;
-    if (idx == 16) return 0;  // List is full, failed
+    if (idx == _SIMINT_NSHELL_SIMD) return 0;  // List is full, failed
     
     ket_shellpair_list->P_list[idx] = _P;
     ket_shellpair_list->Q_list[idx] = _Q;
@@ -115,10 +114,10 @@ void init_ThreadQuartetLists(ThreadQuartetLists_s *thread_quartet_lists)
 {
     assert(thread_quartet_lists != NULL);
     
-    thread_quartet_lists->ket_shellpair_lists = (KetShellPairList_s *) malloc(sizeof(KetShellPairList_s) * 8 * 8);  
+    thread_quartet_lists->ket_shellpair_lists = (KetShellPairList_s *) malloc(sizeof(KetShellPairList_s) * _SIMINT_AM_PAIRS);  
     assert(thread_quartet_lists->ket_shellpair_lists != NULL);
     
-    for (int i = 0; i < 8 * 8; i++)
+    for (int i = 0; i < _SIMINT_AM_PAIRS; i++)
         init_KetShellPairList(&thread_quartet_lists->ket_shellpair_lists[i]);
 }
 
@@ -127,7 +126,7 @@ void free_ThreadQuartetLists(ThreadQuartetLists_s *thread_quartet_lists)
     assert(thread_quartet_lists != NULL);
     
     assert(thread_quartet_lists->ket_shellpair_lists != NULL);
-    for (int i = 0; i < 8 * 8; i++)
+    for (int i = 0; i < _SIMINT_AM_PAIRS; i++)
         free_KetShellPairList(&thread_quartet_lists->ket_shellpair_lists[i]);
     
     if (thread_quartet_lists->ket_shellpair_lists != NULL) 
@@ -142,7 +141,7 @@ void reset_ThreadQuartetLists(ThreadQuartetLists_s *thread_quartet_lists, const 
     thread_quartet_lists->N = _N;
     
     assert(thread_quartet_lists->ket_shellpair_lists != NULL);
-    for (int i = 0; i < 8 * 8; i++)
+    for (int i = 0; i < _SIMINT_AM_PAIRS; i++)
         reset_KetShellPairList(&thread_quartet_lists->ket_shellpair_lists[i]);
 }
 
