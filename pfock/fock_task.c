@@ -117,6 +117,7 @@ static void update_F(int num_dmat, double *integrals, int dimM, int dimN,
     } // for (int i = 0 ; i < num_dmat; i++)
 }
 
+#include "thread_quartet_buf.h"
 
 // for SCF, J = K
 void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
@@ -152,10 +153,17 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
         double *F_NP = &(F6[nf * sizeX6 * num_dmat]);
         double mynsq = 0.0;
         double mynitl = 0.0;        
-        #pragma omp for schedule(dynamic)
+		
+		ThreadQuartetLists_t *thread_quartet_lists = (ThreadQuartetLists_t*) malloc(sizeof(ThreadQuartetLists_t));
+		init_ThreadQuartetLists(thread_quartet_lists);
+		
+        #pragma omp for schedule(dynamic) 
         for (int i = startMN; i < endMN; i++) {
             int M = shellrid[i];
             int N = shellid[i];
+			
+			reset_ThreadQuartetLists(thread_quartet_lists, M, N);
+			
             double value1 = shellvalue[i];            
             int dimM = f_startind[M + 1] - f_startind[M];
             int dimN = f_startind[N + 1] - f_startind[N];
@@ -164,7 +172,8 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
             int iXN = rowptr[i];
             int iMN = iX1M * ldX1+ iXN;
             int flag1 = (value1 < 0.0) ? 1 : 0;   
-            for (int j = startPQ; j < endPQ; j++) {
+            for (int j = startPQ; j < endPQ; j++) 
+			{
                 int P = shellrid[j];
                 int Q = shellid[j];
                 if ((M > P && (M + P) % 2 == 1) || 
@@ -190,11 +199,14 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                 int iNP0 = iXN * ldX3 + iX3P;               
                 int flag3 = (M == P && Q == N) ? 0 : 1;                    
                 int flag2 = (value2 < 0.0) ? 1 : 0;
-                if (fabs(value1 * value2) >= tolscr2) {
+                if (fabs(value1 * value2) >= tolscr2) 
+				{
                     int nints;
                     double *integrals;
                     mynsq += 1.0;
-                    mynitl += dimM*dimN*dimP*dimQ;                       
+                    mynitl += dimM*dimN*dimP*dimQ;              
+
+					/*
                     CInt_computeShellQuartet_SIMINT(basis, simint, nt,
                                              M, N, P, Q, &integrals, &nints);
                     if (nints != 0) {
@@ -207,8 +219,122 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                                  sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
                                  ldX1, ldX2, ldX3, ldX4, ldX5, ldX6);
                     }
-                }
-            }
+					*/
+					
+					int am_pair_index = CInt_SIMINT_getShellpairAMIndex(simint, P, Q);
+					
+					KetShellPairList_t *target_shellpair_list = &thread_quartet_lists->ket_shellpair_lists[am_pair_index];
+					
+					// Save this shell pair to the target ket shellpair list
+					int add_KetShellPair_ret = add_KetShellPair(
+						target_shellpair_list, P, Q,
+						dimM, dimN, dimP, dimQ, 
+						flag1, flag2, flag3,
+						iMN, iPQ, iMP, iNP, iMQ, iNQ,
+						iMP0, iMQ0, iNP0
+					);
+					assert(add_KetShellPair_ret == 1);
+					
+					// Target ket shellpair list is full, handles it
+					if (target_shellpair_list->num_shellpairs == 16) 
+					{
+						for (int ipair = 0; ipair < 16; ipair++)
+						{
+							CInt_computeShellQuartet_SIMINT(
+								basis, simint, nt,
+								thread_quartet_lists->M, 
+								thread_quartet_lists->N, 
+								target_shellpair_list->P_list[ipair],
+								target_shellpair_list->Q_list[ipair],
+                                &integrals, &nints
+							);
+							if (nints != 0) 
+							{
+								update_F(
+									num_dmat, integrals, 
+									target_shellpair_list->fock_info_list[ipair].dimM, 
+									target_shellpair_list->fock_info_list[ipair].dimN, 
+									target_shellpair_list->fock_info_list[ipair].dimP, 
+									target_shellpair_list->fock_info_list[ipair].dimQ,
+									target_shellpair_list->fock_info_list[ipair].flag1,
+									target_shellpair_list->fock_info_list[ipair].flag2, 
+									target_shellpair_list->fock_info_list[ipair].flag3,
+									target_shellpair_list->fock_info_list[ipair].iMN, 
+									target_shellpair_list->fock_info_list[ipair].iPQ, 
+									target_shellpair_list->fock_info_list[ipair].iMP, 
+									target_shellpair_list->fock_info_list[ipair].iNP, 
+									target_shellpair_list->fock_info_list[ipair].iMQ, 
+									target_shellpair_list->fock_info_list[ipair].iNQ,
+									target_shellpair_list->fock_info_list[ipair].iMP0, 
+									target_shellpair_list->fock_info_list[ipair].iMQ0, 
+									target_shellpair_list->fock_info_list[ipair].iNP0,
+									D1, D2, D3,
+									F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
+									sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
+									ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
+								);
+							}
+						}
+						
+						// Ket shellpair list is processed, reset it
+						reset_KetShellPairList(target_shellpair_list);
+					}
+                }  // if (fabs(value1 * value2) >= tolscr2) 
+            }  // for (int j = startPQ; j < endPQ; j++)
+			
+			// Process all the remaining shell pairs in the thread's list
+			for (int am_pair_index = 0; am_pair_index < 8 * 8; am_pair_index++)
+			{
+				KetShellPairList_t *target_shellpair_list = &thread_quartet_lists->ket_shellpair_lists[am_pair_index];
+				int nints;
+                double *integrals;
+				
+				if (target_shellpair_list->num_shellpairs > 0)  // Ket shellpair list is not empty, handles it
+				{
+					
+					int npairs = target_shellpair_list->num_shellpairs;
+					for (int ipair = 0; ipair < npairs; ipair++)
+					{
+						CInt_computeShellQuartet_SIMINT(
+							basis, simint, nt,
+							thread_quartet_lists->M, 
+							thread_quartet_lists->N, 
+							target_shellpair_list->P_list[ipair],
+							target_shellpair_list->Q_list[ipair],
+							&integrals, &nints
+						);
+						if (nints != 0) 
+						{
+							update_F(
+								num_dmat, integrals, 
+								target_shellpair_list->fock_info_list[ipair].dimM, 
+								target_shellpair_list->fock_info_list[ipair].dimN, 
+								target_shellpair_list->fock_info_list[ipair].dimP, 
+								target_shellpair_list->fock_info_list[ipair].dimQ,
+								target_shellpair_list->fock_info_list[ipair].flag1,
+								target_shellpair_list->fock_info_list[ipair].flag2, 
+								target_shellpair_list->fock_info_list[ipair].flag3,
+								target_shellpair_list->fock_info_list[ipair].iMN, 
+								target_shellpair_list->fock_info_list[ipair].iPQ, 
+								target_shellpair_list->fock_info_list[ipair].iMP, 
+								target_shellpair_list->fock_info_list[ipair].iNP, 
+								target_shellpair_list->fock_info_list[ipair].iMQ, 
+								target_shellpair_list->fock_info_list[ipair].iNQ,
+								target_shellpair_list->fock_info_list[ipair].iMP0, 
+								target_shellpair_list->fock_info_list[ipair].iMQ0, 
+								target_shellpair_list->fock_info_list[ipair].iNP0,
+								D1, D2, D3,
+								F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
+								sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
+								ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
+							);
+						}
+					}
+					
+					// Ket shellpair list is processed, reset it
+					reset_KetShellPairList(target_shellpair_list);
+				}
+			}
         }
 
         #pragma omp critical
@@ -216,6 +342,8 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
             *nitl += mynitl;
             *nsq += mynsq;
         }
+		
+		free_ThreadQuartetLists(thread_quartet_lists);
     } /* #pragma omp parallel */
 }
 
