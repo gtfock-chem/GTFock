@@ -194,16 +194,24 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
         double mynsq = 0.0;
         double mynitl = 0.0;        
         
+		// Pending quartets that need to be computed
         ThreadQuartetLists_s *thread_quartet_lists = (ThreadQuartetLists_s*) malloc(sizeof(ThreadQuartetLists_s));
         init_ThreadQuartetLists(thread_quartet_lists);
         
-        int     *batch_nints     = (int*)     malloc(sizeof(int)     * _SIMINT_NSHELL_SIMD);
-        dbl_ptr *batch_integrals = (dbl_ptr*) malloc(sizeof(dbl_ptr) * _SIMINT_NSHELL_SIMD);
-        assert(batch_nints != NULL);
-        assert(batch_integrals != NULL);
+		// Result buffers for batch computed quartets
+        int     *thread_batch_nints     = (int*)     malloc(sizeof(int)     * _SIMINT_NSHELL_SIMD);
+        dbl_ptr *thread_batch_integrals = (dbl_ptr*) malloc(sizeof(dbl_ptr) * _SIMINT_NSHELL_SIMD);
+        assert(thread_batch_nints != NULL);
+        assert(thread_batch_integrals != NULL);
+		
+		// Simint shell and multi_shellpair buffer for batch computation
+		void *thread_shell_buf, *thread_multi_shellpairs;
+		CInt_SIMINT_createThreadShellBuf(&thread_shell_buf);
+		CInt_SIMINT_createThreadMultishellpairs(&thread_multi_shellpairs);
         
         #pragma omp for schedule(dynamic) 
-        for (int i = startMN; i < endMN; i++) {
+        for (int i = startMN; i < endMN; i++) 
+		{
             int M = shellrid[i];
             int N = shellid[i];
             
@@ -274,11 +282,13 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                             thread_quartet_lists->N, 
                             target_shellpair_list->P_list,
                             target_shellpair_list->Q_list,
-                            npairs, batch_integrals, batch_nints
+                            npairs, thread_batch_integrals, thread_batch_nints,
+							&thread_shell_buf, 
+							&thread_multi_shellpairs
                         );
                         
                         update_F_with_KetShellPairList(
-                            num_dmat, batch_integrals, batch_nints, npairs, 
+                            num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
                             target_shellpair_list,
                             D1, D2, D3,
                             F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
@@ -307,11 +317,13 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                         thread_quartet_lists->N, 
                         target_shellpair_list->P_list,
                         target_shellpair_list->Q_list,
-                        npairs, batch_integrals, batch_nints
+                        npairs, thread_batch_integrals, thread_batch_nints,
+						&thread_shell_buf, 
+						&thread_multi_shellpairs
                     );
                     
                     update_F_with_KetShellPairList(
-                        num_dmat, batch_integrals, batch_nints, npairs, 
+                        num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
                         target_shellpair_list,
                         D1, D2, D3,
                         F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
@@ -323,7 +335,7 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                     reset_KetShellPairList(target_shellpair_list);
                 }
             }
-        }
+        }  // for (int i = startMN; i < endMN; i++)
 
         #pragma omp critical
         {
@@ -331,8 +343,11 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
             *nsq += mynsq;
         }
         
-        free(batch_integrals);
-        free(batch_nints);
+		CInt_SIMINT_freeThreadShellBuf(&thread_shell_buf);
+		CInt_SIMINT_freeThreadMultishellpairs(&thread_multi_shellpairs);
+		
+        free(thread_batch_integrals);
+        free(thread_batch_nints);
         free_ThreadQuartetLists(thread_quartet_lists);
     } /* #pragma omp parallel */
 }
