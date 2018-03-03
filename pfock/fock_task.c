@@ -345,10 +345,11 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
         
         CInt_SIMINT_freeThreadShellBuf(&thread_shell_buf);
         CInt_SIMINT_freeThreadMultishellpairs(&thread_multi_shellpairs);
+		free_ThreadQuartetLists(thread_quartet_lists);
         
         free(thread_batch_integrals);
         free(thread_batch_nints);
-        free_ThreadQuartetLists(thread_quartet_lists);
+        free(thread_quartet_lists);
     } /* #pragma omp parallel */
 }
 
