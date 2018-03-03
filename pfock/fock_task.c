@@ -120,7 +120,7 @@ static void update_F(int num_dmat, double *integrals, int dimM, int dimN,
 #include "thread_quartet_buf.h"
 
 void update_F_with_KetShellPairList(
-    int num_dmat, dbl_ptr *batch_integrals, int *batch_nints, int npairs, 
+    int num_dmat, double *batch_integrals, int batch_nints, int npairs, 
     KetShellPairList_s *target_shellpair_list,
     double **D1, double **D2, double **D3,
     double *F_MN, double *F_PQ, double *F_NQ, double *F_MP, double *F_MQ, double *F_NP,
@@ -130,32 +130,29 @@ void update_F_with_KetShellPairList(
 {
     for (int ipair = 0; ipair < npairs; ipair++)
     {
-        if (batch_nints[ipair] > 0)
-        {
-            update_F(
-                num_dmat, batch_integrals[ipair], 
-                target_shellpair_list->fock_info_list[ipair].dimM, 
-                target_shellpair_list->fock_info_list[ipair].dimN, 
-                target_shellpair_list->fock_info_list[ipair].dimP, 
-                target_shellpair_list->fock_info_list[ipair].dimQ,
-                target_shellpair_list->fock_info_list[ipair].flag1,
-                target_shellpair_list->fock_info_list[ipair].flag2, 
-                target_shellpair_list->fock_info_list[ipair].flag3,
-                target_shellpair_list->fock_info_list[ipair].iMN, 
-                target_shellpair_list->fock_info_list[ipair].iPQ, 
-                target_shellpair_list->fock_info_list[ipair].iMP, 
-                target_shellpair_list->fock_info_list[ipair].iNP, 
-                target_shellpair_list->fock_info_list[ipair].iMQ, 
-                target_shellpair_list->fock_info_list[ipair].iNQ,
-                target_shellpair_list->fock_info_list[ipair].iMP0, 
-                target_shellpair_list->fock_info_list[ipair].iMQ0, 
-                target_shellpair_list->fock_info_list[ipair].iNP0,
-                D1, D2, D3,
-                F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
-                sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
-            );
-        }
+        update_F(
+            num_dmat, &batch_integrals[ipair * batch_nints], 
+            target_shellpair_list->fock_info_list[ipair].dimM, 
+            target_shellpair_list->fock_info_list[ipair].dimN, 
+            target_shellpair_list->fock_info_list[ipair].dimP, 
+            target_shellpair_list->fock_info_list[ipair].dimQ,
+            target_shellpair_list->fock_info_list[ipair].flag1,
+            target_shellpair_list->fock_info_list[ipair].flag2, 
+            target_shellpair_list->fock_info_list[ipair].flag3,
+            target_shellpair_list->fock_info_list[ipair].iMN, 
+            target_shellpair_list->fock_info_list[ipair].iPQ, 
+            target_shellpair_list->fock_info_list[ipair].iMP, 
+            target_shellpair_list->fock_info_list[ipair].iNP, 
+            target_shellpair_list->fock_info_list[ipair].iMQ, 
+            target_shellpair_list->fock_info_list[ipair].iNQ,
+            target_shellpair_list->fock_info_list[ipair].iMP0, 
+            target_shellpair_list->fock_info_list[ipair].iMQ0, 
+            target_shellpair_list->fock_info_list[ipair].iNP0,
+            D1, D2, D3,
+            F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
+            sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
+            ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
+        );
     }
 }
 
@@ -197,12 +194,6 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
         // Pending quartets that need to be computed
         ThreadQuartetLists_s *thread_quartet_lists = (ThreadQuartetLists_s*) malloc(sizeof(ThreadQuartetLists_s));
         init_ThreadQuartetLists(thread_quartet_lists);
-        
-        // Result buffers for batch computed quartets
-        int     *thread_batch_nints     = (int*)     malloc(sizeof(int)     * _SIMINT_NSHELL_SIMD);
-        dbl_ptr *thread_batch_integrals = (dbl_ptr*) malloc(sizeof(dbl_ptr) * _SIMINT_NSHELL_SIMD);
-        assert(thread_batch_nints != NULL);
-        assert(thread_batch_integrals != NULL);
         
         // Simint shell and multi_shellpair buffer for batch computation
         void *thread_shell_buf, *thread_multi_shellpairs;
@@ -275,6 +266,8 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                     if (target_shellpair_list->num_shellpairs == _SIMINT_NSHELL_SIMD) 
                     {
                         int npairs = target_shellpair_list->num_shellpairs;
+                        double *thread_batch_integrals;
+                        int thread_batch_nints;
                         
                         CInt_computeShellQuartetBatch_SIMINT(
                             basis, simint, nt,
@@ -282,19 +275,22 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                             thread_quartet_lists->N, 
                             target_shellpair_list->P_list,
                             target_shellpair_list->Q_list,
-                            npairs, thread_batch_integrals, thread_batch_nints,
+                            npairs, &thread_batch_integrals, &thread_batch_nints,
                             &thread_shell_buf, 
                             &thread_multi_shellpairs
                         );
                         
-                        update_F_with_KetShellPairList(
-                            num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
-                            target_shellpair_list,
-                            D1, D2, D3,
-                            F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
-                            sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                            ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
-                        );
+                        if (thread_batch_nints > 0)
+                        {
+                            update_F_with_KetShellPairList(
+                                num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
+                                target_shellpair_list,
+                                D1, D2, D3,
+                                F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
+                                sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
+                                ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
+                            );
+                        }
                         
                         // Ket shellpair list is processed, reset it
                         reset_KetShellPairList(target_shellpair_list);
@@ -310,6 +306,8 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                 if (target_shellpair_list->num_shellpairs > 0)  // Ket shellpair list is not empty, handles it
                 {
                     int npairs = target_shellpair_list->num_shellpairs;
+                    double *thread_batch_integrals;
+                    int thread_batch_nints;
                     
                     CInt_computeShellQuartetBatch_SIMINT(
                         basis, simint, nt,
@@ -317,19 +315,22 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                         thread_quartet_lists->N, 
                         target_shellpair_list->P_list,
                         target_shellpair_list->Q_list,
-                        npairs, thread_batch_integrals, thread_batch_nints,
+                        npairs, &thread_batch_integrals, &thread_batch_nints,
                         &thread_shell_buf, 
                         &thread_multi_shellpairs
                     );
                     
-                    update_F_with_KetShellPairList(
-                        num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
-                        target_shellpair_list,
-                        D1, D2, D3,
-                        F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
-                        sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                        ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
-                    );
+                    if (thread_batch_nints > 0)
+                    {
+                        update_F_with_KetShellPairList(
+                            num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
+                            target_shellpair_list,
+                            D1, D2, D3,
+                            F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
+                            sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
+                            ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
+                        );
+                    }
                     
                     // Ket shellpair list is processed, reset it
                     reset_KetShellPairList(target_shellpair_list);
@@ -345,10 +346,8 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
         
         CInt_SIMINT_freeThreadShellBuf(&thread_shell_buf);
         CInt_SIMINT_freeThreadMultishellpairs(&thread_multi_shellpairs);
-		free_ThreadQuartetLists(thread_quartet_lists);
+        free_ThreadQuartetLists(thread_quartet_lists);
         
-        free(thread_batch_integrals);
-        free(thread_batch_nints);
         free(thread_quartet_lists);
     } /* #pragma omp parallel */
 }
