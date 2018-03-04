@@ -25,7 +25,7 @@ static inline void atomic_add_f64(volatile double* global_value, double addend)
                                            expected_value, new_value));
 }
 
-
+/*
 static void update_F(int num_dmat, double *integrals, int dimM, int dimN,
                     int dimP, int dimQ,
                     int flag1, int flag2, int flag3,
@@ -113,6 +113,85 @@ static void update_F(int num_dmat, double *integrals, int dimM, int dimN,
                 }
                 atomic_add_f64(&K_NQ[inq], k_NQ);
             }
+        } // for (int iN = 0; iN < dimN; iN++)
+    } // for (int i = 0 ; i < num_dmat; i++)
+}
+*/
+
+// Just swap the 3rd and 5th loop and reduce some redundant computation
+static void update_F(int num_dmat, double *integrals, int dimM, int dimN,
+                    int dimP, int dimQ,
+                    int flag1, int flag2, int flag3,
+                    int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
+                    int iMP0, int iMQ0, int iNP0,
+                    double **D1, double **D2, double **D3,
+                    double *F_MN, double *F_PQ, double *F_NQ,
+                    double *F_MP, double *F_MQ, double *F_NP,
+                    int sizeX1, int sizeX2, int sizeX3,
+                    int sizeX4, int sizeX5, int sizeX6,
+                    int ldMN, int ldPQ, int ldNQ, int ldMP, int ldMQ, int ldNP)
+{
+    int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
+    int flag5 = (flag1 == 1 && flag3 == 1) ? 1 : 0;
+    int flag6 = (flag2 == 1 && flag3 == 1) ? 1 : 0;
+    int flag7 = (flag4 == 1 && flag3 == 1) ? 1 : 0;
+
+    for (int i = 0 ; i < num_dmat; i++) {
+        double *D_MN = D1[i] + iMN;
+        double *D_PQ = D2[i] + iPQ;
+        double *D_NQ = D3[i] + iNQ;
+        double *D_MP = D3[i] + iMP0;
+        double *D_MQ = D3[i] + iMQ0;
+        double *D_NP = D3[i] + iNP0;    
+        double *J_MN = &F_MN[i * sizeX1] + iMN;
+        double *J_PQ = &F_PQ[i * sizeX2] + iPQ;
+        double *K_NQ = &F_NQ[i * sizeX3] + iNQ;
+        double *K_MP = &F_MP[i * sizeX4] + iMP;
+        double *K_MQ = &F_MQ[i * sizeX5] + iMQ;
+        double *K_NP = &F_NP[i * sizeX6] + iNP;
+    
+        for (int iN = 0; iN < dimN; iN++) 
+        {
+            for (int iP = 0; iP < dimP; iP++) 
+            {
+                int inp = iN * ldNP + iP;
+                double k_NP = 0.0;
+                double vMQ  = (flag2 + flag6) * 1.0 * D_NP[iN * ldNQ + iP];
+                for (int iM = 0; iM < dimM; iM++) 
+                {
+                    int imn = iM * ldMN + iN;
+                    int imp = iM * ldMP + iP;
+                    double j_MN = 0.0, k_MP = 0.0;
+                    
+                    int Ibase  = dimQ * (iP + dimP * (iN + dimN * iM));
+                    double vPQ = D_MN[iM * ldMN + iN] * 2.0 * (flag3 + flag5 + flag6 + flag7);
+                    double vNQ = D_MP[iM * ldNQ + iP] * 1.0 * (flag4 + flag7);
+                    
+                    for (int iQ = 0; iQ < dimQ; iQ++) 
+                    {
+                        int inq = iN * ldNQ + iQ;
+                        int imq = iM * ldMQ + iQ;
+                        int ipq = iP * ldPQ + iQ;
+
+                        double I = integrals[iQ + Ibase];
+
+                        double vMN = D_PQ[iP * ldPQ + iQ] * I * 2.0 * (1 + flag1 + flag2 + flag4);
+                        double vMP = D_NQ[iN * ldNQ + iQ] * I * 1.0 * (1 + flag3);
+                        double vNP = D_MQ[iM * ldNQ + iQ] * I * 1.0 * (flag1 + flag5);
+                        
+                        j_MN += vMN;
+                        k_MP -= vMP;
+                        k_NP -= vNP;
+                        
+                        atomic_add_f64(&J_PQ[ipq],  vPQ * I);
+                        atomic_add_f64(&K_MQ[imq], -vMQ * I);
+                        atomic_add_f64(&K_NQ[inq], -vNQ * I);
+                    }
+                    atomic_add_f64(&J_MN[imn], j_MN);
+                    atomic_add_f64(&K_MP[imp], k_MP);
+                }
+                atomic_add_f64(&K_NP[inp], k_NP);
+            } // for (int iP = 0; iP < dimP; iP++) 
         } // for (int iN = 0; iN < dimN; iN++)
     } // for (int i = 0 ; i < num_dmat; i++)
 }
