@@ -118,24 +118,33 @@ static void update_F(int num_dmat, double *integrals, int dimM, int dimN,
 }
 */
 
-// Just swap the 3rd and 5th loop and reduce some redundant computation
-static void update_F(int num_dmat, double *integrals, int dimM, int dimN,
-                    int dimP, int dimQ,
-                    int flag1, int flag2, int flag3,
-                    int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
-                    int iMP0, int iMQ0, int iNP0,
-                    double **D1, double **D2, double **D3,
-                    double *F_MN, double *F_PQ, double *F_NQ,
-                    double *F_MP, double *F_MQ, double *F_NP,
-                    int sizeX1, int sizeX2, int sizeX3,
-                    int sizeX4, int sizeX5, int sizeX6,
-                    int ldMN, int ldPQ, int ldNQ, int ldMP, int ldMQ, int ldNP)
+double *update_F_buf  = NULL;
+int update_F_buf_size = 0;
+
+static void update_F(
+    int tid, int num_dmat, double *integrals, int dimM, int dimN,
+    int dimP, int dimQ,
+    int flag1, int flag2, int flag3,
+    int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
+    int iMP0, int iMQ0, int iNP0,
+    double **D1, double **D2, double **D3,
+    double *F_MN, double *F_PQ, double *F_NQ,
+    double *F_MP, double *F_MQ, double *F_NP,
+    int sizeX1, int sizeX2, int sizeX3,
+    int sizeX4, int sizeX5, int sizeX6,
+    int ldMN, int ldPQ, int ldNQ, int ldMP, int ldMQ, int ldNP
+)
 {
     int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
     int flag5 = (flag1 == 1 && flag3 == 1) ? 1 : 0;
     int flag6 = (flag2 == 1 && flag3 == 1) ? 1 : 0;
     int flag7 = (flag4 == 1 && flag3 == 1) ? 1 : 0;
-
+    
+    double *K_NQ_buf = update_F_buf + 2 * update_F_buf_size * tid;
+    double *J_PQ_buf = K_NQ_buf + update_F_buf_size;
+    __assume_aligned(K_NQ_buf, 64);
+    __assume_aligned(J_PQ_buf, 64);
+    
     for (int i = 0 ; i < num_dmat; i++) {
         double *D_MN = D1[i] + iMN;
         double *D_PQ = D2[i] + iPQ;
@@ -152,46 +161,56 @@ static void update_F(int num_dmat, double *integrals, int dimM, int dimN,
     
         for (int iN = 0; iN < dimN; iN++) 
         {
+            memset(K_NQ_buf, 0, sizeof(double) * dimQ);
             for (int iP = 0; iP < dimP; iP++) 
             {
+                memset(J_PQ_buf, 0, sizeof(double) * dimQ);
                 int inp = iN * ldNP + iP;
                 double k_NP = 0.0;
-                double vMQ  = (flag2 + flag6) * 1.0 * D_NP[iN * ldNQ + iP];
+                double vMQ  = (flag2 + flag6) * D_NP[iN * ldNQ + iP];
                 for (int iM = 0; iM < dimM; iM++) 
                 {
                     int imn = iM * ldMN + iN;
                     int imp = iM * ldMP + iP;
-                    double j_MN = 0.0, k_MP = 0.0;
                     
                     int Ibase  = dimQ * (iP + dimP * (iN + dimN * iM));
                     double vPQ = D_MN[iM * ldMN + iN] * 2.0 * (flag3 + flag5 + flag6 + flag7);
-                    double vNQ = D_MP[iM * ldNQ + iP] * 1.0 * (flag4 + flag7);
+                    double vNQ = D_MP[iM * ldNQ + iP] * (flag4 + flag7);
                     
+                    double j_MN = 0.0, k_MP = 0.0, k_NP0 = 0.0;
+                    
+                    #pragma simd
                     for (int iQ = 0; iQ < dimQ; iQ++) 
                     {
-                        int inq = iN * ldNQ + iQ;
-                        int imq = iM * ldMQ + iQ;
-                        int ipq = iP * ldPQ + iQ;
-
                         double I = integrals[iQ + Ibase];
-
-                        double vMN = D_PQ[iP * ldPQ + iQ] * I * 2.0 * (1 + flag1 + flag2 + flag4);
-                        double vMP = D_NQ[iN * ldNQ + iQ] * I * 1.0 * (1 + flag3);
-                        double vNP = D_MQ[iM * ldNQ + iQ] * I * 1.0 * (flag1 + flag5);
                         
-                        j_MN += vMN;
-                        k_MP -= vMP;
-                        k_NP -= vNP;
+                        j_MN  += D_PQ[iP * ldPQ + iQ] * I;
+                        k_MP  -= D_NQ[iN * ldNQ + iQ] * I;
+                        k_NP0 -= D_MQ[iM * ldNQ + iQ] * I;
                         
-                        atomic_add_f64(&J_PQ[ipq],  vPQ * I);
-                        atomic_add_f64(&K_MQ[imq], -vMQ * I);
-                        atomic_add_f64(&K_NQ[inq], -vNQ * I);
+                        J_PQ_buf[iQ] += vPQ * I;
+                        K_NQ_buf[iQ] -= vNQ * I;
                     }
+                    j_MN *= 2.0 * (1 + flag1 + flag2 + flag4);
+                    k_MP *= (1 + flag3);
+                    k_NP += k_NP0 * (flag1 + flag5);
+                    
+                    for (int iQ = 0; iQ < dimQ; iQ++)
+                    {
+                        int imq = iM * ldMQ + iQ;
+                        double I = integrals[iQ + Ibase];
+                        atomic_add_f64(&K_MQ[imq], -vMQ * I);
+                    }
+                    
                     atomic_add_f64(&J_MN[imn], j_MN);
                     atomic_add_f64(&K_MP[imp], k_MP);
                 }
                 atomic_add_f64(&K_NP[inp], k_NP);
+                for (int iQ = 0; iQ < dimQ; iQ++)
+                    atomic_add_f64(&J_PQ[iP * ldPQ + iQ], J_PQ_buf[iQ]);
             } // for (int iP = 0; iP < dimP; iP++) 
+            for (int iQ = 0; iQ < dimQ; iQ++)
+                atomic_add_f64(&K_NQ[iN * ldNQ + iQ], K_NQ_buf[iQ]);
         } // for (int iN = 0; iN < dimN; iN++)
     } // for (int i = 0 ; i < num_dmat; i++)
 }
@@ -199,7 +218,7 @@ static void update_F(int num_dmat, double *integrals, int dimM, int dimN,
 #include "thread_quartet_buf.h"
 
 void update_F_with_KetShellPairList(
-    int num_dmat, double *batch_integrals, int batch_nints, int npairs, 
+    int tid, int num_dmat, double *batch_integrals, int batch_nints, int npairs, 
     KetShellPairList_s *target_shellpair_list,
     double **D1, double **D2, double **D3,
     double *F_MN, double *F_PQ, double *F_NQ, double *F_MP, double *F_MQ, double *F_NP,
@@ -210,7 +229,7 @@ void update_F_with_KetShellPairList(
     for (int ipair = 0; ipair < npairs; ipair++)
     {
         update_F(
-            num_dmat, &batch_integrals[ipair * batch_nints], 
+            tid, num_dmat, &batch_integrals[ipair * batch_nints], 
             target_shellpair_list->fock_info_list[ipair].dimM, 
             target_shellpair_list->fock_info_list[ipair].dimN, 
             target_shellpair_list->fock_info_list[ipair].dimP, 
@@ -256,10 +275,26 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
     int startPQ = shellptr[startP];
     int endPQ = shellptr[endP + 1];
     
+    if (update_F_buf_size == 0)
+    {
+        // startPQ & endPQ & f_startind remains unchanged for each call
+        // So just allocate the buffer once
+        for (int j = startPQ; j < endPQ; j++) 
+        {
+            int Q = shellid[j];
+            int dimQ = f_startind[Q + 1] - f_startind[Q];
+            if (dimQ > update_F_buf_size) update_F_buf_size = dimQ;
+        }
+        update_F_buf_size = (update_F_buf_size + 8) / 8 * 8;  // Align to 64 bytes
+        int nthreads = omp_get_max_threads();
+        update_F_buf = _mm_malloc(sizeof(double) * nthreads * 2 * update_F_buf_size, 64);
+        assert(update_F_buf != NULL);
+    }
+    
     #pragma omp parallel
     {
         // init    
-        int nt = omp_get_thread_num ();
+        int nt = omp_get_thread_num();
         int nf = nt/ncpu_f;
         double *F_MN = &(F1[nf * sizeX1 * num_dmat]);
         double *F_PQ = &(F2[nf * sizeX2 * num_dmat]);
@@ -362,7 +397,7 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                         if (thread_batch_nints > 0)
                         {
                             update_F_with_KetShellPairList(
-                                num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
+                                nt, num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
                                 target_shellpair_list,
                                 D1, D2, D3,
                                 F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
@@ -402,7 +437,7 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                     if (thread_batch_nints > 0)
                     {
                         update_F_with_KetShellPairList(
-                            num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
+                            nt, num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
                             target_shellpair_list,
                             D1, D2, D3,
                             F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
