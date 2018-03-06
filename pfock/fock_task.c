@@ -31,7 +31,8 @@ int update_F_buf_size = 0;
 // Optimized update_F(): exchange 3rd and 5th loop, split 5th loop, reduce
 // redundant computation, use thread-local buffer to reduce calling 
 // atomic_add_f64(). Original update_F() is moved to the end of this file.
-static void update_F(
+static inline void 
+update_F(
     int tid, int num_dmat, double *integrals, int dimM, int dimN,
     int dimP, int dimQ,
     int flag1, int flag2, int flag3,
@@ -138,24 +139,25 @@ void update_F_with_KetShellPairList(
 {
     for (int ipair = 0; ipair < npairs; ipair++)
     {
+        int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
         update_F(
             tid, num_dmat, &batch_integrals[ipair * batch_nints], 
-            target_shellpair_list->fock_info_list[ipair].dimM, 
-            target_shellpair_list->fock_info_list[ipair].dimN, 
-            target_shellpair_list->fock_info_list[ipair].dimP, 
-            target_shellpair_list->fock_info_list[ipair].dimQ,
-            target_shellpair_list->fock_info_list[ipair].flag1,
-            target_shellpair_list->fock_info_list[ipair].flag2, 
-            target_shellpair_list->fock_info_list[ipair].flag3,
-            target_shellpair_list->fock_info_list[ipair].iMN, 
-            target_shellpair_list->fock_info_list[ipair].iPQ, 
-            target_shellpair_list->fock_info_list[ipair].iMP, 
-            target_shellpair_list->fock_info_list[ipair].iNP, 
-            target_shellpair_list->fock_info_list[ipair].iMQ, 
-            target_shellpair_list->fock_info_list[ipair].iNQ,
-            target_shellpair_list->fock_info_list[ipair].iMP0, 
-            target_shellpair_list->fock_info_list[ipair].iMQ0, 
-            target_shellpair_list->fock_info_list[ipair].iNP0,
+            fock_info_list[0], 
+            fock_info_list[1], 
+            fock_info_list[2], 
+            fock_info_list[3], 
+            fock_info_list[4], 
+            fock_info_list[5], 
+            fock_info_list[6], 
+            fock_info_list[7], 
+            fock_info_list[8], 
+            fock_info_list[9], 
+            fock_info_list[10], 
+            fock_info_list[11], 
+            fock_info_list[12], 
+            fock_info_list[13], 
+            fock_info_list[14], 
+            fock_info_list[15], 
             D1, D2, D3,
             F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
             sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,

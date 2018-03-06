@@ -3,13 +3,6 @@
 // It seems that in the naming system of GTFock, *_t means pointer type,
 // so I shall follow this way and use *_s to mark a struct type
 
-typedef struct 
-{
-    int dimM, dimN, dimP, dimQ, flag1, flag2, flag3;
-    int iMN, iPQ, iMP, iNP, iMQ, iNQ, iMP0, iMQ0, iNP0;
-} FockQuartetInfo_s;
-
-typedef FockQuartetInfo_s* FockQuartetInfo_t;
 
 // A KetShellPairList_s can holds _SIMINT_NSHELL_SIMD ket side shellpairs
 // The ket side shellpairs should have same AM pairs
@@ -20,10 +13,10 @@ typedef struct
     
     // (P_list[i], Q_list[i]) are the shellpair ids for ket side
     // AM(P_list[]) are the same, AM(Q_list[]) are the same
-    int *P_list, *Q_list;
+    // fock_quartet_info are for calling update_F
+    int *P_list, *Q_list, *fock_quartet_info;
     
-    // Other info about ket side shell pairs, for calling update_F
-    FockQuartetInfo_s *fock_info_list;  
+    int *ptr;
 } KetShellPairList_s;
 
 typedef KetShellPairList_s* KetShellPairList_t;
@@ -37,6 +30,8 @@ typedef struct
     
     // Shellpair lists for different AM pairs
     KetShellPairList_s *ket_shellpair_lists;  
+    
+    int *ptr;
 } ThreadQuartetLists_s;
 
 typedef ThreadQuartetLists_s* ThreadQuartetLists_t;
@@ -48,13 +43,26 @@ void init_KetShellPairList(KetShellPairList_s *ket_shellpair_list)
     
     ket_shellpair_list->num_shellpairs = 0;
     
-    ket_shellpair_list->P_list = (int *) malloc(sizeof(int) * _SIMINT_NSHELL_SIMD);
-    ket_shellpair_list->Q_list = (int *) malloc(sizeof(int) * _SIMINT_NSHELL_SIMD);
-    ket_shellpair_list->fock_info_list = (FockQuartetInfo_s *) malloc(sizeof(FockQuartetInfo_s) * _SIMINT_NSHELL_SIMD);
+    ket_shellpair_list->ptr = (int*) malloc(sizeof(int) * _SIMINT_NSHELL_SIMD * (2 + 16));
+    assert(ket_shellpair_list->ptr != NULL);
     
-    assert(ket_shellpair_list->P_list != NULL);
-    assert(ket_shellpair_list->Q_list != NULL);
-    assert(ket_shellpair_list->fock_info_list != NULL);
+    ket_shellpair_list->P_list = ket_shellpair_list->ptr;
+    ket_shellpair_list->Q_list = ket_shellpair_list->ptr + _SIMINT_NSHELL_SIMD;
+    ket_shellpair_list->fock_quartet_info = ket_shellpair_list->ptr + _SIMINT_NSHELL_SIMD * 2;
+}
+
+void init_KetShellPairListwithBuffer(KetShellPairList_s *ket_shellpair_list, int *buffer)
+{
+    assert(ket_shellpair_list != NULL);
+    
+    ket_shellpair_list->num_shellpairs = 0;
+    
+    ket_shellpair_list->ptr = buffer;
+    assert(ket_shellpair_list->ptr != NULL);
+    
+    ket_shellpair_list->P_list = ket_shellpair_list->ptr;
+    ket_shellpair_list->Q_list = ket_shellpair_list->ptr + _SIMINT_NSHELL_SIMD;
+    ket_shellpair_list->fock_quartet_info = ket_shellpair_list->ptr + _SIMINT_NSHELL_SIMD * 2;
 }
 
 void free_KetShellPairList(KetShellPairList_s *ket_shellpair_list)
@@ -62,10 +70,7 @@ void free_KetShellPairList(KetShellPairList_s *ket_shellpair_list)
     assert(ket_shellpair_list != NULL);
     
     ket_shellpair_list->num_shellpairs = 0;
-    
-    if (ket_shellpair_list->P_list != NULL) free(ket_shellpair_list->P_list);
-    if (ket_shellpair_list->Q_list != NULL) free(ket_shellpair_list->Q_list);
-    if (ket_shellpair_list->fock_info_list != NULL) free(ket_shellpair_list->fock_info_list);
+    if (ket_shellpair_list->ptr != NULL) free(ket_shellpair_list->ptr);
 }
 
 
@@ -89,22 +94,24 @@ int add_KetShellPair(
     ket_shellpair_list->P_list[idx] = _P;
     ket_shellpair_list->Q_list[idx] = _Q;
     
-    ket_shellpair_list->fock_info_list[idx].dimM  = _dimM;
-    ket_shellpair_list->fock_info_list[idx].dimN  = _dimN;
-    ket_shellpair_list->fock_info_list[idx].dimP  = _dimP;
-    ket_shellpair_list->fock_info_list[idx].dimQ  = _dimQ;
-    ket_shellpair_list->fock_info_list[idx].flag1 = _flag1;
-    ket_shellpair_list->fock_info_list[idx].flag2 = _flag2;
-    ket_shellpair_list->fock_info_list[idx].flag3 = _flag3;
-    ket_shellpair_list->fock_info_list[idx].iMN   = _iMN;
-    ket_shellpair_list->fock_info_list[idx].iPQ   = _iPQ;
-    ket_shellpair_list->fock_info_list[idx].iMP   = _iMP;
-    ket_shellpair_list->fock_info_list[idx].iNP   = _iNP;
-    ket_shellpair_list->fock_info_list[idx].iMQ   = _iMQ;
-    ket_shellpair_list->fock_info_list[idx].iNQ   = _iNQ;
-    ket_shellpair_list->fock_info_list[idx].iMP0  = _iMP0;
-    ket_shellpair_list->fock_info_list[idx].iMQ0  = _iMQ0;
-    ket_shellpair_list->fock_info_list[idx].iNP0  = _iNP0;
+    int *fock_info_list = ket_shellpair_list->fock_quartet_info + idx * 16;
+    
+    fock_info_list[0]  = _dimM;
+    fock_info_list[1]  = _dimN;
+    fock_info_list[2]  = _dimP;
+    fock_info_list[3]  = _dimQ;
+    fock_info_list[4]  = _flag1;
+    fock_info_list[5]  = _flag2;
+    fock_info_list[6]  = _flag3;
+    fock_info_list[7]  = _iMN;
+    fock_info_list[8]  = _iPQ;
+    fock_info_list[9]  = _iMP;
+    fock_info_list[10] = _iNP;
+    fock_info_list[11] = _iMQ;
+    fock_info_list[12] = _iNQ;
+    fock_info_list[13] = _iMP0;
+    fock_info_list[14] = _iMQ0;
+    fock_info_list[15] = _iNP0;
     
     ket_shellpair_list->num_shellpairs++;
     return 1;
@@ -117,8 +124,18 @@ void init_ThreadQuartetLists(ThreadQuartetLists_s *thread_quartet_lists)
     thread_quartet_lists->ket_shellpair_lists = (KetShellPairList_s *) malloc(sizeof(KetShellPairList_s) * _SIMINT_AM_PAIRS);  
     assert(thread_quartet_lists->ket_shellpair_lists != NULL);
     
+    int spl_work_size = _SIMINT_NSHELL_SIMD * (2 + 16);
+    int tql_work_size = spl_work_size * _SIMINT_AM_PAIRS;
+    thread_quartet_lists->ptr = (int*) malloc(sizeof(int) * tql_work_size);
+    assert(thread_quartet_lists->ptr != NULL);
+    
     for (int i = 0; i < _SIMINT_AM_PAIRS; i++)
-        init_KetShellPairList(&thread_quartet_lists->ket_shellpair_lists[i]);
+    {
+        init_KetShellPairListwithBuffer(
+            &thread_quartet_lists->ket_shellpair_lists[i],
+            thread_quartet_lists->ptr + i * spl_work_size
+        );
+    }
 }
 
 void free_ThreadQuartetLists(ThreadQuartetLists_s *thread_quartet_lists)
@@ -127,10 +144,13 @@ void free_ThreadQuartetLists(ThreadQuartetLists_s *thread_quartet_lists)
     
     assert(thread_quartet_lists->ket_shellpair_lists != NULL);
     for (int i = 0; i < _SIMINT_AM_PAIRS; i++)
-        free_KetShellPairList(&thread_quartet_lists->ket_shellpair_lists[i]);
+        reset_KetShellPairList(&thread_quartet_lists->ket_shellpair_lists[i]);
     
     if (thread_quartet_lists->ket_shellpair_lists != NULL) 
         free(thread_quartet_lists->ket_shellpair_lists);
+    
+    if (thread_quartet_lists->ptr != NULL)
+        free(thread_quartet_lists->ptr);
 }
 
 void reset_ThreadQuartetLists(ThreadQuartetLists_s *thread_quartet_lists, const int _M, const int _N)
