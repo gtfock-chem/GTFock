@@ -210,6 +210,8 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                         
                         if (thread_batch_nints > 0)
                         {
+                            double st, et;
+                            st = CInt_get_walltime_sec();
                             update_F_with_KetShellPairList(
                                 nt, num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
                                 target_shellpair_list,
@@ -218,6 +220,9 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                                 sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
                                 ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
                             );
+                            et = CInt_get_walltime_sec();
+                            if (nt == 0) 
+                                CInt_SIMINT_addupdateFtimer(simint, et - st);
                         }
                         
                         // Ket shellpair list is processed, reset it
@@ -249,6 +254,8 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                     
                     if (thread_batch_nints > 0)
                     {
+                        double st, et;
+                        st = CInt_get_walltime_sec();
                         update_F_with_KetShellPairList(
                             nt, num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
                             target_shellpair_list,
@@ -257,6 +264,9 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                             sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
                             ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
                         );
+                        et = CInt_get_walltime_sec();
+                        if (nt == 0) 
+                            CInt_SIMINT_addupdateFtimer(simint, et - st);
                     }
                     
                     // Ket shellpair list is processed, reset it
