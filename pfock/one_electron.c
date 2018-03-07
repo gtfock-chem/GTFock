@@ -155,9 +155,9 @@ void my_peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
     descinit_(descA, &n, &n, &nb, &nb, &izero, &izero, &ictxt, &itemp, &info);
     descinit_(descZ, &n, &n, &nb, &nb, &izero, &izero, &ictxt, &itemp, &info);
     int blocksize = nrows * ncols;
-    double *A = (double *)mkl_malloc(blocksize * sizeof (double), 64);
+    double *A = (double *)_mm_malloc(blocksize * sizeof (double), 64);
     assert (A != NULL);
-    double *Z = (double *)mkl_malloc(blocksize * sizeof (double), 64);
+    double *Z = (double *)_mm_malloc(blocksize * sizeof (double), 64);
     assert (Z != NULL);
 
     // distribute source matrix
@@ -192,7 +192,7 @@ void my_peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
 
     double t1 = MPI_Wtime();
     // inquire working space
-    double *work = (double *)mkl_malloc(2 * sizeof (double), 64);
+    double *work = (double *)_mm_malloc(2 * sizeof (double), 64);
     assert (work != NULL);
     int lwork = -1;
 #if 0
@@ -200,27 +200,27 @@ void my_peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
             eval, Z, &ione, &ione, descZ, work, &lwork, &info);
 #else
     int liwork = -1;
-    int *iwork = (int *)mkl_malloc(2 * sizeof (int), 64);
+    int *iwork = (int *)_mm_malloc(2 * sizeof (int), 64);
     assert(iwork != NULL);
-    pdsyevd("V", "U", &n, A, &ione, &ione, descA,
+    pdsyevd_("V", "U", &n, A, &ione, &ione, descA,
             eval, Z, &ione, &ione, descZ,
             work, &lwork, iwork, &liwork, &info);    
 #endif
 
     // compute eigenvalues and eigenvectors
     lwork = (int)work[0] * 2;
-    mkl_free(work);
-    work = (double *)mkl_malloc(lwork * sizeof (double), 64);
+    _mm_free(work);
+    work = (double *)_mm_malloc(lwork * sizeof (double), 64);
     assert(work != NULL);
 #if 0
     pdsyev ("V", "U", &n, A, &ione, &ione, descA,
             eval, Z, &ione, &ione, descZ, work, &lwork, &info);
 #else
     liwork = (int)iwork[0];
-    mkl_free(iwork);
-    iwork = (int *)mkl_malloc(liwork * sizeof (int), 64);
+    _mm_free(iwork);
+    iwork = (int *)_mm_malloc(liwork * sizeof (int), 64);
     assert(iwork != NULL);
-    pdsyevd("V", "U", &n, A, &ione, &ione, descA,
+    pdsyevd_("V", "U", &n, A, &ione, &ione, descA,
             eval, Z, &ione, &ione, descZ,
             work, &lwork, iwork, &liwork, &info); 
 #endif
@@ -260,9 +260,9 @@ void my_peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
 #endif
     GA_Sync();
 
-    mkl_free(A);
-    mkl_free(Z);
-    mkl_free(work);
+    _mm_free(A);
+    _mm_free(Z);
+    _mm_free(work);
 
     Cblacs_gridexit(ictxt);
 }
