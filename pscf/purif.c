@@ -100,26 +100,26 @@ static void config_purif (purif_t * purif, int purif_offload)
     purif->ldx = ncols;
     meshsize = nrows * ncols;
     purif->meshsize = meshsize;
-    purif->X_block = (double *) mkl_malloc (meshsize * sizeof (double), 64);
+    purif->X_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
     assert (purif->X_block != NULL);
-    purif->S_block = (double *) mkl_malloc (meshsize * sizeof (double), 64);
+    purif->S_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
     assert (purif->S_block != NULL);
-    purif->H_block = (double *) mkl_malloc (meshsize * sizeof (double), 64);
+    purif->H_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
     assert (purif->H_block != NULL);
-    purif->F_block = (double *) mkl_malloc (meshsize * sizeof (double), 64);
+    purif->F_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
     assert (purif->F_block != NULL);
-    purif->D_block = (double *) mkl_malloc (meshsize * sizeof (double), 64);
+    purif->D_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
     assert (purif->D_block != NULL);
-    purif->D2_block = (double *) mkl_malloc (meshsize * sizeof (double), 64);
+    purif->D2_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
     assert (purif->D2_block != NULL);
-    purif->D3_block = (double *) mkl_malloc (meshsize * sizeof (double), 64);
+    purif->D3_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
     assert (purif->D3_block != NULL);
     // working space for purification
     purif->diis_vecs =
-        (double *) mkl_malloc (MAX_DIIS * meshsize * sizeof (double), 64);
+        (double *) _mm_malloc (MAX_DIIS * meshsize * sizeof (double), 64);
     assert (purif->diis_vecs != NULL);
     purif->F_vecs =
-        (double *) mkl_malloc (MAX_DIIS * meshsize * sizeof (double), 64);
+        (double *) _mm_malloc (MAX_DIIS * meshsize * sizeof (double), 64);
     assert (purif->diis_vecs != NULL);
     purif->len_diis = 0;
     purif->bmax = DBL_MIN;
@@ -240,15 +240,15 @@ void destroy_purif (purif_t * purif)
         MPI_Comm_free (&(purif->comm_purif_col));
         free (purif->nr_purif);
         free (purif->nc_purif);
-        mkl_free (purif->H_block);
-        mkl_free (purif->X_block);
-        mkl_free (purif->S_block);
-        mkl_free (purif->F_block);
-        mkl_free (purif->D_block);
-        mkl_free (purif->D3_block);
-        mkl_free (purif->D2_block);
-        mkl_free (purif->F_vecs);
-        mkl_free (purif->diis_vecs);
+        _mm_free (purif->H_block);
+        _mm_free (purif->X_block);
+        _mm_free (purif->S_block);
+        _mm_free (purif->F_block);
+        _mm_free (purif->D_block);
+        _mm_free (purif->D3_block);
+        _mm_free (purif->D2_block);
+        _mm_free (purif->F_vecs);
+        _mm_free (purif->diis_vecs);
     }
     free (purif);
 }
@@ -677,9 +677,9 @@ static void peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
     descinit_(descA, &n, &n, &nb, &nb, &izero, &izero, &ictxt, &itemp, &info);
     descinit_(descZ, &n, &n, &nb, &nb, &izero, &izero, &ictxt, &itemp, &info);
     int blocksize = nrows * ncols;
-    double *A = (double *)mkl_malloc(blocksize * sizeof (double), 64);
+    double *A = (double *)_mm_malloc(blocksize * sizeof (double), 64);
     assert (A != NULL);
-    double *Z = (double *)mkl_malloc(blocksize * sizeof (double), 64);
+    double *Z = (double *)_mm_malloc(blocksize * sizeof (double), 64);
     assert (Z != NULL);
 
     // distribute source matrix
@@ -714,7 +714,7 @@ static void peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
 
     double t1 = MPI_Wtime();
     // inquire working space
-    double *work = (double *)mkl_malloc(2 * sizeof (double), 64);
+    double *work = (double *)_mm_malloc(2 * sizeof (double), 64);
     assert (work != NULL);
     int lwork = -1;
 #if 0
@@ -722,27 +722,27 @@ static void peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
             eval, Z, &ione, &ione, descZ, work, &lwork, &info);
 #else
     int liwork = -1;
-    int *iwork = (int *)mkl_malloc(2 * sizeof (int), 64);
+    int *iwork = (int *)_mm_malloc(2 * sizeof (int), 64);
     assert(iwork != NULL);
-    pdsyevd("V", "U", &n, A, &ione, &ione, descA,
+    pdsyevd_("V", "U", &n, A, &ione, &ione, descA,
             eval, Z, &ione, &ione, descZ,
             work, &lwork, iwork, &liwork, &info);    
 #endif
 
     // compute eigenvalues and eigenvectors
     lwork = (int)work[0] * 2;
-    mkl_free(work);
-    work = (double *)mkl_malloc(lwork * sizeof (double), 64);
+    _mm_free(work);
+    work = (double *)_mm_malloc(lwork * sizeof (double), 64);
     assert(work != NULL);
 #if 0
     pdsyev ("V", "U", &n, A, &ione, &ione, descA,
             eval, Z, &ione, &ione, descZ, work, &lwork, &info);
 #else
     liwork = (int)iwork[0];
-    mkl_free(iwork);
-    iwork = (int *)mkl_malloc(liwork * sizeof (int), 64);
+    _mm_free(iwork);
+    iwork = (int *)_mm_malloc(liwork * sizeof (int), 64);
     assert(iwork != NULL);
-    pdsyevd("V", "U", &n, A, &ione, &ione, descA,
+    pdsyevd_("V", "U", &n, A, &ione, &ione, descA,
             eval, Z, &ione, &ione, descZ,
             work, &lwork, iwork, &liwork, &info); 
 #endif
@@ -782,9 +782,9 @@ static void peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
 #endif
     GA_Sync();
 
-    mkl_free(A);
-    mkl_free(Z);
-    mkl_free(work);
+    _mm_free(A);
+    _mm_free(Z);
+    _mm_free(work);
 
     Cblacs_gridexit(ictxt);
 }
@@ -810,7 +810,7 @@ void compute_eigensolve(int ga_tmp, purif_t * purif,
         NGA_Put(myga, lo, hi, F_block, &ld);
     }
 
-    double *eval = (double *)mkl_malloc(nbf * sizeof (double), 64);
+    double *eval = (double *)_mm_malloc(nbf * sizeof (double), 64);
     assert(eval != NULL);
     peig(myga, myga2, nbf, nprow, npcol, eval);
 
@@ -826,7 +826,7 @@ void compute_eigensolve(int ga_tmp, purif_t * purif,
 
     GA_Destroy(myga);
     GA_Destroy(myga2);
-    mkl_free(eval);
+    _mm_free(eval);
 }
 
 #endif

@@ -25,98 +25,50 @@ static inline void atomic_add_f64(volatile double* global_value, double addend)
                                            expected_value, new_value));
 }
 
+double *update_F_buf  = NULL;
+int update_F_buf_size = 0;
 
-static void update_F(int num_dmat, double *integrals, int dimM, int dimN,
-                    int dimP, int dimQ,
-                    int flag1, int flag2, int flag3,
-                    int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
-                    int iMP0, int iMQ0, int iNP0,
-                    double **D1, double **D2, double **D3,
-                    double *F_MN, double *F_PQ, double *F_NQ,
-                    double *F_MP, double *F_MQ, double *F_NP,
-                    int sizeX1, int sizeX2, int sizeX3,
-                    int sizeX4, int sizeX5, int sizeX6,
-                    int ldMN, int ldPQ, int ldNQ, int ldMP, int ldMQ, int ldNP)
+#include "update_F.h"
+
+#include "thread_quartet_buf.h"
+
+void update_F_with_KetShellPairList(
+    int tid, int num_dmat, double *batch_integrals, int batch_nints, int npairs, 
+    KetShellPairList_s *target_shellpair_list,
+    double **D1, double **D2, double **D3,
+    double *F_MN, double *F_PQ, double *F_NQ, double *F_MP, double *F_MQ, double *F_NP,
+    int sizeX1, int sizeX2, int sizeX3, int sizeX4, int sizeX5, int sizeX6,
+    int ldX1, int ldX2, int ldX3, int ldX4, int ldX5, int ldX6
+)
 {
-    int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
-    int flag5 = (flag1 == 1 && flag3 == 1) ? 1 : 0;
-    int flag6 = (flag2 == 1 && flag3 == 1) ? 1 : 0;
-    int flag7 = (flag4 == 1 && flag3 == 1) ? 1 : 0;
-
-    for (int i = 0 ; i < num_dmat; i++) {
-        double *D_MN = D1[i] + iMN;
-        double *D_PQ = D2[i] + iPQ;
-        double *D_NQ = D3[i] + iNQ;
-        double *D_MP = D3[i] + iMP0;
-        double *D_MQ = D3[i] + iMQ0;
-        double *D_NP = D3[i] + iNP0;    
-        double *J_MN = &F_MN[i * sizeX1] + iMN;
-        double *J_PQ = &F_PQ[i * sizeX2] + iPQ;
-        double *K_NQ = &F_NQ[i * sizeX3] + iNQ;
-        double *K_MP = &F_MP[i * sizeX4] + iMP;
-        double *K_MQ = &F_MQ[i * sizeX5] + iMQ;
-        double *K_NP = &F_NP[i * sizeX6] + iNP;
-    
-        for (int iN = 0; iN < dimN; iN++) {
-            for (int iQ = 0; iQ < dimQ; iQ++) {
-                int inq = iN * ldNQ + iQ;
-                double k_NQ = 0;
-                for (int iM = 0; iM < dimM; iM++) {
-                    int imn = iM * ldMN + iN;
-                    int imq = iM * ldMQ + iQ;
-                    double j_MN = 0;
-                    double k_MQ = 0;
-                    for (int iP = 0; iP < dimP; iP++) {
-                        int ipq = iP * ldPQ + iQ;
-                        int imp = iM * ldMP + iP;
-                        int inp = iN * ldNP + iP;
-                        double I = 
-                            integrals[iQ + dimQ*(iP + dimP * (iN + dimN * iM))];//Simint
-                          //integrals[iM + dimM*(iN + dimN * (iP + dimP * iQ))];//OptERD
-                        // F(m, n) += D(p, q) * 2 * I(m, n, p, q)
-                        // F(n, m) += D(p, q) * 2 * I(n, m, p, q)
-                        // F(m, n) += D(q, p) * 2 * I(m, n, q, p)
-                        // F(n, m) += D(q, p) * 2 * I(n, m, q, p)
-                        double vMN = 2.0 * (1 + flag1 + flag2 + flag4) *
-                            D_PQ[iP * ldPQ + iQ] * I;
-                        j_MN += vMN;
-                        // F(p, q) += D(m, n) * 2 * I(p, q, m, n)
-                        // F(p, q) += D(n, m) * 2 * I(p, q, n, m)
-                        // F(q, p) += D(m, n) * 2 * I(q, p, m, n)
-                        // F(q, p) += D(n, m) * 2 * I(q, p, n, m)
-                        double vPQ = 2.0 * (flag3 + flag5 + flag6 + flag7) *
-                            D_MN[iM * ldMN + iN] * I;
-                        atomic_add_f64(&J_PQ[ipq], vPQ);
-                        // F(m, p) -= D(n, q) * I(m, n, p, q)
-                        // F(p, m) -= D(q, n) * I(p, q, m, n)
-                        double vMP = (1 + flag3) *
-                            1.0 * D_NQ[iN * ldNQ + iQ] * I;
-                        atomic_add_f64(&K_MP[imp], -vMP);
-                        // F(n, p) -= D(m, q) * I(n, m, p, q)
-                        // F(p, n) -= D(q, m) * I(p, q, n, m)
-                        double vNP = (flag1 + flag5) *
-                            1.0 * D_MQ[iM * ldNQ + iQ] * I;
-                        atomic_add_f64(&K_NP[inp], -vNP);
-                        // F(m, q) -= D(n, p) * I(m, n, q, p)
-                        // F(q, m) -= D(p, n) * I(q, p, m, n)
-                        double vMQ = (flag2 + flag6) *
-                            1.0 * D_NP[iN * ldNQ + iP] * I;
-                        k_MQ -= vMQ;
-                        // F(n, q) -= D(m, p) * I(n, m, q, p)
-                        // F(q, n) -= D(p, m) * I(q, p, n, m)
-                        double vNQ = (flag4 + flag7) *
-                            1.0 * D_MP[iM * ldNQ + iP] * I;
-                        k_NQ -= vNQ;
-                    }
-                    atomic_add_f64(&J_MN[imn], j_MN);
-                    atomic_add_f64(&K_MQ[imq], k_MQ);
-                }
-                atomic_add_f64(&K_NQ[inq], k_NQ);
-            }
-        } // for (int iN = 0; iN < dimN; iN++)
-    } // for (int i = 0 ; i < num_dmat; i++)
+    for (int ipair = 0; ipair < npairs; ipair++)
+    {
+        int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
+        update_F_split3(
+            tid, num_dmat, &batch_integrals[ipair * batch_nints], 
+            fock_info_list[0], 
+            fock_info_list[1], 
+            fock_info_list[2], 
+            fock_info_list[3], 
+            fock_info_list[4], 
+            fock_info_list[5], 
+            fock_info_list[6], 
+            fock_info_list[7], 
+            fock_info_list[8], 
+            fock_info_list[9], 
+            fock_info_list[10], 
+            fock_info_list[11], 
+            fock_info_list[12], 
+            fock_info_list[13], 
+            fock_info_list[14], 
+            fock_info_list[15], 
+            D1, D2, D3,
+            F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
+            sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
+            ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
+        );
+    }
 }
-
 
 // for SCF, J = K
 void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
@@ -139,10 +91,26 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
     int startPQ = shellptr[startP];
     int endPQ = shellptr[endP + 1];
     
+    if (update_F_buf_size == 0)
+    {
+        // startPQ & endPQ & f_startind remains unchanged for each call
+        // So just allocate the buffer once
+        for (int j = startPQ; j < endPQ; j++) 
+        {
+            int Q = shellid[j];
+            int dimQ = f_startind[Q + 1] - f_startind[Q];
+            if (dimQ > update_F_buf_size) update_F_buf_size = dimQ;
+        }
+        update_F_buf_size = (update_F_buf_size + 8) / 8 * 8;  // Align to 64 bytes
+        int nthreads = omp_get_max_threads();
+        update_F_buf = _mm_malloc(sizeof(double) * nthreads * 2 * update_F_buf_size, 64);
+        assert(update_F_buf != NULL);
+    }
+    
     #pragma omp parallel
     {
         // init    
-        int nt = omp_get_thread_num ();
+        int nt = omp_get_thread_num();
         int nf = nt/ncpu_f;
         double *F_MN = &(F1[nf * sizeX1 * num_dmat]);
         double *F_PQ = &(F2[nf * sizeX2 * num_dmat]);
@@ -152,19 +120,33 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
         double *F_NP = &(F6[nf * sizeX6 * num_dmat]);
         double mynsq = 0.0;
         double mynitl = 0.0;        
-        #pragma omp for schedule(dynamic)
-        for (int i = startMN; i < endMN; i++) {
+        
+        // Pending quartets that need to be computed
+        ThreadQuartetLists_s *thread_quartet_lists = (ThreadQuartetLists_s*) malloc(sizeof(ThreadQuartetLists_s));
+        init_ThreadQuartetLists(thread_quartet_lists);
+        
+        // Simint multi_shellpair buffer for batch computation
+        void *thread_multi_shellpair;
+        CInt_SIMINT_createThreadMultishellpair(&thread_multi_shellpair);
+        
+        #pragma omp for schedule(dynamic) 
+        for (int i = startMN; i < endMN; i++) 
+        {
             int M = shellrid[i];
             int N = shellid[i];
+            
+            reset_ThreadQuartetLists(thread_quartet_lists, M, N);
+            
             double value1 = shellvalue[i];            
             int dimM = f_startind[M + 1] - f_startind[M];
             int dimN = f_startind[N + 1] - f_startind[N];
             int iX1M = f_startind[M] - f_startind[startrow];
             int iX3M = rowpos[M]; 
-            int iXN = rowptr[i];
-            int iMN = iX1M * ldX1+ iXN;
+            int iXN  = rowptr[i];
+            int iMN  = iX1M * ldX1+ iXN;
             int flag1 = (value1 < 0.0) ? 1 : 0;   
-            for (int j = startPQ; j < endPQ; j++) {
+            for (int j = startPQ; j < endPQ; j++) 
+            {
                 int P = shellrid[j];
                 int Q = shellid[j];
                 if ((M > P && (M + P) % 2 == 1) || 
@@ -176,46 +158,133 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                     continue;
                 double value2 = shellvalue[j];
                 int dimP = f_startind[P + 1] - f_startind[P];
-                int dimQ =  f_startind[Q + 1] - f_startind[Q];
+                int dimQ = f_startind[Q + 1] - f_startind[Q];
                 int iX2P = f_startind[P] - f_startind[startcol];
                 int iX3P = colpos[P];
-                int iXQ = colptr[j];               
-                int iPQ = iX2P * ldX2+ iXQ;                             
-                int iNQ = iXN * ldX3 + iXQ;                
-                int iMP = iX1M * ldX4 + iX2P;
-                int iMQ = iX1M * ldX5 + iXQ;
-                int iNP = iXN * ldX6 + iX2P;
+                int iXQ  = colptr[j];               
+                int iPQ  = iX2P * ldX2 + iXQ;                             
+                int iNQ  = iXN  * ldX3 + iXQ;                
+                int iMP  = iX1M * ldX4 + iX2P;
+                int iMQ  = iX1M * ldX5 + iXQ;
+                int iNP  = iXN  * ldX6 + iX2P;
                 int iMP0 = iX3M * ldX3 + iX3P;
                 int iMQ0 = iX3M * ldX3 + iXQ;
-                int iNP0 = iXN * ldX3 + iX3P;               
+                int iNP0 = iXN  * ldX3 + iX3P;               
                 int flag3 = (M == P && Q == N) ? 0 : 1;                    
                 int flag2 = (value2 < 0.0) ? 1 : 0;
-                if (fabs(value1 * value2) >= tolscr2) {
-                    int nints;
-                    double *integrals;
+                if (fabs(value1 * value2) >= tolscr2) 
+                {
                     mynsq += 1.0;
-                    mynitl += dimM*dimN*dimP*dimQ;                       
-                    CInt_computeShellQuartet_SIMINT(basis, simint, nt,
-                                             M, N, P, Q, &integrals, &nints);
-                    if (nints != 0) {
-                        update_F(num_dmat, integrals, dimM, dimN, dimP, dimQ,
-                                 flag1, flag2, flag3,
-                                 iMN, iPQ, iMP, iNP, iMQ, iNQ,
-                                 iMP0, iMQ0, iNP0,
-                                 D1, D2, D3,
-                                 F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
-                                 sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                                 ldX1, ldX2, ldX3, ldX4, ldX5, ldX6);
+                    mynitl += dimM*dimN*dimP*dimQ;              
+                    
+                    int am_pair_index = CInt_SIMINT_getShellpairAMIndex(simint, P, Q);
+                    
+                    KetShellPairList_s *target_shellpair_list = &thread_quartet_lists->ket_shellpair_lists[am_pair_index];
+                    
+                    // Save this shell pair to the target ket shellpair list
+                    int add_KetShellPair_ret = add_KetShellPair(
+                        target_shellpair_list, P, Q,
+                        dimM, dimN, dimP, dimQ, 
+                        flag1, flag2, flag3,
+                        iMN, iPQ, iMP, iNP, iMQ, iNQ,
+                        iMP0, iMQ0, iNP0
+                    );
+                    assert(add_KetShellPair_ret == 1);
+                    
+                    // Target ket shellpair list is full, handles it
+                    if (target_shellpair_list->num_shellpairs == _SIMINT_NSHELL_SIMD) 
+                    {
+                        int npairs = target_shellpair_list->num_shellpairs;
+                        double *thread_batch_integrals;
+                        int thread_batch_nints;
+                        
+                        CInt_computeShellQuartetBatch_SIMINT(
+                            basis, simint, nt,
+                            thread_quartet_lists->M, 
+                            thread_quartet_lists->N, 
+                            target_shellpair_list->P_list,
+                            target_shellpair_list->Q_list,
+                            npairs, &thread_batch_integrals, &thread_batch_nints,
+                            &thread_multi_shellpair
+                        );
+                        
+                        if (thread_batch_nints > 0)
+                        {
+                            double st, et;
+                            st = CInt_get_walltime_sec();
+                            update_F_with_KetShellPairList(
+                                nt, num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
+                                target_shellpair_list,
+                                D1, D2, D3,
+                                F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
+                                sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
+                                ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
+                            );
+                            et = CInt_get_walltime_sec();
+                            if (nt == 0) 
+                                CInt_SIMINT_addupdateFtimer(simint, et - st);
+                        }
+                        
+                        // Ket shellpair list is processed, reset it
+                        reset_KetShellPairList(target_shellpair_list);
                     }
+                }  // if (fabs(value1 * value2) >= tolscr2) 
+            }  // for (int j = startPQ; j < endPQ; j++)
+            
+            // Process all the remaining shell pairs in the thread's list
+            for (int am_pair_index = 0; am_pair_index < _SIMINT_AM_PAIRS; am_pair_index++)
+            {
+                KetShellPairList_s *target_shellpair_list = &thread_quartet_lists->ket_shellpair_lists[am_pair_index];
+                
+                if (target_shellpair_list->num_shellpairs > 0)  // Ket shellpair list is not empty, handles it
+                {
+                    int npairs = target_shellpair_list->num_shellpairs;
+                    double *thread_batch_integrals;
+                    int thread_batch_nints;
+                    
+                    CInt_computeShellQuartetBatch_SIMINT(
+                        basis, simint, nt,
+                        thread_quartet_lists->M, 
+                        thread_quartet_lists->N, 
+                        target_shellpair_list->P_list,
+                        target_shellpair_list->Q_list,
+                        npairs, &thread_batch_integrals, &thread_batch_nints,
+                        &thread_multi_shellpair
+                    );
+                    
+                    if (thread_batch_nints > 0)
+                    {
+                        double st, et;
+                        st = CInt_get_walltime_sec();
+                        update_F_with_KetShellPairList(
+                            nt, num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
+                            target_shellpair_list,
+                            D1, D2, D3,
+                            F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
+                            sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
+                            ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
+                        );
+                        et = CInt_get_walltime_sec();
+                        if (nt == 0) 
+                            CInt_SIMINT_addupdateFtimer(simint, et - st);
+                    }
+                    
+                    // Ket shellpair list is processed, reset it
+                    reset_KetShellPairList(target_shellpair_list);
                 }
             }
-        }
+        }  // for (int i = startMN; i < endMN; i++)
 
         #pragma omp critical
         {
             *nitl += mynitl;
             *nsq += mynsq;
         }
+        
+        CInt_SIMINT_freeThreadMultishellpair(&thread_multi_shellpair);
+        free_ThreadQuartetLists(thread_quartet_lists);
+        
+        free(thread_quartet_lists);
     } /* #pragma omp parallel */
 }
 
