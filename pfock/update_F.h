@@ -58,25 +58,27 @@ static inline void update_F_opt_buffer(
     
         // Load required D_MN, D_PQ, D_NQ, D_MP, D_MQ, D_NP to buffer
         for (int iM = 0; iM < dimM; iM++)
+        {
             memcpy(D_MN_buf + iM * dimN, D_MN + iM * ldMN, sizeof(double) * dimN);
+            memcpy(D_MP_buf + iM * dimP, D_MP + iM * ldNQ, sizeof(double) * dimP);
+            memcpy(D_MQ_buf + iM * dimQ, D_MQ + iM * ldNQ, sizeof(double) * dimQ);
+        }
+        
+        for (int iN = 0; iN < dimN; iN++)
+        {
+            memcpy(D_NQ_buf + iN * dimQ, D_NQ + iN * ldNQ, sizeof(double) * dimQ);
+            memcpy(D_NP_buf + iN * dimP, D_NP + iN * ldNQ, sizeof(double) * dimP);
+        }
         
         for (int iP = 0; iP < dimP; iP++)
             memcpy(D_PQ_buf + iP * dimQ, D_PQ + iP * ldPQ, sizeof(double) * dimQ);
         
-        for (int iN = 0; iN < dimN; iN++)
-            memcpy(D_NQ_buf + iN * dimQ, D_NQ + iN * ldNQ, sizeof(double) * dimQ);
-        
-        for (int iM = 0; iM < dimM; iM++)
-            memcpy(D_MP_buf + iM * dimP, D_MP + iM * ldNQ, sizeof(double) * dimP);
-        
-        for (int iM = 0; iM < dimM; iM++)
-            memcpy(D_MQ_buf + iM * dimQ, D_MQ + iM * ldNQ, sizeof(double) * dimQ);
-        
-        for (int iN = 0; iN < dimN; iN++)
-            memcpy(D_NP_buf + iN * dimP, D_NP + iN * ldNQ, sizeof(double) * dimP);
-        
         // Reset result buffer
         memset(J_MN_buf, 0, sizeof(double) * required_buf_size / 2);
+        
+        double vPQ_coef = 2.0 * (flag3 + flag5 + flag6 + flag7);
+        double vMQ_coef = (flag2 + flag6) * 1.0;
+        double vNQ_coef = (flag4 + flag7) * 1.0;
         
         // Start computation
         for (int iM = 0; iM < dimM; iM++) 
@@ -84,20 +86,21 @@ static inline void update_F_opt_buffer(
             for (int iN = 0; iN < dimN; iN++) 
             {
                 int imn = iM * dimN + iN;
-                double vPQ = 2.0 * (flag3 + flag5 + flag6 + flag7) * D_MN_buf[imn];
+                double vPQ = vPQ_coef * D_MN_buf[imn];
+                double j_MN = 0.0;
                 for (int iP = 0; iP < dimP; iP++) 
                 {
                     int inp = iN * dimP + iP;
                     int imp = iM * dimP + iP;
-                    double vMQ = (flag2 + flag6) * 1.0 * D_NP_buf[inp];
-                    double vNQ = (flag4 + flag7) * 1.0 * D_MP_buf[imp];
+                    double vMQ = vMQ_coef * D_NP_buf[inp];
+                    double vNQ = vNQ_coef * D_MP_buf[imp];
                     
-                    int Ibase = dimQ * (iP + dimP * (iN + dimN * iM));
+                    int Ibase = dimQ * (iP + dimP * imn);
                     int ipq_base = iP * dimQ;
                     int imq_base = iM * dimQ;
                     int inq_base = iN * dimQ;
                     
-                    double j_MN = 0.0, k_MN = 0.0, k_NP = 0.0;
+                    double k_MN = 0.0, k_NP = 0.0;
                     
                     // dimQ is small, vectorizing short loops may hurt performance since
                     // it needs horizon reduction after the loop
@@ -112,10 +115,10 @@ static inline void update_F_opt_buffer(
                         K_MQ_buf[imq_base + iQ] -= vMQ * I;
                         K_NQ_buf[inq_base + iQ] -= vNQ * I;
                     }
-                    J_MN_buf[imn] += j_MN;
                     K_MP_buf[imp] += k_MN;
                     K_NP_buf[inp] += k_NP;
                 } // for (int iM = 0; iM < dimM; iM++) 
+                J_MN_buf[imn] += j_MN;
             } // for (int iQ = 0; iQ < dimQ; iQ++) 
         } // for (int iN = 0; iN < dimN; iN++)
         
@@ -123,39 +126,63 @@ static inline void update_F_opt_buffer(
         
         double vMN_coef = 2.0 * (1 + flag1 + flag2 + flag4);
         for (int iM = 0; iM < dimM; iM++)
+        {
+            int iM_base1 = iM * dimN;
+            int iM_base2 = iM * ldMN;
             for (int iN = 0; iN < dimN; iN++)
             {
-                double adder = J_MN_buf[iM * dimN + iN] * vMN_coef;
-                atomic_add_f64(&J_MN[iM * ldMN + iN], adder);
+                double adder = J_MN_buf[iM_base1 + iN] * vMN_coef;
+                atomic_add_f64(&J_MN[iM_base2 + iN], adder);
             }
+        }
         
         double vMP_coef = (1 + flag3) * 1.0;
         for (int iM = 0; iM < dimM; iM++)
+        {
+            int iM_base1 = iM * dimP;
+            int iM_base2 = iM * ldMP;
             for (int iP = 0; iP < dimP; iP++)
             {
-                double adder = K_MP_buf[iM * dimP + iP] * vMP_coef;
-                atomic_add_f64(&K_MP[iM * ldMP + iP], adder);
+                double adder = K_MP_buf[iM_base1 + iP] * vMP_coef;
+                atomic_add_f64(&K_MP[iM_base2 + iP], adder);
             }
+        }
         
         double vNP_coef = (flag1 + flag5) * 1.0;
         for (int iN = 0; iN < dimN; iN++)
+        {
+            int iN_base1 = iN * dimP;
+            int iN_base2 = iN * ldNP;
             for (int iP = 0; iP < dimP; iP++)
             {
-                double adder = K_NP_buf[iN * dimP + iP] * vNP_coef;
-                atomic_add_f64(&K_NP[iN * ldNP + iP], adder);
+                double adder = K_NP_buf[iN_base1 + iP] * vNP_coef;
+                atomic_add_f64(&K_NP[iN_base2 + iP], adder);
             }
+        }
         
         for (int iP = 0; iP < dimP; iP++)
+        {
+            int iP_base1 = iP * dimQ;
+            int iP_base2 = iP * ldPQ;
             for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&J_PQ[iP * ldPQ + iQ], J_PQ_buf[iP * dimQ + iQ]);
+                atomic_add_f64(&J_PQ[iP_base2 + iQ], J_PQ_buf[iP_base1 + iQ]);
+        }
         
         for (int iM = 0; iM < dimM; iM++)
+        {
+            int iM_base1 = iM * dimQ;
+            int iM_base2 = iM * ldMQ;
             for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&K_MQ[iM * ldMQ + iQ], K_MQ_buf[iM * dimQ + iQ]);
+                atomic_add_f64(&K_MQ[iM_base2 + iQ], K_MQ_buf[iM_base1 + iQ]);
+        }
         
         for (int iN = 0; iN < dimN; iN++)
+        {
+            int iN_base1 = iN * dimQ;
+            int iN_base2 = iN * ldNQ;
             for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&K_NQ[iN * ldNQ + iQ], K_NQ_buf[iN * dimQ + iQ]);
+                atomic_add_f64(&K_NQ[iN_base2 + iQ], K_NQ_buf[iN_base1 + iQ]);
+        }
         
     } // for (int i = 0 ; i < num_dmat; i++) 
 }
