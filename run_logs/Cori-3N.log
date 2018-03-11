@@ -1,0 +1,1471 @@
+================= cc-pvdz + protein_35 ================================
+MPI level: 2
+import_basis() line 607 Warning: no valid basis type in gbs file... assuming Simint
+normalization() line 92 Warning: NOT performing normalization for CARTESIAN
+import_guess() line 829 Found SAD file for H
+import_guess() line 859 Using SAD file for H
+import_guess() line 829 Found SAD file for C
+import_guess() line 859 Using SAD file for C
+import_guess() line 829 Found SAD file for N
+import_guess() line 859 Using SAD file for N
+import_guess() line 829 Found SAD file for O
+import_guess() line 859 Using SAD file for O
+import_guess() line 829 Found SAD file for P
+import_guess() line 859 Using SAD file for P
+import_guess() line 829 Found SAD file for S
+import_guess() line 859 Using SAD file for S
+Cray-GA-5.3.0.2 COMEX-DMAPP 
+DMAPP PARAMS: 
+MAX_OUTSTANDING_NB = 1024
+OFFLOAD_THRESHOLD = 2048
+PUT_RELAXED_ORDERING = 2
+GET_RELAXED_ORDERING = 2
+MAX_CONCURRENCY = 1
+PI_ORDERING = 2
+Job information:
+  molecule:  protein_35.xyz
+  basisset:  cc-pvdz
+  charge     = 0
+  #atoms     = 128
+  #shells    = 570
+  #functions = 1260
+  fock build uses   9 (3x3) nodes
+  purification uses 8 (2x2x2) nodes
+  #tasks = 225 (15x15)
+  #nthreads_cpu = 88
+Initializing pfock ...
+Cray GA Initial System Setup Details
+gethugepagesize()                =2097152
+hugetlb_default_page_size        =2097152
+_SC_PAGESIZE                     =4096
+comex_page_size                  =2097152
+comex_hbw_page_size              =0
+malloc_is_using_huge_pages(0)    =1
+comex_is_using_huge_pages(1)     =1
+comex_is_using_hbw_huge_pages(2) =0
+comex hugepage type used         =1
+DMAPP put threshold              =2048
+DMAPP get threshold              =128
+XPMEM use is ENABLED
+Optimized CPU memcpy is ENABLED
+Optimized CPU memcpy level =0
+COMEX_USE_REM_ACC is ENABLED
+contig remote acc threshold  =147456
+strided remote acc threshold =256
+**** PFock: screening ...
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+**** PFock: takes 1.646 secs
+  FD size (539 539 840 840)
+Screen method: 2
+Screen tol:    1.000000e-14
+  CPU uses 1430.279 MB
+  Done
+Initializing purification ...
+  CPU uses 102.956 MB
+  Done
+Preprocessing one electron matrices ...
+  computing H
+  pdsyev_ takes 5.829 secs
+  takes 6.942 secs
+  Done
+  computing H
+  takes 1.158 secs
+  Done
+Computing SCF ...
+  initialing D ...
+  nuc energy = 8099.9694115550
+  iter 0
+**** PFock: correct F ...
+    fock build takes 5.939 secs
+    energy -3242.6828966065 (-11342.6523081615)
+    diis takes 0.056 secs, 143.878 Gflops
+mu_bar = 5.297262e-01, lambda = 1.264195e+01, hmax = 1.967234e+01, hmin = -3.670394e+01, nobtls = 242
+    purification takes 0.950 secs, 31 iterations, 277.962 Gflops
+  iter 1
+**** PFock: correct F ...
+    fock build takes 5.397 secs
+    energy -3212.1855689290 (-11312.1549804840), 3.049733e+01
+    diis takes 0.031 secs, 260.034 Gflops
+mu_bar = 6.975808e-01, lambda = 1.311319e+01, hmax = 1.915228e+01, hmin = -3.610655e+01, nobtls = 242
+    purification takes 0.945 secs, 32 iterations, 287.952 Gflops
+  iter 2
+**** PFock: correct F ...
+    fock build takes 5.383 secs
+    energy -3213.4469854533 (-11313.4163970084), 1.261417e+00
+    diis takes 0.635 secs, 37.777 Gflops
+mu_bar = 6.682512e-01, lambda = 1.312411e+01, hmax = 1.910760e+01, hmin = -3.622345e+01, nobtls = 242
+    purification takes 0.863 secs, 29 iterations, 287.390 Gflops
+  iter 3
+**** PFock: correct F ...
+    fock build takes 5.408 secs
+    energy -3213.7574209755 (-11313.7268325305), 3.104355e-01
+    diis takes 0.112 secs, 215.067 Gflops
+mu_bar = 4.987085e-01, lambda = 1.785335e+01, hmax = 1.405359e+01, hmin = -2.666102e+01, nobtls = 242
+    purification takes 0.882 secs, 30 iterations, 290.296 Gflops
+  iter 4
+**** PFock: correct F ...
+    fock build takes 5.397 secs
+    energy -3214.1051048083 (-11314.0745163633), 3.476838e-01
+    diis takes 0.115 secs, 208.729 Gflops
+mu_bar = 6.800968e-01, lambda = 1.312258e+01, hmax = 1.912160e+01, hmin = -3.620803e+01, nobtls = 242
+    purification takes 0.892 secs, 30 iterations, 286.936 Gflops
+  iter 5
+**** PFock: correct F ...
+    fock build takes 5.335 secs
+    energy -3214.1711601225 (-11314.1405716775), 6.605531e-02
+    diis takes 0.138 secs, 173.332 Gflops
+mu_bar = 6.787226e-01, lambda = 1.312194e+01, hmax = 1.912112e+01, hmin = -3.622976e+01, nobtls = 242
+    purification takes 0.887 secs, 30 iterations, 288.563 Gflops
+  iter 6
+**** PFock: correct F ...
+    fock build takes 5.468 secs
+    energy -3214.1724513562 (-11314.1418629112), 1.291234e-03
+    diis takes 0.159 secs, 151.077 Gflops
+mu_bar = 6.786386e-01, lambda = 1.312184e+01, hmax = 1.912117e+01, hmin = -3.622699e+01, nobtls = 242
+    purification takes 0.889 secs, 30 iterations, 288.105 Gflops
+  iter 7
+**** PFock: correct F ...
+    fock build takes 5.403 secs
+    energy -3214.1726200935 (-11314.1420316485), 1.687373e-04
+    diis takes 0.146 secs, 164.775 Gflops
+mu_bar = -7.337482e+00, lambda = 5.965882e-01, hmax = 3.983025e+02, hmin = -2.100894e+02, nobtls = 242
+    purification takes 1.234 secs, 43 iterations, 291.710 Gflops
+  iter 8
+**** PFock: correct F ...
+    fock build takes 5.408 secs
+    energy 491.1566380281 (-7608.8127735269), 3.705329e+03
+    diis takes 0.143 secs, 167.407 Gflops
+mu_bar = 6.787458e-01, lambda = 1.312156e+01, hmax = 1.912168e+01, hmin = -3.622686e+01, nobtls = 242
+    purification takes 0.880 secs, 30 iterations, 290.920 Gflops
+  iter 9
+**** PFock: correct F ...
+    fock build takes 5.419 secs
+    energy -3214.1726716155 (-11314.1420831705), 3.705329e+03
+    diis takes 0.147 secs, 163.567 Gflops
+mu_bar = 6.787205e-01, lambda = 1.312163e+01, hmax = 1.912155e+01, hmin = -3.622691e+01, nobtls = 242
+    purification takes 0.895 secs, 30 iterations, 286.057 Gflops
+  iter 10
+**** PFock: correct F ...
+    fock build takes 5.391 secs
+    energy -3214.1726759491 (-11314.1420875041), 4.333651e-06
+    diis takes 0.151 secs, 158.966 Gflops
+mu_bar = 6.787283e-01, lambda = 1.312165e+01, hmax = 1.912154e+01, hmin = -3.622683e+01, nobtls = 242
+    purification takes 0.886 secs, 30 iterations, 289.035 Gflops
+  iter 11
+**** PFock: correct F ...
+    fock build takes 5.411 secs
+    energy -3214.1726765192 (-11314.1420880743), 5.701386e-07
+    diis takes 0.148 secs, 161.711 Gflops
+mu_bar = -1.475267e+01, lambda = 2.969305e-01, hmax = 8.002530e+02, hmin = -4.221152e+02, nobtls = 242
+    purification takes 1.248 secs, 43 iterations, 288.521 Gflops
+  iter 12
+**** PFock: correct F ...
+    fock build takes 5.388 secs
+    energy 491.5108315546 (-7608.4585800004), 3.705684e+03
+    diis takes 0.126 secs, 189.796 Gflops
+mu_bar = -1.475285e+01, lambda = 2.969269e-01, hmax = 8.002625e+02, hmin = -4.221202e+02, nobtls = 242
+    purification takes 5.546 secs, 200 iterations, 291.433 Gflops
+  iter 13
+**** PFock: correct F ...
+    fock build takes 5.407 secs
+    energy 491.5108356934 (-7608.4585758616), 4.138814e-06
+    diis takes 0.124 secs, 193.159 Gflops
+mu_bar = -1.475285e+01, lambda = 2.969269e-01, hmax = 8.002625e+02, hmin = -4.221202e+02, nobtls = 242
+    purification takes 5.568 secs, 200 iterations, 290.302 Gflops
+  iter 14
+**** PFock: correct F ...
+    fock build takes 5.399 secs
+    energy 491.5108356789 (-7608.4585758761), 1.455919e-08
+    diis takes 0.128 secs, 187.307 Gflops
+mu_bar = 6.787324e-01, lambda = 1.312164e+01, hmax = 1.912155e+01, hmin = -3.622680e+01, nobtls = 242
+    purification takes 0.893 secs, 30 iterations, 286.590 Gflops
+  iter 15
+**** PFock: correct F ...
+    fock build takes 5.393 secs
+    energy -3214.1726765743 (-11314.1420881293), 3.705684e+03
+    diis takes 0.128 secs, 186.947 Gflops
+mu_bar = -2.281880e+01, lambda = 1.920167e-01, hmax = 1.237488e+03, hmin = -6.527534e+02, nobtls = 242
+    purification takes 2.594 secs, 91 iterations, 286.919 Gflops
+  iter 16
+**** PFock: correct F ...
+    fock build takes 5.416 secs
+    energy 491.6333821378 (-7608.3360294172), 3.705806e+03
+    diis takes 0.143 secs, 168.317 Gflops
+mu_bar = 6.787300e-01, lambda = 1.312164e+01, hmax = 1.912155e+01, hmin = -3.622682e+01, nobtls = 242
+    purification takes 0.894 secs, 30 iterations, 286.469 Gflops
+  iter 17
+**** PFock: correct F ...
+    fock build takes 5.395 secs
+    energy -3214.1726765830 (-11314.1420881380), 3.705806e+03
+    diis takes 0.124 secs, 193.197 Gflops
+mu_bar = 6.787305e-01, lambda = 1.312164e+01, hmax = 1.912155e+01, hmin = -3.622681e+01, nobtls = 242
+    purification takes 0.887 secs, 30 iterations, 288.720 Gflops
+  iter 18
+**** PFock: correct F ...
+    fock build takes 5.381 secs
+    energy -3214.1726765862 (-11314.1420881412), 3.141395e-09
+    diis takes 0.127 secs, 188.835 Gflops
+mu_bar = 6.787302e-01, lambda = 1.312164e+01, hmax = 1.912155e+01, hmin = -3.622682e+01, nobtls = 242
+    purification takes 0.888 secs, 30 iterations, 288.292 Gflops
+  iter 19
+**** PFock: correct F ...
+    fock build takes 5.403 secs
+    energy -3214.1726765874 (-11314.1420881425), 1.284207e-09
+    diis takes 0.146 secs, 164.183 Gflops
+mu_bar = 6.787302e-01, lambda = 1.312164e+01, hmax = 1.912155e+01, hmin = -3.622682e+01, nobtls = 242
+    purification takes 0.889 secs, 30 iterations, 288.051 Gflops
+  iter 20
+**** PFock: correct F ...
+    fock build takes 5.425 secs
+    energy -3214.1726765878 (-11314.1420881428), 3.419700e-10
+    diis takes 0.125 secs, 192.148 Gflops
+mu_bar = 6.787303e-01, lambda = 1.312164e+01, hmax = 1.912155e+01, hmin = -3.622682e+01, nobtls = 242
+    purification takes 0.898 secs, 30 iterations, 285.176 Gflops
+  iter 21
+**** PFock: correct F ...
+    fock build takes 5.409 secs
+    energy -3214.1726765879 (-11314.1420881429), 6.548362e-11
+    diis takes 0.128 secs, 187.901 Gflops
+mu_bar = 6.787302e-01, lambda = 1.312164e+01, hmax = 1.912155e+01, hmin = -3.622682e+01, nobtls = 242
+    purification takes 0.891 secs, 30 iterations, 287.377 Gflops
+  iter 22
+**** PFock: correct F ...
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 45.782199, 30.889197, 51.098513 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 43.015543, 27.690274, 52.662253 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 43.321182, 27.196316, 50.653702 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 41.230803, 26.315691, 50.895007 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 43.211643, 27.113213, 51.117126 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 49.074640, 32.926645, 51.079542 sec.
+    fock build takes 5.413 secs
+    energy -3214.1726765879 (-11314.1420881429), 5.456968e-12
+  totally takes 154.063 secs: 6.698 secs/iters
+  Done
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 47.242425, 31.939291, 51.721334 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 43.370423, 27.921843, 52.917315 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 41.459273, 26.090541, 52.745228 sec.
+================= cc-pvdz + 1hsg_28 ================================
+MPI level: 2
+import_basis() line 607 Warning: no valid basis type in gbs file... assuming Simint
+normalization() line 92 Warning: NOT performing normalization for CARTESIAN
+import_guess() line 829 Found SAD file for H
+import_guess() line 859 Using SAD file for H
+import_guess() line 829 Found SAD file for C
+import_guess() line 859 Using SAD file for C
+import_guess() line 829 Found SAD file for N
+import_guess() line 859 Using SAD file for N
+import_guess() line 829 Found SAD file for O
+import_guess() line 859 Using SAD file for O
+import_guess() line 829 Found SAD file for P
+import_guess() line 859 Using SAD file for P
+import_guess() line 829 Found SAD file for S
+import_guess() line 859 Using SAD file for S
+Cray-GA-5.3.0.2 COMEX-DMAPP 
+DMAPP PARAMS: 
+MAX_OUTSTANDING_NB = 1024
+OFFLOAD_THRESHOLD = 2048
+PUT_RELAXED_ORDERING = 2
+GET_RELAXED_ORDERING = 2
+MAX_CONCURRENCY = 1
+PI_ORDERING = 2
+Job information:
+  molecule:  1hsg_28.xyz
+  basisset:  cc-pvdz
+  charge     = 0
+  #atoms     = 122
+  #shells    = 549
+  #functions = 1220
+  fock build uses   9 (3x3) nodes
+  purification uses 8 (2x2x2) nodes
+  #tasks = 225 (15x15)
+  #nthreads_cpu = 88
+Initializing pfock ...
+Cray GA Initial System Setup Details
+gethugepagesize()                =2097152
+hugetlb_default_page_size        =2097152
+_SC_PAGESIZE                     =4096
+comex_page_size                  =2097152
+comex_hbw_page_size              =0
+malloc_is_using_huge_pages(0)    =1
+comex_is_using_huge_pages(1)     =1
+comex_is_using_hbw_huge_pages(2) =0
+comex hugepage type used         =1
+DMAPP put threshold              =2048
+DMAPP get threshold              =128
+XPMEM use is ENABLED
+Optimized CPU memcpy is ENABLED
+Optimized CPU memcpy level =0
+COMEX_USE_REM_ACC is ENABLED
+contig remote acc threshold  =147456
+strided remote acc threshold =256
+**** PFock: screening ...
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+**** PFock: takes 1.725 secs
+  FD size (486 486 1190 1190)
+Screen method: 2
+Screen tol:    1.000000e-14
+  CPU uses 1744.794 MB
+  Done
+Initializing purification ...
+  CPU uses 96.523 MB
+  Done
+Preprocessing one electron matrices ...
+  computing H
+  pdsyev_ takes 5.577 secs
+  takes 6.819 secs
+  Done
+  computing H
+  takes 1.069 secs
+  Done
+Computing SCF ...
+  initialing D ...
+  nuc energy = 9196.2520002789
+  iter 0
+**** PFock: correct F ...
+    fock build takes 10.441 secs
+    energy -2866.0249720158 (-12062.2769722947)
+    diis takes 0.060 secs, 120.217 Gflops
+mu_bar = 5.450929e-01, lambda = 1.032595e+01, hmax = 2.252855e+01, hmin = -3.708200e+01, nobtls = 227
+    purification takes 0.881 secs, 35 iterations, 305.160 Gflops
+  iter 1
+**** PFock: correct F ...
+    fock build takes 10.398 secs
+    energy -2830.1034583069 (-12026.3554585858), 3.592151e+01
+    diis takes 0.024 secs, 298.511 Gflops
+mu_bar = 7.426212e-01, lambda = 1.041852e+01, hmax = 2.253075e+01, hmin = -3.631086e+01, nobtls = 227
+    purification takes 0.756 secs, 32 iterations, 326.451 Gflops
+  iter 2
+**** PFock: correct F ...
+    fock build takes 10.361 secs
+    energy -2831.2124532406 (-12027.4644535194), 1.108995e+00
+    diis takes 0.329 secs, 66.157 Gflops
+mu_bar = 7.024895e-01, lambda = 1.041155e+01, hmax = 2.250520e+01, hmin = -3.659849e+01, nobtls = 227
+    purification takes 0.751 secs, 32 iterations, 328.974 Gflops
+  iter 3
+**** PFock: correct F ...
+    fock build takes 10.376 secs
+    energy -2831.3996516727 (-12027.6516519515), 1.871984e-01
+    diis takes 0.107 secs, 202.899 Gflops
+mu_bar = 7.127900e-01, lambda = 1.041223e+01, hmax = 2.251408e+01, hmin = -3.656671e+01, nobtls = 227
+    purification takes 0.753 secs, 32 iterations, 327.783 Gflops
+  iter 4
+**** PFock: correct F ...
+    fock build takes 10.364 secs
+    energy -2831.5793813539 (-12027.8313816327), 1.797297e-01
+    diis takes 0.125 secs, 174.369 Gflops
+mu_bar = 7.175414e-01, lambda = 1.041166e+01, hmax = 2.252002e+01, hmin = -3.651322e+01, nobtls = 227
+    purification takes 0.762 secs, 32 iterations, 323.980 Gflops
+  iter 5
+**** PFock: correct F ...
+    fock build takes 10.465 secs
+    energy -2831.5825588092 (-12027.8345590881), 3.177455e-03
+    diis takes 0.110 secs, 197.389 Gflops
+mu_bar = 7.160051e-01, lambda = 1.041157e+01, hmax = 2.251866e+01, hmin = -3.653836e+01, nobtls = 227
+    purification takes 0.758 secs, 32 iterations, 325.996 Gflops
+  iter 6
+**** PFock: correct F ...
+    fock build takes 10.418 secs
+    energy -2831.5831588284 (-12027.8351591072), 6.000192e-04
+    diis takes 0.114 secs, 190.923 Gflops
+mu_bar = 7.158368e-01, lambda = 1.041164e+01, hmax = 2.251836e+01, hmin = -3.653547e+01, nobtls = 227
+    purification takes 0.748 secs, 32 iterations, 330.371 Gflops
+  iter 7
+**** PFock: correct F ...
+    fock build takes 10.483 secs
+    energy -2831.5832340581 (-12027.8352343370), 7.522978e-05
+    diis takes 0.119 secs, 183.436 Gflops
+mu_bar = 7.158670e-01, lambda = 1.041168e+01, hmax = 2.251831e+01, hmin = -3.653535e+01, nobtls = 227
+    purification takes 0.756 secs, 32 iterations, 326.875 Gflops
+  iter 8
+**** PFock: correct F ...
+    fock build takes 10.444 secs
+    energy -2831.5832598573 (-12027.8352601362), 2.579918e-05
+    diis takes 0.120 secs, 181.039 Gflops
+mu_bar = 7.158871e-01, lambda = 1.041170e+01, hmax = 2.251829e+01, hmin = -3.653554e+01, nobtls = 227
+    purification takes 0.756 secs, 32 iterations, 326.749 Gflops
+  iter 9
+**** PFock: correct F ...
+    fock build takes 10.428 secs
+    energy -2831.5832625655 (-12027.8352628444), 2.708210e-06
+    diis takes 0.137 secs, 158.988 Gflops
+mu_bar = 7.158771e-01, lambda = 1.041170e+01, hmax = 2.251828e+01, hmin = -3.653529e+01, nobtls = 227
+    purification takes 0.756 secs, 32 iterations, 326.605 Gflops
+  iter 10
+**** PFock: correct F ...
+    fock build takes 10.388 secs
+    energy -2831.5832630317 (-12027.8352633106), 4.662197e-07
+    diis takes 0.125 secs, 174.651 Gflops
+mu_bar = 7.158796e-01, lambda = 1.041170e+01, hmax = 2.251828e+01, hmin = -3.653532e+01, nobtls = 227
+    purification takes 0.762 secs, 32 iterations, 324.014 Gflops
+  iter 11
+**** PFock: correct F ...
+    fock build takes 10.408 secs
+    energy -2831.5832631072 (-12027.8352633861), 7.546441e-08
+    diis takes 0.144 secs, 151.580 Gflops
+mu_bar = 7.158791e-01, lambda = 1.041170e+01, hmax = 2.251828e+01, hmin = -3.653532e+01, nobtls = 227
+    purification takes 0.760 secs, 32 iterations, 325.112 Gflops
+  iter 12
+**** PFock: correct F ...
+    fock build takes 10.471 secs
+    energy -2831.5832631216 (-12027.8352634005), 1.442822e-08
+    diis takes 0.100 secs, 218.982 Gflops
+mu_bar = 7.158785e-01, lambda = 1.041170e+01, hmax = 2.251828e+01, hmin = -3.653532e+01, nobtls = 227
+    purification takes 0.755 secs, 32 iterations, 327.117 Gflops
+  iter 13
+**** PFock: correct F ...
+    fock build takes 10.497 secs
+    energy -2831.5832631263 (-12027.8352634051), 4.631147e-09
+    diis takes 0.102 secs, 213.835 Gflops
+mu_bar = 7.158785e-01, lambda = 1.041170e+01, hmax = 2.251828e+01, hmin = -3.653532e+01, nobtls = 227
+    purification takes 0.758 secs, 32 iterations, 325.918 Gflops
+  iter 14
+**** PFock: correct F ...
+    fock build takes 10.466 secs
+    energy -2831.5832631273 (-12027.8352634062), 1.075023e-09
+    diis takes 0.118 secs, 184.748 Gflops
+mu_bar = 7.158784e-01, lambda = 1.041170e+01, hmax = 2.251828e+01, hmin = -3.653532e+01, nobtls = 227
+    purification takes 0.761 secs, 32 iterations, 324.496 Gflops
+  iter 15
+**** PFock: correct F ...
+    fock build takes 10.461 secs
+    energy -2831.5832631275 (-12027.8352634064), 1.491571e-10
+    diis takes 0.103 secs, 211.434 Gflops
+mu_bar = 7.158784e-01, lambda = 1.041170e+01, hmax = 2.251828e+01, hmin = -3.653532e+01, nobtls = 227
+    purification takes 0.759 secs, 32 iterations, 325.320 Gflops
+  iter 16
+**** PFock: correct F ...
+    fock build takes 10.429 secs
+    energy -2831.5832631275 (-12027.8352634064), 3.092282e-11
+    diis takes 0.102 secs, 213.998 Gflops
+mu_bar = 7.158784e-01, lambda = 1.041170e+01, hmax = 2.251828e+01, hmin = -3.653532e+01, nobtls = 227
+    purification takes 0.753 secs, 32 iterations, 328.034 Gflops
+  iter 17
+**** PFock: correct F ...
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 68.170723, 42.582035, 87.122050 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 74.977989, 49.265165, 88.005343 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 70.497793, 45.456204, 87.729261 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 70.197774, 44.705900, 88.678245 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 69.028059, 42.885373, 88.907764 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 69.214190, 43.837948, 90.746797 sec.
+    fock build takes 10.433 secs
+    energy -2831.5832631275 (-12027.8352634064), 3.637979e-12
+  totally takes 192.324 secs: 10.685 secs/iters
+  Done
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 77.015171, 49.798851, 87.994568 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 69.304292, 42.157656, 89.506799 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 71.910939, 45.234991, 87.399060 sec.
+================= aug-cc-pvtz + benzene ================================
+MPI level: 2
+import_basis() line 607 Warning: no valid basis type in gbs file... assuming Simint
+normalization() line 92 Warning: NOT performing normalization for CARTESIAN
+import_guess() line 829 Found SAD file for H
+import_guess() line 859 Using SAD file for H
+import_guess() line 829 Found SAD file for C
+import_guess() line 859 Using SAD file for C
+import_guess() line 829 Found SAD file for N
+import_guess() line 859 Using SAD file for N
+import_guess() line 829 Found SAD file for O
+import_guess() line 859 Using SAD file for O
+import_guess() line 829 Found SAD file for P
+import_guess() line 859 Using SAD file for P
+import_guess() line 829 Found SAD file for S
+import_guess() line 859 Using SAD file for S
+Cray-GA-5.3.0.2 COMEX-DMAPP 
+DMAPP PARAMS: 
+MAX_OUTSTANDING_NB = 1024
+OFFLOAD_THRESHOLD = 2048
+PUT_RELAXED_ORDERING = 2
+GET_RELAXED_ORDERING = 2
+MAX_CONCURRENCY = 1
+PI_ORDERING = 2
+Job information:
+  molecule:  benzene.xyz
+  basisset:  aug-cc-pvtz
+  charge     = 0
+  #atoms     = 12
+  #shells    = 138
+  #functions = 480
+  fock build uses   9 (3x3) nodes
+  purification uses 8 (2x2x2) nodes
+  #tasks = 225 (15x15)
+  #nthreads_cpu = 88
+Initializing pfock ...
+Cray GA Initial System Setup Details
+gethugepagesize()                =2097152
+hugetlb_default_page_size        =2097152
+_SC_PAGESIZE                     =4096
+comex_page_size                  =2097152
+comex_hbw_page_size              =0
+malloc_is_using_huge_pages(0)    =1
+comex_is_using_huge_pages(1)     =1
+comex_is_using_hbw_huge_pages(2) =0
+comex hugepage type used         =1
+DMAPP put threshold              =2048
+DMAPP get threshold              =128
+XPMEM use is ENABLED
+Optimized CPU memcpy is ENABLED
+Optimized CPU memcpy level =0
+COMEX_USE_REM_ACC is ENABLED
+contig remote acc threshold  =147456
+strided remote acc threshold =256
+**** PFock: screening ...
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+**** PFock: takes 0.456 secs
+  FD size (177 177 480 480)
+Screen method: 2
+Screen tol:    1.000000e-14
+  CPU uses 254.437 MB
+  Done
+Initializing purification ...
+  CPU uses 14.941 MB
+  Done
+Preprocessing one electron matrices ...
+  computing H
+  pdsyev_ takes 1.359 secs
+  takes 1.747 secs
+  Done
+  computing H
+  takes 0.068 secs
+  Done
+Computing SCF ...
+  initialing D ...
+  nuc energy = 203.9926502889
+  iter 0
+**** PFock: correct F ...
+    fock build takes 2.667 secs
+    energy -229.6120508295 (-433.6047011184)
+    diis takes 0.030 secs, 14.585 Gflops
+mu_bar = 2.195880e+00, lambda = 1.580591e-01, hmax = 1.350576e+02, hmin = -9.796269e+01, nobtls = 21
+    purification takes 1.084 secs, 133 iterations, 55.100 Gflops
+  iter 1
+**** PFock: correct F ...
+    fock build takes 2.530 secs
+    energy -229.8872504213 (-433.8799007102), 2.751996e-01
+    diis takes 0.008 secs, 52.154 Gflops
+mu_bar = 3.137881e+00, lambda = 1.550444e-01, hmax = 1.385830e+02, hmin = -9.825823e+01, nobtls = 21
+    purification takes 1.230 secs, 153 iterations, 55.737 Gflops
+  iter 2
+**** PFock: correct F ...
+    fock build takes 2.507 secs
+    energy -230.4444083863 (-434.4370586751), 5.571580e-01
+    diis takes 0.098 secs, 13.596 Gflops
+mu_bar = 2.915711e+00, lambda = 1.569366e-01, hmax = 1.367277e+02, hmin = -9.756784e+01, nobtls = 21
+    purification takes 1.068 secs, 136 iterations, 57.144 Gflops
+  iter 3
+**** PFock: correct F ...
+    fock build takes 2.525 secs
+    energy -230.6597554525 (-434.6524057413), 2.153471e-01
+    diis takes 0.052 secs, 25.677 Gflops
+mu_bar = 2.996933e+00, lambda = 1.567387e-01, hmax = 1.369779e+02, hmin = -9.763119e+01, nobtls = 21
+    purification takes 1.104 secs, 139 iterations, 56.487 Gflops
+  iter 4
+**** PFock: correct F ...
+    fock build takes 2.560 secs
+    energy -230.7813051739 (-434.7739554628), 1.215497e-01
+    diis takes 0.041 secs, 32.070 Gflops
+mu_bar = 3.005872e+00, lambda = 1.567149e-01, hmax = 1.370072e+02, hmin = -9.763434e+01, nobtls = 21
+    purification takes 1.105 secs, 139 iterations, 56.461 Gflops
+  iter 5
+**** PFock: correct F ...
+    fock build takes 2.546 secs
+    energy -230.7825681826 (-434.7752184714), 1.263009e-03
+    diis takes 0.047 secs, 28.147 Gflops
+mu_bar = 3.004805e+00, lambda = 1.567786e-01, hmax = 1.369517e+02, hmin = -9.760577e+01, nobtls = 21
+    purification takes 1.187 secs, 139 iterations, 52.546 Gflops
+  iter 6
+**** PFock: correct F ...
+    fock build takes 2.527 secs
+    energy -230.7829538051 (-434.7756040939), 3.856225e-04
+    diis takes 0.058 secs, 22.878 Gflops
+mu_bar = 3.004459e+00, lambda = 1.567852e-01, hmax = 1.369457e+02, hmin = -9.760355e+01, nobtls = 21
+    purification takes 1.131 secs, 139 iterations, 55.168 Gflops
+  iter 7
+**** PFock: correct F ...
+    fock build takes 2.569 secs
+    energy -230.7829637446 (-434.7756140335), 9.939553e-06
+    diis takes 0.051 secs, 26.267 Gflops
+mu_bar = 3.004490e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760391e+01, nobtls = 21
+    purification takes 1.060 secs, 139 iterations, 58.848 Gflops
+  iter 8
+**** PFock: correct F ...
+    fock build takes 2.561 secs
+    energy -230.7829641429 (-434.7756144318), 3.983109e-07
+    diis takes 0.046 secs, 28.820 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567845e-01, hmax = 1.369463e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.124 secs, 139 iterations, 55.486 Gflops
+  iter 9
+**** PFock: correct F ...
+    fock build takes 2.521 secs
+    energy -230.7829641823 (-434.7756144711), 3.933775e-08
+    diis takes 0.045 secs, 29.602 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760393e+01, nobtls = 21
+    purification takes 1.109 secs, 139 iterations, 56.236 Gflops
+  iter 10
+**** PFock: correct F ...
+    fock build takes 2.529 secs
+    energy -230.7829641832 (-434.7756144721), 9.451355e-10
+    diis takes 0.046 secs, 28.938 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369463e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.083 secs, 139 iterations, 57.583 Gflops
+  iter 11
+**** PFock: correct F ...
+    fock build takes 2.560 secs
+    energy -230.7829641844 (-434.7756144733), 1.184844e-09
+    diis takes 0.059 secs, 22.428 Gflops
+mu_bar = 3.004496e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.119 secs, 139 iterations, 55.762 Gflops
+  iter 12
+**** PFock: correct F ...
+    fock build takes 2.513 secs
+    energy -230.7829641831 (-434.7756144720), 1.272156e-09
+    diis takes 0.052 secs, 25.563 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.028 secs, 139 iterations, 60.685 Gflops
+  iter 13
+**** PFock: correct F ...
+    fock build takes 2.520 secs
+    energy -230.7829641836 (-434.7756144724), 4.204139e-10
+    diis takes 0.058 secs, 23.061 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.247 secs, 139 iterations, 50.025 Gflops
+  iter 14
+**** PFock: correct F ...
+    fock build takes 2.515 secs
+    energy -230.7829641816 (-434.7756144705), 1.957176e-09
+    diis takes 0.048 secs, 27.886 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.119 secs, 139 iterations, 55.735 Gflops
+  iter 15
+**** PFock: correct F ...
+    fock build takes 2.533 secs
+    energy -230.7829641871 (-434.7756144760), 5.508412e-09
+    diis takes 0.050 secs, 26.440 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.066 secs, 139 iterations, 58.485 Gflops
+  iter 16
+**** PFock: correct F ...
+    fock build takes 2.497 secs
+    energy -230.7829641823 (-434.7756144712), 4.777064e-09
+    diis takes 0.062 secs, 21.498 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.018 secs, 139 iterations, 61.260 Gflops
+  iter 17
+**** PFock: correct F ...
+    fock build takes 2.508 secs
+    energy -230.7829641860 (-434.7756144749), 3.698801e-09
+    diis takes 0.049 secs, 26.918 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.125 secs, 139 iterations, 55.426 Gflops
+  iter 18
+**** PFock: correct F ...
+    fock build takes 2.556 secs
+    energy -230.7829641846 (-434.7756144735), 1.408694e-09
+    diis takes 0.055 secs, 24.116 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.136 secs, 139 iterations, 54.906 Gflops
+  iter 19
+**** PFock: correct F ...
+    fock build takes 2.496 secs
+    energy -230.7829641844 (-434.7756144733), 2.318075e-10
+    diis takes 0.055 secs, 24.068 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.162 secs, 139 iterations, 53.681 Gflops
+  iter 20
+**** PFock: correct F ...
+    fock build takes 2.596 secs
+    energy -230.7829641838 (-434.7756144727), 5.585434e-10
+    diis takes 0.043 secs, 30.684 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.096 secs, 139 iterations, 56.902 Gflops
+  iter 21
+**** PFock: correct F ...
+    fock build takes 2.493 secs
+    energy -230.7829641843 (-434.7756144731), 4.503136e-10
+    diis takes 0.046 secs, 29.152 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.136 secs, 139 iterations, 54.885 Gflops
+  iter 22
+**** PFock: correct F ...
+    fock build takes 2.561 secs
+    energy -230.7829641855 (-434.7756144743), 1.172339e-09
+    diis takes 0.049 secs, 27.024 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.083 secs, 139 iterations, 57.568 Gflops
+  iter 23
+**** PFock: correct F ...
+    fock build takes 2.545 secs
+    energy -230.7829641838 (-434.7756144727), 1.651074e-09
+    diis takes 0.050 secs, 26.346 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.086 secs, 139 iterations, 57.443 Gflops
+  iter 24
+**** PFock: correct F ...
+    fock build takes 2.500 secs
+    energy -230.7829641844 (-434.7756144732), 5.784955e-10
+    diis takes 0.051 secs, 25.838 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.140 secs, 139 iterations, 54.712 Gflops
+  iter 25
+**** PFock: correct F ...
+    fock build takes 2.568 secs
+    energy -230.7829641843 (-434.7756144731), 1.286367e-10
+    diis takes 0.050 secs, 26.698 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.146 secs, 139 iterations, 54.407 Gflops
+  iter 26
+**** PFock: correct F ...
+    fock build takes 2.508 secs
+    energy -230.7829641856 (-434.7756144745), 1.364924e-09
+    diis takes 0.049 secs, 26.865 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.123 secs, 139 iterations, 55.546 Gflops
+  iter 27
+**** PFock: correct F ...
+    fock build takes 2.564 secs
+    energy -230.7829641860 (-434.7756144748), 3.407195e-10
+    diis takes 0.049 secs, 27.349 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.101 secs, 139 iterations, 56.663 Gflops
+  iter 28
+**** PFock: correct F ...
+    fock build takes 2.555 secs
+    energy -230.7829641843 (-434.7756144731), 1.694048e-09
+    diis takes 0.045 secs, 29.212 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.126 secs, 139 iterations, 55.403 Gflops
+  iter 29
+**** PFock: correct F ...
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 32.000201, 29.707562, 23.514498 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 27.176497, 24.459477, 27.930966 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 29.898984, 27.672371, 23.658997 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 24.540986, 21.737792, 28.833668 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 26.194564, 23.417722, 25.677854 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 23.798071, 20.692598, 28.578440 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 30.567578, 28.135432, 23.568888 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 26.114980, 23.016233, 25.746114 sec.
+    fock build takes 2.563 secs
+    energy -230.7829641845 (-434.7756144734), 2.486331e-10
+    diis takes 0.052 secs, 25.418 Gflops
+mu_bar = 3.004495e+00, lambda = 1.567846e-01, hmax = 1.369462e+02, hmin = -9.760394e+01, nobtls = 21
+    purification takes 1.152 secs, 139 iterations, 54.150 Gflops
+  totally takes 111.191 secs: 3.706 secs/iters
+  Done
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 31.839638, 29.441367, 23.205573 sec.
+================= aug-cc-pvtz + protein_28 ================================
+MPI level: 2
+import_basis() line 607 Warning: no valid basis type in gbs file... assuming Simint
+normalization() line 92 Warning: NOT performing normalization for CARTESIAN
+import_guess() line 829 Found SAD file for H
+import_guess() line 859 Using SAD file for H
+import_guess() line 829 Found SAD file for C
+import_guess() line 859 Using SAD file for C
+import_guess() line 829 Found SAD file for N
+import_guess() line 859 Using SAD file for N
+import_guess() line 829 Found SAD file for O
+import_guess() line 859 Using SAD file for O
+import_guess() line 829 Found SAD file for P
+import_guess() line 859 Using SAD file for P
+import_guess() line 829 Found SAD file for S
+import_guess() line 859 Using SAD file for S
+Cray-GA-5.3.0.2 COMEX-DMAPP 
+DMAPP PARAMS: 
+MAX_OUTSTANDING_NB = 1024
+OFFLOAD_THRESHOLD = 2048
+PUT_RELAXED_ORDERING = 2
+GET_RELAXED_ORDERING = 2
+MAX_CONCURRENCY = 1
+PI_ORDERING = 2
+Job information:
+  molecule:  protein_28.xyz
+  basisset:  aug-cc-pvtz
+  charge     = 0
+  #atoms     = 30
+  #shells    = 350
+  #functions = 1230
+  fock build uses   9 (3x3) nodes
+  purification uses 8 (2x2x2) nodes
+  #tasks = 225 (15x15)
+  #nthreads_cpu = 88
+Initializing pfock ...
+Cray GA Initial System Setup Details
+gethugepagesize()                =2097152
+hugetlb_default_page_size        =2097152
+_SC_PAGESIZE                     =4096
+comex_page_size                  =2097152
+comex_hbw_page_size              =0
+malloc_is_using_huge_pages(0)    =1
+comex_is_using_huge_pages(1)     =1
+comex_is_using_hbw_huge_pages(2) =0
+comex hugepage type used         =1
+DMAPP put threshold              =2048
+DMAPP get threshold              =128
+XPMEM use is ENABLED
+Optimized CPU memcpy is ENABLED
+Optimized CPU memcpy level =0
+COMEX_USE_REM_ACC is ENABLED
+contig remote acc threshold  =147456
+strided remote acc threshold =256
+**** PFock: screening ...
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+**** PFock: takes 0.789 secs
+  FD size (425 425 1230 1230)
+Screen method: 2
+Screen tol:    1.000000e-14
+  CPU uses 1558.303 MB
+  Done
+Initializing purification ...
+  CPU uses 98.111 MB
+  Done
+Preprocessing one electron matrices ...
+  computing H
+  pdsyev_ takes 5.007 secs
+  takes 6.027 secs
+  Done
+  computing H
+  takes 0.182 secs
+  Done
+Computing SCF ...
+  initialing D ...
+  nuc energy = 1090.7330354964
+  iter 0
+**** PFock: correct F ...
+    fock build takes 32.347 secs
+    energy -859.2125353404 (-1949.9455708368)
+    diis takes 0.060 secs, 124.987 Gflops
+mu_bar = 2.096728e+00, lambda = 5.741815e-02, hmax = 1.081895e+03, hmin = -1.075900e+03, nobtls = 62
+    purification takes 4.105 secs, 182 iterations, 333.624 Gflops
+  iter 1
+**** PFock: correct F ...
+    fock build takes 32.359 secs
+    energy -1519.0136035010 (-2609.7466389973), 6.598011e+02
+    diis takes 0.025 secs, 299.995 Gflops
+mu_bar = -8.297766e+00, lambda = 2.688971e-01, hmax = 2.222737e+02, hmin = -2.476109e+02, nobtls = 62
+    purification takes 2.635 secs, 117 iterations, 336.114 Gflops
+  iter 2
+**** PFock: correct F ...
+    fock build takes 32.562 secs
+    energy -474.7167958415 (-1565.4498313379), 1.044297e+03
+    diis takes 0.131 secs, 170.187 Gflops
+mu_bar = 3.023853e+00, lambda = 3.589101e-02, hmax = 1.730476e+03, hmin = -1.740262e+03, nobtls = 62
+    purification takes 4.542 secs, 200 iterations, 331.009 Gflops
+  iter 3
+**** PFock: correct F ...
+    fock build takes 32.477 secs
+    energy -1237.9571216960 (-2328.6901571924), 7.632403e+02
+    diis takes 0.105 secs, 212.012 Gflops
+mu_bar = -8.055362e+00, lambda = 2.492794e-01, hmax = 2.406615e+02, hmin = -2.675781e+02, nobtls = 62
+    purification takes 2.433 secs, 108 iterations, 336.569 Gflops
+  iter 4
+**** PFock: correct F ...
+    fock build takes 32.537 secs
+    energy 1006.7657452861 (-83.9672902102), 2.244723e+03
+    diis takes 0.107 secs, 208.170 Gflops
+mu_bar = -7.942687e+00, lambda = 2.557143e-01, hmax = 2.345154e+02, hmin = -2.611506e+02, nobtls = 62
+    purification takes 2.483 secs, 110 iterations, 335.717 Gflops
+  iter 5
+**** PFock: correct F ...
+    fock build takes 32.505 secs
+    energy 566.9933897913 (-523.7396457051), 4.397724e+02
+    diis takes 0.111 secs, 201.393 Gflops
+mu_bar = -7.937473e+00, lambda = 2.563547e-01, hmax = 2.339149e+02, hmin = -2.605351e+02, nobtls = 62
+    purification takes 2.481 secs, 110 iterations, 335.970 Gflops
+  iter 6
+**** PFock: correct F ...
+    fock build takes 32.537 secs
+    energy 545.3341408864 (-545.3988946100), 2.165925e+01
+    diis takes 0.113 secs, 197.506 Gflops
+mu_bar = -7.930863e+00, lambda = 2.561810e-01, hmax = 2.340855e+02, hmin = -2.606910e+02, nobtls = 62
+    purification takes 2.475 secs, 110 iterations, 336.863 Gflops
+  iter 7
+**** PFock: correct F ...
+    fock build takes 32.507 secs
+    energy 516.5684926671 (-574.1645428293), 2.876565e+01
+    diis takes 0.115 secs, 193.938 Gflops
+mu_bar = -7.930816e+00, lambda = 2.562401e-01, hmax = 2.340298e+02, hmin = -2.606308e+02, nobtls = 62
+    purification takes 2.471 secs, 110 iterations, 337.384 Gflops
+  iter 8
+**** PFock: correct F ...
+    fock build takes 32.594 secs
+    energy 518.3653765634 (-572.3676589330), 1.796884e+00
+    diis takes 0.119 secs, 188.199 Gflops
+mu_bar = -7.911662e+00, lambda = 2.580725e-01, hmax = 2.323309e+02, hmin = -2.588790e+02, nobtls = 62
+    purification takes 2.512 secs, 111 iterations, 334.858 Gflops
+  iter 9
+**** PFock: correct F ...
+    fock build takes 32.608 secs
+    energy 443.4160487178 (-647.3169867786), 7.494933e+01
+    diis takes 0.121 secs, 184.293 Gflops
+mu_bar = -7.911069e+00, lambda = 2.582114e-01, hmax = 2.322022e+02, hmin = -2.587491e+02, nobtls = 62
+    purification takes 2.503 secs, 111 iterations, 336.014 Gflops
+  iter 10
+**** PFock: correct F ...
+    fock build takes 32.468 secs
+    energy 442.2834169707 (-648.4496185257), 1.132632e+00
+    diis takes 0.124 secs, 179.704 Gflops
+mu_bar = -7.905514e+00, lambda = 2.585647e-01, hmax = 2.318797e+02, hmin = -2.584157e+02, nobtls = 62
+    purification takes 2.507 secs, 111 iterations, 335.440 Gflops
+  iter 11
+**** PFock: correct F ...
+    fock build takes 32.466 secs
+    energy 425.9599684028 (-664.7730670936), 1.632345e+01
+    diis takes 0.122 secs, 183.608 Gflops
+mu_bar = -7.881555e+00, lambda = 2.603331e-01, hmax = 2.302749e+02, hmin = -2.567859e+02, nobtls = 62
+    purification takes 2.502 secs, 111 iterations, 336.127 Gflops
+  iter 12
+**** PFock: correct F ...
+    fock build takes 32.535 secs
+    energy 352.2140477273 (-738.5189877691), 7.374592e+01
+    diis takes 0.104 secs, 214.464 Gflops
+mu_bar = -7.904982e+00, lambda = 2.577401e-01, hmax = 2.326474e+02, hmin = -2.592314e+02, nobtls = 62
+    purification takes 2.504 secs, 111 iterations, 335.866 Gflops
+  iter 13
+**** PFock: correct F ...
+    fock build takes 32.534 secs
+    energy 419.8644962725 (-670.8685392239), 6.765045e+01
+    diis takes 0.105 secs, 212.212 Gflops
+mu_bar = -7.924296e+00, lambda = 2.559760e-01, hmax = 2.342859e+02, hmin = -2.609285e+02, nobtls = 62
+    purification takes 2.506 secs, 111 iterations, 335.671 Gflops
+  iter 14
+**** PFock: correct F ...
+    fock build takes 32.538 secs
+    energy 487.9378185048 (-602.7952169916), 6.807332e+01
+    diis takes 0.122 secs, 182.993 Gflops
+mu_bar = -7.888516e+00, lambda = 2.590463e-01, hmax = 2.314509e+02, hmin = -2.580281e+02, nobtls = 62
+    purification takes 2.532 secs, 112 iterations, 335.092 Gflops
+  iter 15
+**** PFock: correct F ...
+    fock build takes 32.566 secs
+    energy 364.5368975111 (-726.1961379853), 1.234009e+02
+    diis takes 0.105 secs, 213.125 Gflops
+mu_bar = -7.932247e+00, lambda = 2.559170e-01, hmax = 2.343338e+02, hmin = -2.610358e+02, nobtls = 62
+    purification takes 2.506 secs, 111 iterations, 335.682 Gflops
+  iter 16
+**** PFock: correct F ...
+    fock build takes 32.561 secs
+    energy 510.0735604668 (-580.6594750296), 1.455367e+02
+    diis takes 0.106 secs, 211.446 Gflops
+mu_bar = -7.922683e+00, lambda = 2.564879e-01, hmax = 2.338041e+02, hmin = -2.604937e+02, nobtls = 62
+    purification takes 2.513 secs, 111 iterations, 334.658 Gflops
+  iter 17
+**** PFock: correct F ...
+    fock build takes 32.460 secs
+    energy 477.2379792086 (-613.4950562878), 3.283558e+01
+    diis takes 0.105 secs, 212.703 Gflops
+mu_bar = -7.931327e+00, lambda = 2.559777e-01, hmax = 2.342773e+02, hmin = -2.609820e+02, nobtls = 62
+    purification takes 2.498 secs, 111 iterations, 336.747 Gflops
+  iter 18
+**** PFock: correct F ...
+    fock build takes 32.445 secs
+    energy 505.9862251740 (-584.7468103224), 2.874825e+01
+    diis takes 0.105 secs, 213.125 Gflops
+mu_bar = -7.915347e+00, lambda = 2.564403e-01, hmax = 2.338563e+02, hmin = -2.604857e+02, nobtls = 62
+    purification takes 2.516 secs, 111 iterations, 334.254 Gflops
+  iter 19
+**** PFock: correct F ...
+    fock build takes 32.626 secs
+    energy 457.5271738575 (-633.2058616389), 4.845905e+01
+    diis takes 0.104 secs, 215.133 Gflops
+mu_bar = -7.970385e+00, lambda = 2.527970e-01, hmax = 2.372857e+02, hmin = -2.640337e+02, nobtls = 62
+    purification takes 2.452 secs, 109 iterations, 336.898 Gflops
+  iter 20
+**** PFock: correct F ...
+    fock build takes 32.475 secs
+    energy 663.6641107515 (-427.0689247449), 2.061369e+02
+    diis takes 0.106 secs, 210.696 Gflops
+mu_bar = -7.899647e+00, lambda = 2.584520e-01, hmax = 2.319902e+02, hmin = -2.585809e+02, nobtls = 62
+    purification takes 2.488 secs, 111 iterations, 338.045 Gflops
+  iter 21
+**** PFock: correct F ...
+    fock build takes 32.542 secs
+    energy 405.9800904463 (-684.7529450501), 2.576840e+02
+    diis takes 0.106 secs, 211.230 Gflops
+mu_bar = -7.969726e+00, lambda = 2.528662e-01, hmax = 2.372193e+02, hmin = -2.639661e+02, nobtls = 62
+    purification takes 2.464 secs, 109 iterations, 335.252 Gflops
+  iter 22
+**** PFock: correct F ...
+    fock build takes 32.482 secs
+    energy 660.6231764110 (-430.1098590854), 2.546431e+02
+    diis takes 0.105 secs, 212.458 Gflops
+mu_bar = -7.880556e+00, lambda = 2.598763e-01, hmax = 2.306945e+02, hmin = -2.572504e+02, nobtls = 62
+    purification takes 2.523 secs, 112 iterations, 336.295 Gflops
+  iter 23
+**** PFock: correct F ...
+    fock build takes 32.508 secs
+    energy 352.1164003179 (-738.6166351785), 3.085068e+02
+    diis takes 0.106 secs, 211.472 Gflops
+mu_bar = -7.964636e+00, lambda = 2.531284e-01, hmax = 2.369703e+02, hmin = -2.637020e+02, nobtls = 62
+    purification takes 2.484 secs, 110 iterations, 335.619 Gflops
+  iter 24
+**** PFock: correct F ...
+    fock build takes 32.353 secs
+    energy 638.1971071738 (-452.5359283226), 2.860807e+02
+    diis takes 0.106 secs, 211.041 Gflops
+mu_bar = -7.874571e+00, lambda = 2.603764e-01, hmax = 2.302423e+02, hmin = -2.567847e+02, nobtls = 62
+    purification takes 2.520 secs, 112 iterations, 336.784 Gflops
+  iter 25
+**** PFock: correct F ...
+    fock build takes 32.523 secs
+    energy 332.7530728263 (-757.9799626701), 3.054440e+02
+    diis takes 0.105 secs, 212.741 Gflops
+mu_bar = -7.955685e+00, lambda = 2.538596e-01, hmax = 2.362738e+02, hmin = -2.629967e+02, nobtls = 62
+    purification takes 2.483 secs, 110 iterations, 335.690 Gflops
+  iter 26
+**** PFock: correct F ...
+    fock build takes 32.571 secs
+    energy 599.0409184306 (-491.6921170658), 2.662878e+02
+    diis takes 0.106 secs, 211.472 Gflops
+mu_bar = -7.912988e+00, lambda = 2.569831e-01, hmax = 2.333480e+02, hmin = -2.599756e+02, nobtls = 62
+    purification takes 2.504 secs, 111 iterations, 335.857 Gflops
+  iter 27
+**** PFock: correct F ...
+    fock build takes 32.566 secs
+    energy 446.4840334576 (-644.2490020388), 1.525569e+02
+    diis takes 0.106 secs, 210.378 Gflops
+mu_bar = -7.940234e+00, lambda = 2.552292e-01, hmax = 2.349787e+02, hmin = -2.616703e+02, nobtls = 62
+    purification takes 2.510 secs, 111 iterations, 335.090 Gflops
+  iter 28
+**** PFock: correct F ...
+    fock build takes 32.524 secs
+    energy 530.5709475879 (-560.1620879085), 8.408691e+01
+    diis takes 0.104 secs, 214.955 Gflops
+mu_bar = -7.903745e+00, lambda = 2.576592e-01, hmax = 2.327242e+02, hmin = -2.593573e+02, nobtls = 62
+    purification takes 2.539 secs, 112 iterations, 334.253 Gflops
+  iter 29
+**** PFock: correct F ...
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 411.491768, 359.957312, 471.713479 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 390.627310, 336.273081, 480.195304 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 422.407102, 374.745112, 464.563803 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 400.197345, 351.567961, 460.292313 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 400.743103, 351.123613, 473.604126 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 379.580027, 327.609718, 470.882288 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 367.924590, 313.883417, 471.395768 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 383.307512, 332.174910, 477.973780 sec.
+    fock build takes 32.578 secs
+    energy 411.4844316706 (-679.2486038258), 1.190865e+02
+    diis takes 0.107 secs, 208.789 Gflops
+mu_bar = -7.927161e+00, lambda = 2.560117e-01, hmax = 2.342493e+02, hmin = -2.609135e+02, nobtls = 62
+    purification takes 2.497 secs, 111 iterations, 336.797 Gflops
+  totally takes 1057.215 secs: 35.241 secs/iters
+  Done
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 373.636279, 318.127006, 476.817670 sec.
+================= ano-dz + benzene ================================
+MPI level: 2
+import_basis() line 607 Warning: no valid basis type in gbs file... assuming Simint
+normalization() line 92 Warning: NOT performing normalization for CARTESIAN
+Cray-GA-5.3.0.2 COMEX-DMAPP 
+DMAPP PARAMS: 
+MAX_OUTSTANDING_NB = 1024
+OFFLOAD_THRESHOLD = 2048
+PUT_RELAXED_ORDERING = 2
+GET_RELAXED_ORDERING = 2
+MAX_CONCURRENCY = 1
+PI_ORDERING = 2
+Job information:
+  molecule:  benzene.xyz
+  basisset:  data
+  charge     = 0
+  #atoms     = 12
+  #shells    = 84
+  #functions = 204
+  fock build uses   9 (3x3) nodes
+  purification uses 8 (2x2x2) nodes
+  #tasks = 225 (15x15)
+  #nthreads_cpu = 88
+Initializing pfock ...
+Cray GA Initial System Setup Details
+gethugepagesize()                =2097152
+hugetlb_default_page_size        =2097152
+_SC_PAGESIZE                     =4096
+comex_page_size                  =2097152
+comex_hbw_page_size              =0
+malloc_is_using_huge_pages(0)    =1
+comex_is_using_huge_pages(1)     =1
+comex_is_using_hbw_huge_pages(2) =0
+comex hugepage type used         =1
+DMAPP put threshold              =2048
+DMAPP get threshold              =128
+XPMEM use is ENABLED
+Optimized CPU memcpy is ENABLED
+Optimized CPU memcpy level =0
+COMEX_USE_REM_ACC is ENABLED
+contig remote acc threshold  =147456
+strided remote acc threshold =256
+**** PFock: screening ...
+Screen method: 2
+Screen tol:    1.000000e-14
+Timer: OSTEI wrapper, OSTEI actual, fock_task update_F = 0.000000, 0.000000, 0.000000 sec.
+**** PFock: takes 0.637 secs
+  FD size (76 76 204 204)
+Screen method: 2
+Screen tol:    1.000000e-14
+  CPU uses 46.514 MB
+  Done
+Initializing purification ...
+  CPU uses 2.699 MB
+  Done
+Preprocessing one electron matrices ...
+  computing H
+  pdsyev_ takes 1.715 secs
+  takes 2.195 secs
+  Done
+  computing H
+  takes 0.124 secs
+  Done
+Computing SCF ...
+  initialing D ...
+  nuc energy = 203.9926502889
+  iter 0
+**** PFock: correct F ...
+    fock build takes 7.383 secs
+    energy 203.9926502889 (0.0000000000)
+    diis takes 0.022 secs, 1.550 Gflops
+mu_bar = -8.818582e+00, lambda = 3.898701e-01, hmax = 4.504552e+01, hmin = -5.566494e+01, nobtls = 21
+    purification takes 0.146 secs, 49 iterations, 11.902 Gflops
+  iter 1
+**** PFock: correct F ...
+    fock build takes 7.287 secs
+    energy -263.5681619617 (-467.5608122506), 4.675608e+02
+    diis takes 0.003 secs, 9.820 Gflops
+mu_bar = -8.526858e+01, lambda = 2.568967e-04, hmax = 8.165964e+04, hmin = -9.406846e+04, nobtls = 21
+    purification takes 0.492 secs, 200 iterations, 13.946 Gflops
+  iter 2
+**** PFock: correct F ...
+    fock build takes 7.297 secs
+    energy -3948177.9071234995 (-3948381.8997737886), 3.947914e+06
+    diis takes 0.387 secs, 0.263 Gflops
+mu_bar = -1.071993e+04, lambda = 1.036225e-06, hmax = 2.025515e+07, hmin = -2.292679e+07, nobtls = 21
+    purification takes 0.338 secs, 137 iterations, 13.980 Gflops
+  iter 3
+**** PFock: correct F ...
+    fock build takes 7.303 secs
+    energy -1455933.4174541042 (-1456137.4101043930), 2.492244e+06
+    diis takes 0.021 secs, 4.870 Gflops
+mu_bar = -2.133656e+04, lambda = 1.749612e-06, hmax = 1.198132e+07, hmin = -1.233829e+07, nobtls = 21
+    purification takes 0.402 secs, 165 iterations, 14.092 Gflops
+  iter 4
+**** PFock: correct F ...
+    fock build takes 7.226 secs
+    energy -4158104.0990150487 (-4158308.0916653378), 2.702171e+06
+    diis takes 0.010 secs, 9.897 Gflops
+mu_bar = -1.047833e+04, lambda = 2.747269e-06, hmax = 7.633476e+06, hmin = -7.754554e+06, nobtls = 21
+    purification takes 0.386 secs, 154 iterations, 13.715 Gflops
+  iter 5
+**** PFock: correct F ...
+    fock build takes 7.283 secs
+    energy -4587693.4755606204 (-4587897.4682109095), 4.295894e+05
+    diis takes 0.021 secs, 4.765 Gflops
+mu_bar = -7.689303e+03, lambda = 2.682097e-06, hmax = 7.822004e+06, hmin = -7.825361e+06, nobtls = 21
+    purification takes 0.465 secs, 191 iterations, 14.086 Gflops
+  iter 6
+**** PFock: correct F ...
+    fock build takes 7.278 secs
+    energy -2236591.6763836066 (-2236795.6690338957), 2.351102e+06
+    diis takes 0.024 secs, 4.183 Gflops
+mu_bar = -7.667496e+03, lambda = 2.806250e-06, hmax = 7.475629e+06, hmin = -7.485559e+06, nobtls = 21
+    purification takes 0.455 secs, 182 iterations, 13.726 Gflops
+  iter 7
+**** PFock: correct F ...
+    fock build takes 7.250 secs
+    energy -2686086.2678557262 (-2686290.2605060153), 4.494946e+05
+    diis takes 0.012 secs, 8.256 Gflops
+mu_bar = -7.482532e+03, lambda = 2.840310e-06, hmax = 7.386078e+06, hmin = -7.396940e+06, nobtls = 21
+    purification takes 0.449 secs, 181 iterations, 13.832 Gflops
+  iter 8
+**** PFock: correct F ...
+    fock build takes 7.290 secs
+    energy -3088028.2182263527 (-3088232.2108766418), 4.019420e+05
+    diis takes 0.012 secs, 8.258 Gflops
+mu_bar = -7.456611e+03, lambda = 2.848926e-06, hmax = 7.363742e+06, hmin = -7.378525e+06, nobtls = 21
+    purification takes 0.439 secs, 179 iterations, 14.014 Gflops
+  iter 9
+**** PFock: correct F ...
+    fock build takes 7.274 secs
+    energy 131.9130989745 (-72.0795513143), 3.088160e+06
+    diis takes 0.012 secs, 8.565 Gflops
+mu_bar = -7.411229e+03, lambda = 2.864561e-06, hmax = 7.323556e+06, hmin = -7.338225e+06, nobtls = 21
+    purification takes 0.433 secs, 179 iterations, 14.210 Gflops
+  iter 10
+**** PFock: correct F ...
+    fock build takes 7.280 secs
+    energy -4111211.9734834926 (-4111415.9661337817), 4.111344e+06
+    diis takes 0.023 secs, 4.424 Gflops
+mu_bar = -5.660054e+03, lambda = 3.013875e-06, hmax = 6.962115e+06, hmin = -6.922153e+06, nobtls = 21
+    purification takes 0.460 secs, 187 iterations, 13.945 Gflops
+  iter 11
+**** PFock: correct F ...
+    fock build takes 7.256 secs
+    energy -3969959.3302980335 (-3970163.3229483226), 1.412526e+05
+    diis takes 0.011 secs, 9.074 Gflops
+mu_bar = -4.598626e+03, lambda = 3.032725e-06, hmax = 6.919866e+06, hmin = -6.859515e+06, nobtls = 21
+    purification takes 0.449 secs, 186 iterations, 14.217 Gflops
+  iter 12
+**** PFock: correct F ...
+    fock build takes 7.222 secs
+    energy 130.6874597932 (-73.3051904957), 3.970090e+06
+    diis takes 0.013 secs, 7.639 Gflops
+mu_bar = -5.007526e-01, lambda = 6.234994e-02, hmax = 3.363079e+02, hmin = -3.330052e+02, nobtls = 21
+    purification takes 0.211 secs, 83 iterations, 13.679 Gflops
+  iter 13
+**** PFock: correct F ...
+    fock build takes 7.227 secs
+    energy -104673.8775137153 (-104877.8701640042), 1.048046e+05
+    diis takes 0.013 secs, 7.725 Gflops
+mu_bar = -4.404278e-01, lambda = 6.218331e-02, hmax = 3.372707e+02, hmin = -3.327533e+02, nobtls = 21
+    purification takes 0.202 secs, 82 iterations, 14.153 Gflops
+  iter 14
+**** PFock: correct F ...
+    fock build takes 7.308 secs
+    energy -49652.9829190434 (-49856.9755693322), 5.502089e+04
+    diis takes 0.013 secs, 7.890 Gflops
+mu_bar = -3.868010e-01, lambda = 5.282345e-02, hmax = 3.971639e+02, hmin = -3.937553e+02, nobtls = 21
+    purification takes 0.220 secs, 87 iterations, 13.751 Gflops
+  iter 15
+**** PFock: correct F ...
+    fock build takes 7.288 secs
+    energy -264697.8047033541 (-264901.7973536430), 2.150448e+05
+    diis takes 0.023 secs, 4.485 Gflops
+mu_bar = -3.838112e-01, lambda = 5.319059e-02, hmax = 3.944229e+02, hmin = -3.909000e+02, nobtls = 21
+    purification takes 0.218 secs, 86 iterations, 13.698 Gflops
+  iter 16
+**** PFock: correct F ...
+    fock build takes 7.224 secs
+    energy -140.4323553116 (-344.4250056004), 2.645574e+05
+    diis takes 0.013 secs, 7.950 Gflops
+mu_bar = 5.968382e-01, lambda = 1.092760e-01, hmax = 1.927707e+02, hmin = -1.851880e+02, nobtls = 21
+    purification takes 0.201 secs, 77 iterations, 13.374 Gflops
+  iter 17
+**** PFock: correct F ...
+    fock build takes 7.295 secs
+    energy -126721.8250926832 (-126925.8177429721), 1.265814e+05
+    diis takes 0.011 secs, 9.133 Gflops
+mu_bar = 6.256732e-01, lambda = 1.031459e-01, hmax = 2.042209e+02, hmin = -1.967942e+02, nobtls = 21
+    purification takes 0.186 secs, 75 iterations, 14.073 Gflops
+  iter 18
+**** PFock: correct F ...
+    fock build takes 7.242 secs
+    energy -310017.7011775806 (-310221.6938278694), 1.832959e+05
+    diis takes 0.013 secs, 8.044 Gflops
+mu_bar = 4.852559e-01, lambda = 1.501415e-01, hmax = 1.403533e+02, hmin = -1.301518e+02, nobtls = 21
+    purification takes 0.215 secs, 80 iterations, 12.981 Gflops
+  iter 19
+**** PFock: correct F ...
+    fock build takes 7.208 secs
+    energy 476922.1381114385 (476718.1454611496), 7.869398e+05
+    diis takes 0.014 secs, 7.275 Gflops
+mu_bar = 4.955905e-01, lambda = 1.664096e-01, hmax = 1.266902e+02, hmin = -1.166467e+02, nobtls = 21
+    purification takes 0.198 secs, 78 iterations, 13.710 Gflops
+  iter 20
+**** PFock: correct F ...
+    fock build takes 7.283 secs
+    energy 849703.9003452378 (849499.9076949490), 3.727818e+05
+    diis takes 0.024 secs, 4.260 Gflops
+mu_bar = 4.985387e-01, lambda = 1.807342e-01, hmax = 1.166912e+02, hmin = -1.068679e+02, nobtls = 21
+    purification takes 0.204 secs, 77 iterations, 13.158 Gflops
+  iter 21
+**** PFock: correct F ...
+    fock build takes 7.282 secs
+    energy -1431483.4706157013 (-1431687.4632659901), 2.281187e+06
+    diis takes 0.013 secs, 7.561 Gflops
+mu_bar = 4.790149e-01, lambda = 1.544576e-01, hmax = 1.364386e+02, hmin = -1.266635e+02, nobtls = 21
+    purification takes 0.200 secs, 79 iterations, 13.781 Gflops
+  iter 22
+**** PFock: correct F ...
+    fock build takes 7.301 secs
+    energy -744105.2833386515 (-744309.2759889404), 6.873782e+05
+    diis takes 0.023 secs, 4.407 Gflops
+mu_bar = 4.694828e-01, lambda = 1.742731e-01, hmax = 1.209700e+02, hmin = -1.107166e+02, nobtls = 21
+    purification takes 0.198 secs, 77 iterations, 13.558 Gflops
+  iter 23
+**** PFock: correct F ...
+    fock build takes 7.250 secs
+    energy -737695.1558218446 (-737899.1484721334), 6.410128e+03
+    diis takes 0.012 secs, 8.583 Gflops
+mu_bar = 4.608319e-01, lambda = 1.531959e-01, hmax = 1.375402e+02, hmin = -1.270916e+02, nobtls = 21
+    purification takes 0.205 secs, 79 iterations, 13.386 Gflops
+  iter 24
+**** PFock: correct F ...
+    fock build takes 7.295 secs
+    energy -728383.3466553108 (-728587.3393055997), 9.311809e+03
+    diis takes 0.023 secs, 4.422 Gflops
+mu_bar = 4.673098e-01, lambda = 1.758607e-01, hmax = 1.198800e+02, hmin = -1.097995e+02, nobtls = 21
+    purification takes 0.194 secs, 77 iterations, 13.837 Gflops
+  iter 25
+**** PFock: correct F ...
+    fock build takes 7.252 secs
+    energy -1370662.1950661012 (-1370866.1877163900), 6.422788e+05
+    diis takes 0.012 secs, 8.334 Gflops
+mu_bar = 4.729521e-01, lambda = 1.855160e-01, hmax = 1.136708e+02, hmin = -1.032645e+02, nobtls = 21
+    purification takes 0.201 secs, 76 iterations, 13.207 Gflops
+  iter 26
+**** PFock: correct F ...
+slurmstepd: error: *** STEP 10858538.4 ON nid02516 CANCELLED AT 2018-03-10T10:38:12 DUE TO TIME LIMIT ***
+slurmstepd: error: *** JOB 10858538 ON nid02516 CANCELLED AT 2018-03-10T10:38:12 DUE TO TIME LIMIT ***
+srun: got SIGCONT
+srun: forcing job termination

@@ -13,6 +13,7 @@
 #include "taskq.h"
 #include "fock_task.h"
 
+#include "cint_basisset.h"
 
 static inline void atomic_add_f64(volatile double* global_value, double addend)
 {
@@ -44,7 +45,7 @@ void update_F_with_KetShellPairList(
     for (int ipair = 0; ipair < npairs; ipair++)
     {
         int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
-        update_F_split3(
+        update_F_opt_buffer(
             tid, num_dmat, &batch_integrals[ipair * batch_nints], 
             fock_info_list[0], 
             fock_info_list[1], 
@@ -93,17 +94,14 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
     
     if (update_F_buf_size == 0)
     {
-        // startPQ & endPQ & f_startind remains unchanged for each call
-        // So just allocate the buffer once
-        for (int j = startPQ; j < endPQ; j++) 
-        {
-            int Q = shellid[j];
-            int dimQ = f_startind[Q + 1] - f_startind[Q];
-            if (dimQ > update_F_buf_size) update_F_buf_size = dimQ;
-        }
-        update_F_buf_size = (update_F_buf_size + 8) / 8 * 8;  // Align to 64 bytes
+        int maxAM, max_buf_entry_size;
+        _maxMomentum(basis, &maxAM);
+        max_buf_entry_size = (maxAM + 1) * (maxAM + 2) / 2;
+        max_buf_entry_size = max_buf_entry_size * max_buf_entry_size;
+        // max_buf_entry_size should be >= the product of any two items in {dimM, dimN, dimP, dimQ}
+        update_F_buf_size  = 12 * max_buf_entry_size;
         int nthreads = omp_get_max_threads();
-        update_F_buf = _mm_malloc(sizeof(double) * nthreads * 2 * update_F_buf_size, 64);
+        update_F_buf = _mm_malloc(sizeof(double) * nthreads * update_F_buf_size, 64);
         assert(update_F_buf != NULL);
     }
     
