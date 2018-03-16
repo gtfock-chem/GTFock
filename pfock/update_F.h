@@ -14,7 +14,8 @@ static inline void update_F_opt_buffer(
     double *F_MP, double *F_MQ, double *F_NP,
     int sizeX1, int sizeX2, int sizeX3,
     int sizeX4, int sizeX5, int sizeX6,
-    int ldMN, int ldPQ, int ldNQ, int ldMP, int ldMQ, int ldNP
+    int ldMN, int ldPQ, int ldNQ, int ldMP, int ldMQ, int ldNP,
+    int load_MN, int load_P
 )
 {
     int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
@@ -25,7 +26,7 @@ static inline void update_F_opt_buffer(
     double *thread_buf = update_F_buf + tid * update_F_buf_size;
     int required_buf_size = 2 * ((dimP + dimN + dimM) * dimQ + (dimN + dimM) * dimP + dimM * dimN);
     assert(required_buf_size <= update_F_buf_size); 
-	
+    
     double *read_buf  = thread_buf;
     double *write_buf = thread_buf + (update_F_buf_size / 2);
     
@@ -61,18 +62,26 @@ static inline void update_F_opt_buffer(
         double *K_NP = &F_NP[i * sizeX6] + iNP;
     
         // Load required D_MN, D_PQ, D_NQ, D_MP, D_MQ, D_NP to buffer
-        for (int iM = 0; iM < dimM; iM++)
+        if (load_MN)
         {
-            memcpy(D_MN_buf + iM * dimN, D_MN + iM * ldMN, sizeof(double) * dimN);
-            memcpy(D_MP_buf + iM * dimP, D_MP + iM * ldNQ, sizeof(double) * dimP);
-            memcpy(D_MQ_buf + iM * dimQ, D_MQ + iM * ldNQ, sizeof(double) * dimQ);
+            for (int iM = 0; iM < dimM; iM++)
+                memcpy(D_MN_buf + iM * dimN, D_MN + iM * ldMN, sizeof(double) * dimN);
         }
         
-        for (int iN = 0; iN < dimN; iN++)
+        if (load_P)
         {
-            memcpy(D_NQ_buf + iN * dimQ, D_NQ + iN * ldNQ, sizeof(double) * dimQ);
-            memcpy(D_NP_buf + iN * dimP, D_NP + iN * ldNQ, sizeof(double) * dimP);
+            for (int iM = 0; iM < dimM; iM++)
+                memcpy(D_MP_buf + iM * dimP, D_MP + iM * ldNQ, sizeof(double) * dimP);
+            
+            for (int iN = 0; iN < dimN; iN++)
+                memcpy(D_NP_buf + iN * dimP, D_NP + iN * ldNQ, sizeof(double) * dimP);
         }
+        
+        for (int iM = 0; iM < dimM; iM++)
+            memcpy(D_MQ_buf + iM * dimQ, D_MQ + iM * ldNQ, sizeof(double) * dimQ);
+        
+        for (int iN = 0; iN < dimN; iN++)
+            memcpy(D_NQ_buf + iN * dimQ, D_NQ + iN * ldNQ, sizeof(double) * dimQ);
         
         for (int iP = 0; iP < dimP; iP++)
             memcpy(D_PQ_buf + iP * dimQ, D_PQ + iP * ldPQ, sizeof(double) * dimQ);
