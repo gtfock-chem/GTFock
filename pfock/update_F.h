@@ -15,7 +15,7 @@ static inline void update_F_opt_buffer(
     int sizeX1, int sizeX2, int sizeX3,
     int sizeX4, int sizeX5, int sizeX6,
     int ldMN, int ldPQ, int ldNQ, int ldMP, int ldMQ, int ldNP,
-    int load_MN, int load_P
+    int load_MN, int load_P, int write_MN, int write_P
 )
 {
     int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
@@ -66,6 +66,8 @@ static inline void update_F_opt_buffer(
         {
             for (int iM = 0; iM < dimM; iM++)
                 memcpy(D_MN_buf + iM * dimN, D_MN + iM * ldMN, sizeof(double) * dimN);
+            
+            memset(J_MN_buf, 0, sizeof(double) * dimM * dimN);
         }
         
         if (load_P)
@@ -75,7 +77,10 @@ static inline void update_F_opt_buffer(
             
             for (int iN = 0; iN < dimN; iN++)
                 memcpy(D_NP_buf + iN * dimP, D_NP + iN * ldNQ, sizeof(double) * dimP);
+            
+            memset(K_MP_buf, 0, sizeof(double) * dimP * (dimM + dimN));
         }
+        
         
         for (int iM = 0; iM < dimM; iM++)
             memcpy(D_MQ_buf + iM * dimQ, D_MQ + iM * ldNQ, sizeof(double) * dimQ);
@@ -87,12 +92,15 @@ static inline void update_F_opt_buffer(
             memcpy(D_PQ_buf + iP * dimQ, D_PQ + iP * ldPQ, sizeof(double) * dimQ);
         
         // Reset result buffer
-        memset(J_MN_buf, 0, sizeof(double) * required_buf_size / 2);
+        memset(J_PQ_buf, 0, sizeof(double) * dimQ * (dimM + dimN + dimP));
         
         double vPQ_coef = 2.0 * (flag3 + flag5 + flag6 + flag7);
         double vMQ_coef = (flag2 + flag6) * 1.0;
         double vNQ_coef = (flag4 + flag7) * 1.0;
-        
+        double vMN_coef = 2.0 * (1 + flag1 + flag2 + flag4);
+        double vMP_coef = (1 + flag3) * 1.0;
+        double vNP_coef = (flag1 + flag5) * 1.0;
+
         // Start computation
         for (int iM = 0; iM < dimM; iM++) 
         {
@@ -128,48 +136,50 @@ static inline void update_F_opt_buffer(
                         K_MQ_buf[imq_base + iQ] -= vMQ * I;
                         K_NQ_buf[inq_base + iQ] -= vNQ * I;
                     }
-                    K_MP_buf[imp] += k_MN;
-                    K_NP_buf[inp] += k_NP;
+                    K_MP_buf[imp] += k_MN * vMP_coef;
+                    K_NP_buf[inp] += k_NP * vNP_coef;
                 } // for (int iM = 0; iM < dimM; iM++) 
-                J_MN_buf[imn] += j_MN;
+                J_MN_buf[imn] += j_MN * vMN_coef;
             } // for (int iQ = 0; iQ < dimQ; iQ++) 
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        
-        double vMN_coef = 2.0 * (1 + flag1 + flag2 + flag4);
-        for (int iM = 0; iM < dimM; iM++)
+        if (write_MN)
         {
-            int iM_base1 = iM * dimN;
-            int iM_base2 = iM * ldMN;
+            for (int iM = 0; iM < dimM; iM++)
+            {
+                int iM_base1 = iM * dimN;
+                int iM_base2 = iM * ldMN;
+                for (int iN = 0; iN < dimN; iN++)
+                {
+                    double adder = J_MN_buf[iM_base1 + iN];
+                    atomic_add_f64(&J_MN[iM_base2 + iN], adder);
+                }
+            }
+        }
+
+        if (write_P)
+        {
+            for (int iM = 0; iM < dimM; iM++)
+            {
+                int iM_base1 = iM * dimP;
+                int iM_base2 = iM * ldMP;
+                for (int iP = 0; iP < dimP; iP++)
+                {
+                    double adder = K_MP_buf[iM_base1 + iP];
+                    atomic_add_f64(&K_MP[iM_base2 + iP], adder);
+                }
+            }
+
             for (int iN = 0; iN < dimN; iN++)
             {
-                double adder = J_MN_buf[iM_base1 + iN] * vMN_coef;
-                atomic_add_f64(&J_MN[iM_base2 + iN], adder);
-            }
-        }
-        
-        double vMP_coef = (1 + flag3) * 1.0;
-        for (int iM = 0; iM < dimM; iM++)
-        {
-            int iM_base1 = iM * dimP;
-            int iM_base2 = iM * ldMP;
-            for (int iP = 0; iP < dimP; iP++)
-            {
-                double adder = K_MP_buf[iM_base1 + iP] * vMP_coef;
-                atomic_add_f64(&K_MP[iM_base2 + iP], adder);
-            }
-        }
-        
-        double vNP_coef = (flag1 + flag5) * 1.0;
-        for (int iN = 0; iN < dimN; iN++)
-        {
-            int iN_base1 = iN * dimP;
-            int iN_base2 = iN * ldNP;
-            for (int iP = 0; iP < dimP; iP++)
-            {
-                double adder = K_NP_buf[iN_base1 + iP] * vNP_coef;
-                atomic_add_f64(&K_NP[iN_base2 + iP], adder);
+                int iN_base1 = iN * dimP;
+                int iN_base2 = iN * ldNP;
+                for (int iP = 0; iP < dimP; iP++)
+                {
+                    double adder = K_NP_buf[iN_base1 + iP];
+                    atomic_add_f64(&K_NP[iN_base2 + iP], adder);
+                }
             }
         }
         
