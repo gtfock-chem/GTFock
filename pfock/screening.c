@@ -90,7 +90,7 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
                 int dimN = CInt_getShellDim(basis, N);
                 int nints;
                 double *integrals;
-                CInt_computeShellQuartet_SIMINT(basis, simint, tid, M, N, M, N,
+                CInt_computeShellQuartet_SIMINT(simint, tid, M, N, M, N,
                                          &integrals, &nints);            
                 double maxvalue = 0.0;
                 if (nints != 0) {

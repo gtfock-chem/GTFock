@@ -197,7 +197,7 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                         int thread_batch_nints;
                         
                         CInt_computeShellQuartetBatch_SIMINT(
-                            basis, simint, nt,
+                            simint, nt,
                             thread_quartet_lists->M, 
                             thread_quartet_lists->N, 
                             target_shellpair_list->P_list,
@@ -241,7 +241,7 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                     int thread_batch_nints;
                     
                     CInt_computeShellQuartetBatch_SIMINT(
-                        basis, simint, nt,
+                        simint, nt,
                         thread_quartet_lists->M, 
                         thread_quartet_lists->N, 
                         target_shellpair_list->P_list,

@@ -17,7 +17,7 @@ SCF_OUT     = 0
 #OPTFLAGS = -offload-option,mic,compiler,"-z defs -no-opt-prefetch"
 OPTFLAGS  = -qno-offload
 #OPTFLAGS += -m64 -xHost
-CFLAGS    = -O3 -Wall -qopenmp -std=gnu99 -fasm-blocks -qopt-report=5 -xHost
+CFLAGS    = -O3 -Wall -qopenmp -std=gnu99 -fasm-blocks -g -xHost
 CFLAGS   += -Wunknown-pragmas -Wunused-variable
 CFLAGS   += ${OPTFLAGS}
 
@@ -38,4 +38,4 @@ ARMCI_LIBS = -larmci
 
 ERD_LIBDIR = /home/huangh/libcint
 ERD_INCDIR = /home/huangh/libcint
-ERD_LIBS = ${ERD_LIBDIR}/libcint.a /home/huangh/simint-0228/build-avx512/install/lib64/libsimint.a
+ERD_LIBS = ${ERD_LIBDIR}/libcint.a /home/huangh/gtfock-simint/build-avx512/install/lib64/libsimint.a
