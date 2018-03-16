@@ -25,21 +25,25 @@ static inline void update_F_opt_buffer(
     double *thread_buf = update_F_buf + tid * update_F_buf_size;
     int required_buf_size = 2 * ((dimP + dimN + dimM) * dimQ + (dimN + dimM) * dimP + dimM * dimN);
     assert(required_buf_size <= update_F_buf_size); 
+	
+    double *read_buf  = thread_buf;
+    double *write_buf = thread_buf + (update_F_buf_size / 2);
     
     // Setup buffer pointers
-    double *D_MN_buf = thread_buf;  thread_buf += dimM * dimN;
-    double *D_PQ_buf = thread_buf;  thread_buf += dimP * dimQ;
-    double *D_NQ_buf = thread_buf;  thread_buf += dimN * dimQ;
-    double *D_MP_buf = thread_buf;  thread_buf += dimM * dimP;
-    double *D_MQ_buf = thread_buf;  thread_buf += dimM * dimQ;
-    double *D_NP_buf = thread_buf;  thread_buf += dimN * dimP;
+    double *D_MN_buf = read_buf;  read_buf += dimM * dimN;
+    double *D_MP_buf = read_buf;  read_buf += dimM * dimP;
+    double *D_NP_buf = read_buf;  read_buf += dimN * dimP;
+    double *D_PQ_buf = read_buf;  read_buf += dimP * dimQ;
+    double *D_NQ_buf = read_buf;  read_buf += dimN * dimQ;
+    double *D_MQ_buf = read_buf;  read_buf += dimM * dimQ;
     
-    double *J_MN_buf = thread_buf;  thread_buf += dimM * dimN;
-    double *J_PQ_buf = thread_buf;  thread_buf += dimP * dimQ;
-    double *K_NQ_buf = thread_buf;  thread_buf += dimN * dimQ;
-    double *K_MP_buf = thread_buf;  thread_buf += dimM * dimP;
-    double *K_MQ_buf = thread_buf;  thread_buf += dimM * dimQ;
-    double *K_NP_buf = thread_buf;  thread_buf += dimN * dimP;
+    double *J_MN_buf = write_buf;  write_buf += dimM * dimN;
+    double *K_MP_buf = write_buf;  write_buf += dimM * dimP;
+    double *K_NP_buf = write_buf;  write_buf += dimN * dimP;
+    double *J_PQ_buf = write_buf;  write_buf += dimP * dimQ;
+    double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
+    double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
+    
     
     for (int i = 0 ; i < num_dmat; i++) 
     {
