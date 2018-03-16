@@ -14,7 +14,6 @@
 #include "CInt.h"
 #include "purif.h"
 
-
 #define MAX_NUM_D    1
 #define NUM_D        1
 #define USE_D_ID     0
@@ -393,7 +392,9 @@ int main (int argc, char **argv)
         
     #ifdef __SCF_OUT__
         if (myrank == 0) {
-            double outbuf[nfunctions];
+            //double outbuf[nfunctions];
+            double *outbuf = (double*) malloc(sizeof(double) * nfunctions);
+            assert(outbuf != NULL);
             char fname[1024];
             sprintf(fname, "XFX_%d_%d.dat", nfunctions, iter);
             FILE *fp = fopen(fname, "w+");
@@ -401,12 +402,13 @@ int main (int argc, char **argv)
             for (int i = 0; i < nfunctions; i++) {
                 PFock_getMat(pfock, PFOCK_MAT_TYPE_F, USE_D_ID,
                              i, i, USE_D_ID, nfunctions - 1,
-                             outbuf, nfunctions);
+                             nfunctions, outbuf);
                 for (int j = 0; j < nfunctions; j++) {
                     fprintf(fp, "%.10e\n", outbuf[j]);
                 }
             }
             fclose(fp);
+            free(outbuf);
         }
     #endif
     

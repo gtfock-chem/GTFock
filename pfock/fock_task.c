@@ -42,31 +42,65 @@ void update_F_with_KetShellPairList(
     int ldX1, int ldX2, int ldX3, int ldX4, int ldX5, int ldX6
 )
 {
+    int load_MN, load_P, write_MN, write_P;
+    int prev_iMP = -1;
     for (int ipair = 0; ipair < npairs; ipair++)
     {
         int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
+
+        if (ipair == 0)          load_MN  = 1; else load_MN  = 0;
+        if (ipair + 1 == npairs) write_MN = 1; else write_MN = 0;
+        
+        if (prev_iMP == fock_info_list[9])  // iMP == previous iMP, P == previous P
+        {
+            load_P = 0;
+        } else {
+            load_P = 1;
+        }
+        
+        write_P = 0;
+        if (ipair + 1 == npairs) write_P = 1;
+        if (ipair < npairs - 1)
+        {
+            int *n_fock_info_list = fock_info_list + 16;
+            if (fock_info_list[9] != n_fock_info_list[9]) write_P = 1;
+        }
+        
+        prev_iMP = fock_info_list[9];
+        
+        // Just use a lazy way here. Actually we can still do the same thing when
+        // num_dmat > 1, but it needs to inline update_F to this function. 
+        if (num_dmat > 1)  
+        {
+            load_MN  = 1;
+            load_P   = 1;
+            write_MN = 1;
+            write_P  = 1;
+        }
+
         update_F_opt_buffer(
             tid, num_dmat, &batch_integrals[ipair * batch_nints], 
-            fock_info_list[0], 
-            fock_info_list[1], 
-            fock_info_list[2], 
-            fock_info_list[3], 
-            fock_info_list[4], 
-            fock_info_list[5], 
-            fock_info_list[6], 
-            fock_info_list[7], 
-            fock_info_list[8], 
-            fock_info_list[9], 
-            fock_info_list[10], 
-            fock_info_list[11], 
-            fock_info_list[12], 
-            fock_info_list[13], 
-            fock_info_list[14], 
-            fock_info_list[15], 
+            fock_info_list[0],   // dimM
+            fock_info_list[1],   // dimN
+            fock_info_list[2],   // dimP
+            fock_info_list[3],   // dimQ
+            fock_info_list[4],   // flag1
+            fock_info_list[5],   // flag2
+            fock_info_list[6],   // flag3
+            fock_info_list[7],   // iMN
+            fock_info_list[8],   // iPQ
+            fock_info_list[9],   // iMP
+            fock_info_list[10],  // iNP
+            fock_info_list[11],  // iMQ
+            fock_info_list[12],  // iNQ
+            fock_info_list[13],  // iMP0
+            fock_info_list[14],  // iMQ0
+            fock_info_list[15],  // iNP0
             D1, D2, D3,
             F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
             sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-            ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
+            ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
+            load_MN, load_P, write_MN, write_P
         );
     }
 }
@@ -197,7 +231,7 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                         int thread_batch_nints;
                         
                         CInt_computeShellQuartetBatch_SIMINT(
-                            basis, simint, nt,
+                            simint, nt,
                             thread_quartet_lists->M, 
                             thread_quartet_lists->N, 
                             target_shellpair_list->P_list,
@@ -241,7 +275,7 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                     int thread_batch_nints;
                     
                     CInt_computeShellQuartetBatch_SIMINT(
-                        basis, simint, nt,
+                        simint, nt,
                         thread_quartet_lists->M, 
                         thread_quartet_lists->N, 
                         target_shellpair_list->P_list,
