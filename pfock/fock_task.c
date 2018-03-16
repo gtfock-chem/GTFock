@@ -48,7 +48,7 @@ void update_F_with_KetShellPairList(
     {
         int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
 
-        if (ipair == 0) load_MN = 1; else load_MN = 0;
+        if (ipair == 0)          load_MN  = 1; else load_MN  = 0;
         if (ipair + 1 == npairs) write_MN = 1; else write_MN = 0;
         
         if (prev_iMP == fock_info_list[9])  // iMP == previous iMP, P == previous P
@@ -74,6 +74,8 @@ void update_F_with_KetShellPairList(
         {
             load_MN  = 1;
             load_P   = 1;
+            write_MN = 1;
+            write_P  = 1;
         }
 
         update_F_opt_buffer(
