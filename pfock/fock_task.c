@@ -62,8 +62,8 @@ void update_F_with_KetShellPairList(
         if (ipair + 1 == npairs) write_P = 1;
         if (ipair < npairs - 1)
         {
-            int *n_fock_info_list = fock_info_list + 16;
-            if (fock_info_list[9] != n_fock_info_list[9]) write_P = 1;
+            // fock_info_list[25] == the fock_info_list[9] for ipair+1
+            if (fock_info_list[9] != fock_info_list[25]) write_P = 1;
         }
         
         prev_iMP = fock_info_list[9];
@@ -78,30 +78,58 @@ void update_F_with_KetShellPairList(
             write_P  = 1;
         }
 
-        update_F_opt_buffer(
-            tid, num_dmat, &batch_integrals[ipair * batch_nints], 
-            fock_info_list[0],   // dimM
-            fock_info_list[1],   // dimN
-            fock_info_list[2],   // dimP
-            fock_info_list[3],   // dimQ
-            fock_info_list[4],   // flag1
-            fock_info_list[5],   // flag2
-            fock_info_list[6],   // flag3
-            fock_info_list[7],   // iMN
-            fock_info_list[8],   // iPQ
-            fock_info_list[9],   // iMP
-            fock_info_list[10],  // iNP
-            fock_info_list[11],  // iMQ
-            fock_info_list[12],  // iNQ
-            fock_info_list[13],  // iMP0
-            fock_info_list[14],  // iMQ0
-            fock_info_list[15],  // iNP0
-            D1, D2, D3,
-            F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
-            sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-            ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
-            load_MN, load_P, write_MN, write_P
-        );
+        int is_1111 = fock_info_list[0] * fock_info_list[1] * fock_info_list[2] * fock_info_list[3];
+        if (is_1111 == 1)
+        {
+            update_F_1111(
+                tid, num_dmat, &batch_integrals[ipair * batch_nints], 
+                1,   // dimM
+                1,   // dimN
+                1,   // dimP
+                1,   // dimQ
+                fock_info_list[4],   // flag1
+                fock_info_list[5],   // flag2
+                fock_info_list[6],   // flag3
+                fock_info_list[7],   // iMN
+                fock_info_list[8],   // iPQ
+                fock_info_list[9],   // iMP
+                fock_info_list[10],  // iNP
+                fock_info_list[11],  // iMQ
+                fock_info_list[12],  // iNQ
+                fock_info_list[13],  // iMP0
+                fock_info_list[14],  // iMQ0
+                fock_info_list[15],  // iNP0
+                D1, D2, D3,
+                F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
+                sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
+                ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
+            );
+        } else {
+            update_F_opt_buffer(
+                tid, num_dmat, &batch_integrals[ipair * batch_nints], 
+                fock_info_list[0],   // dimM
+                fock_info_list[1],   // dimN
+                fock_info_list[2],   // dimP
+                fock_info_list[3],   // dimQ
+                fock_info_list[4],   // flag1
+                fock_info_list[5],   // flag2
+                fock_info_list[6],   // flag3
+                fock_info_list[7],   // iMN
+                fock_info_list[8],   // iPQ
+                fock_info_list[9],   // iMP
+                fock_info_list[10],  // iNP
+                fock_info_list[11],  // iMQ
+                fock_info_list[12],  // iNQ
+                fock_info_list[13],  // iMP0
+                fock_info_list[14],  // iMQ0
+                fock_info_list[15],  // iNP0
+                D1, D2, D3,
+                F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
+                sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
+                ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
+                load_MN, load_P, write_MN, write_P
+            );
+        }
     }
 }
 
