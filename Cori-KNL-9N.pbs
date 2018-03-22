@@ -1,0 +1,46 @@
+#!/bin/bash -l
+#SBATCH -N 9
+#SBATCH -q debug
+#SBATCH -C knl,quad,cache      
+#SBATCH -t 0:30:00
+#SBATCH -L SCRATCH
+
+export OMP_PROC_BIND=true   #"spread" is also good for Intel and CCE compilers
+export OMP_PLACES=threads
+
+# We need to use -c and --cpu_bind=cores to tell slurm how to place the MPI ranks.
+# We use 9 nodes to run 9 MPI ranks, so 1 MPI ranks per node, 68 * 4 = 272 logic cores per MPI rank.
+
+# These 4 environment variables are for showing ARMCI configurations (not necessary) and 
+# disable MPI datatypes in ARMCI (essential for correct result)
+export ARMCI_VERBOSE=1
+export ARMCI_SHR_BUF_METHOD=COPY
+export ARMCI_STRIDED_METHOD=IOV
+export ARMCI_IOV_METHOD=BATCHED
+
+
+#echo "================= 6-31g + protein_35 ================================"
+#srun -n 9 -c 272 --cpu_bind=cores ./scf data/6-31g/6-31g.gbs data/1hsg/protein_35.xyz 3 3 2 5 20
+
+#echo "================= cc-pvdz + benzene ================================"
+#srun -n 9 -c 272 --cpu_bind=cores ./scf data/cc-pvdz/cc-pvdz.gbs data/benzene.xyz 3 3 2 5 30
+
+echo "================= cc-pvdz + protein_28 ================================"
+srun -n 9 -c 272 --cpu_bind=cores ./scf data/cc-pvdz/cc-pvdz.gbs data/1hsg/protein_28.xyz 3 3 2 5 10
+
+#echo "================= cc-pvdz + 1hsg_35 ================================"
+#srun -n 9 -c 272 --cpu_bind=cores ./scf data/cc-pvdz/cc-pvdz.gbs data/1hsg/1hsg_35.xyz 3 3 2 5 10
+
+#echo "================= aug-cc-pvtz + benzene ================================"
+#srun -n 9 -c 272 --cpu_bind=cores ./scf data/aug-cc-pvtz/aug-cc-pvtz.gbs data/benzene.xyz 3 3 2 5 20
+
+echo "================= aug-cc-pvtz + 1hsg_28 ================================"
+srun -n 9 -c 272 --cpu_bind=cores ./scf data/aug-cc-pvtz/aug-cc-pvtz.gbs data/1hsg/1hsg_28.xyz 3 3 2 5 10
+
+#echo "================= ano-dz + benzene ================================"
+#srun -n 9 -c 272 --cpu_bind=cores ./scf data/ano-dz.gbs data/benzene.xyz 3 3 2 5 20
+
+echo "================= ano-dz + 1hsg_28 ================================"
+srun -n 9 -c 272 --cpu_bind=cores ./scf data/ano-dz.gbs data/1hsg/1hsg_28.xyz 3 3 2 5 10
+
+
