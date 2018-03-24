@@ -1,0 +1,276 @@
+================= cc-pvdz + 1hsg_45 ================================
+MPI level: 2
+import_basis() line 607 Warning: no valid basis type in gbs file... assuming Simint
+normalization() line 92 Warning: NOT performing normalization for CARTESIAN
+import_guess() line 829 Found SAD file for H
+import_guess() line 859 Using SAD file for H
+import_guess() line 829 Found SAD file for C
+import_guess() line 859 Using SAD file for C
+import_guess() line 829 Found SAD file for N
+import_guess() line 859 Using SAD file for N
+import_guess() line 829 Found SAD file for O
+import_guess() line 859 Using SAD file for O
+import_guess() line 829 Found SAD file for P
+import_guess() line 859 Using SAD file for P
+import_guess() line 829 Found SAD file for S
+import_guess() line 859 Using SAD file for S
+Job information:
+  molecule:  1hsg_45.xyz
+  basisset:  cc-pvdz
+  charge     = -3
+  #atoms     = 554
+  #shells    = 2430
+  #functions = 5330
+  fock build uses   64 (8x8) nodes
+  purification uses 64 (4x4x4) nodes
+  #tasks = 1600 (40x40)
+  #nthreads_cpu = 272
+Initializing pfock ...
+ARMCI-MPI initialized with 64 processes, MPI v3.1
+  PROGRESS_THREAD        = DISABLED
+  ALLOC_SHM used         = TRUE
+  WINDOW type used       = CREATE
+  STRIDED_METHOD         = IOV
+  IOV_METHOD             = BATCHED
+  IOV_BATCHED_LIMIT      = UNLIMITED
+  IOV_CHECKS             = FALSE
+  SHR_BUF_METHOD         = COPY
+  NONCOLLECTIVE_GROUPS   = FALSE
+  CACHE_RANK_TRANSLATION = TRUE
+  DEBUG_ALLOC            = FALSE
+
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+**** PFock: screening ...
+Screen method: 2
+Screen tol:    1.000000e-14
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+**** PFock: takes 35.225 secs
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+  FD size (918 918 4795 4795)
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+Screen method: 2
+Screen tol:    1.000000e-14
+  CPU uses 38717.550 MB
+  Done
+Initializing purification ...
+  CPU uses 461.616 MB
+  Done
+Preprocessing one electron matrices ...
+  computing H
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+  pdsyev_ takes 56.279 secs
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+  takes 58.743 secs
+  Done
+  computing H
+MPI_WIN_MODEL = MPI_WIN_SEPARATE 
+  takes 6.579 secs
+  Done
+Computing SCF ...
+  initialing D ...
+  nuc energy = 110156.1283798949
+  iter 0
+**** PFock: correct F ...
+    fock build takes 40.923 secs
+    energy -12437.5675034182 (-122593.6958833131)
+    diis takes 2.158 secs, 280.671 Gflops
+mu_bar = 7.381104e-01, lambda = 1.167422e+00, hmax = 8.453345e+02, hmin = -8.557616e+02, nobtls = 986
+    purification takes 9.360 secs, 63 iterations, 4206.106 Gflops
+  iter 1
+**** PFock: correct F ...
+    fock build takes 38.320 secs
+    energy -7991.3672437906 (-118147.4956236856), 4.446200e+03
+    diis takes 0.178 secs, 3412.131 Gflops
+mu_bar = 2.673020e+01, lambda = 4.082465e-02, hmax = 2.417880e+04, hmin = -2.382905e+04, nobtls = 986
+    purification takes 11.529 secs, 83 iterations, 4465.588 Gflops
+  iter 2
+**** PFock: correct F ...
+    fock build takes 41.721 secs
+    energy 13331.4584409395 (-96824.6699389554), 2.132283e+04
+    diis takes 2.156 secs, 842.847 Gflops
+mu_bar = -1.462565e+01, lambda = 6.724038e-02, hmax = 1.464918e+04, hmin = -1.488016e+04, nobtls = 986
+    purification takes 27.276 secs, 200 iterations, 4485.538 Gflops
+  iter 3
+**** PFock: correct F ...
+    fock build takes 38.062 secs
+    energy 80677.2144591195 (-29478.9139207754), 6.734576e+04
+    diis takes 1.753 secs, 1036.493 Gflops
+mu_bar = -1.472660e+01, lambda = 6.689830e-02, hmax = 1.472406e+04, hmin = -1.495629e+04, nobtls = 986
+    purification takes 30.214 secs, 200 iterations, 4049.349 Gflops
+  iter 4
+**** PFock: correct F ...
+    fock build takes 40.141 secs
+    energy 80852.8242963438 (-29303.3040835511), 1.756098e+02
+    diis takes 1.754 secs, 1035.711 Gflops
+mu_bar = -1.473944e+01, lambda = 6.686110e-02, hmax = 1.473225e+04, hmin = -1.496463e+04, nobtls = 986
+    purification takes 11.852 secs, 75 iterations, 3934.816 Gflops
+  iter 5
+**** PFock: correct F ...
+    fock build takes 41.063 secs
+    energy 80629.0213999554 (-29527.1069799396), 2.238029e+02
+    diis takes 1.844 secs, 985.241 Gflops
+mu_bar = -1.473974e+01, lambda = 6.686030e-02, hmax = 1.473243e+04, hmin = -1.496481e+04, nobtls = 986
+    purification takes 29.933 secs, 200 iterations, 4087.380 Gflops
+  iter 6
+**** PFock: correct F ...
+    fock build takes 39.447 secs
+    energy 80629.5795789264 (-29526.5488009685), 5.581790e-01
+    diis takes 1.806 secs, 1006.322 Gflops
+mu_bar = -1.473999e+01, lambda = 6.686116e-02, hmax = 1.473224e+04, hmin = -1.496461e+04, nobtls = 986
+    purification takes 29.569 secs, 200 iterations, 4137.620 Gflops
+  iter 7
+**** PFock: correct F ...
+    fock build takes 38.321 secs
+    energy 80659.6022974777 (-29496.5260824172), 3.002272e+01
+    diis takes 1.804 secs, 1007.331 Gflops
+mu_bar = -1.473937e+01, lambda = 6.686285e-02, hmax = 1.473187e+04, hmin = -1.496423e+04, nobtls = 986
+    purification takes 29.298 secs, 200 iterations, 4175.989 Gflops
+  iter 8
+**** PFock: correct F ...
+    fock build takes 42.236 secs
+    energy 80666.1253602429 (-29490.0030196520), 6.523063e+00
+    diis takes 2.028 secs, 896.072 Gflops
+mu_bar = -1.473934e+01, lambda = 6.686207e-02, hmax = 1.473204e+04, hmin = -1.496441e+04, nobtls = 986
+    purification takes 11.465 secs, 75 iterations, 4067.857 Gflops
+  iter 9
+**** PFock: correct F ...
+    fock build takes 38.698 secs
+    energy 80666.7194525233 (-29489.4089273716), 5.940923e-01
+    diis takes 1.937 secs, 938.266 Gflops
+mu_bar = -1.473934e+01, lambda = 6.686206e-02, hmax = 1.473204e+04, hmin = -1.496441e+04, nobtls = 986
+    purification takes 11.034 secs, 73 iterations, 4116.855 Gflops
+  iter 10
+**** PFock: correct F ...
+    fock build takes 38.183 secs
+    energy 80666.6108794007 (-29489.5175004943), 1.085731e-01
+    diis takes 1.936 secs, 938.754 Gflops
+mu_bar = -1.473913e+01, lambda = 6.686257e-02, hmax = 1.473193e+04, hmin = -1.496430e+04, nobtls = 986
+    purification takes 10.807 secs, 73 iterations, 4203.217 Gflops
+  iter 11
+**** PFock: correct F ...
+    fock build takes 38.360 secs
+    energy 80664.5699304288 (-29491.5584494662), 2.040949e+00
+    diis takes 1.950 secs, 931.815 Gflops
+mu_bar = -1.473849e+01, lambda = 6.686502e-02, hmax = 1.473139e+04, hmin = -1.496375e+04, nobtls = 986
+    purification takes 10.603 secs, 70 iterations, 4112.870 Gflops
+  iter 12
+**** PFock: correct F ...
+    fock build takes 38.349 secs
+    energy 80666.7546207741 (-29489.3737591208), 2.184690e+00
+    diis takes 0.791 secs, 2297.030 Gflops
+mu_bar = -1.473085e+01, lambda = 6.689065e-02, hmax = 1.472575e+04, hmin = -1.495800e+04, nobtls = 986
+    purification takes 9.944 secs, 71 iterations, 4446.563 Gflops
+  iter 13
+**** PFock: correct F ...
+    fock build takes 38.735 secs
+    energy 80680.7090603791 (-29475.4193195158), 1.395444e+01
+    diis takes 0.766 secs, 2371.992 Gflops
+mu_bar = -1.473013e+01, lambda = 6.689203e-02, hmax = 1.472544e+04, hmin = -1.495770e+04, nobtls = 986
+    purification takes 27.504 secs, 200 iterations, 4448.310 Gflops
+  iter 14
+**** PFock: correct F ...
+    fock build takes 38.509 secs
+    energy 80678.9877964715 (-29477.1405834234), 1.721264e+00
+    diis takes 0.715 secs, 2541.228 Gflops
+mu_bar = -1.472948e+01, lambda = 6.689679e-02, hmax = 1.472439e+04, hmin = -1.495663e+04, nobtls = 986
+    purification takes 9.713 secs, 70 iterations, 4489.658 Gflops
+  iter 15
+**** PFock: correct F ...
+    fock build takes 39.620 secs
+    energy 80688.8595823577 (-29467.2687975372), 9.871786e+00
+    diis takes 0.726 secs, 2501.543 Gflops
+mu_bar = -1.473034e+01, lambda = 6.688752e-02, hmax = 1.472643e+04, hmin = -1.495871e+04, nobtls = 986
+    purification takes 9.184 secs, 68 iterations, 4616.629 Gflops
+  iter 16
+**** PFock: correct F ...
+    fock build takes 39.254 secs
+    energy 80678.1334091155 (-29477.9949707794), 1.072617e+01
+    diis takes 0.740 secs, 2454.750 Gflops
+mu_bar = -1.472901e+01, lambda = 6.689764e-02, hmax = 1.472421e+04, hmin = -1.495644e+04, nobtls = 986
+    purification takes 27.183 secs, 200 iterations, 4500.816 Gflops
+  iter 17
+**** PFock: correct F ...
+    fock build takes 39.508 secs
+    energy 80692.0035831470 (-29464.1247967479), 1.387017e+01
+    diis takes 0.802 secs, 2264.419 Gflops
+mu_bar = -1.473153e+01, lambda = 6.688192e-02, hmax = 1.472767e+04, hmin = -1.495997e+04, nobtls = 986
+    purification takes 9.264 secs, 69 iterations, 4641.899 Gflops
+  iter 18
+**** PFock: correct F ...
+    fock build takes 40.273 secs
+    energy 80675.5194172918 (-29480.6089626031), 1.648417e+01
+    diis takes 0.752 secs, 2414.675 Gflops
+mu_bar = -1.472743e+01, lambda = 6.689813e-02, hmax = 1.472410e+04, hmin = -1.495634e+04, nobtls = 986
+    purification takes 13.212 secs, 94 iterations, 4400.771 Gflops
+  iter 19
+**** PFock: correct F ...
+    fock build takes 40.740 secs
+    energy 80693.8258993617 (-29462.3024805333), 1.830648e+01
+    diis takes 0.717 secs, 2535.490 Gflops
+mu_bar = -1.473559e+01, lambda = 6.687068e-02, hmax = 1.473014e+04, hmin = -1.496248e+04, nobtls = 986
+    purification takes 27.116 secs, 200 iterations, 4511.934 Gflops
+  iter 20
+**** PFock: correct F ...
+    fock build takes 38.649 secs
+    energy 80667.1429329576 (-29488.9854469374), 2.668297e+01
+    diis takes 0.735 secs, 2473.446 Gflops
+mu_bar = -1.472976e+01, lambda = 6.689102e-02, hmax = 1.472566e+04, hmin = -1.495792e+04, nobtls = 986
+    purification takes 27.113 secs, 200 iterations, 4512.509 Gflops
+  iter 21
+**** PFock: correct F ...
+    fock build takes 41.215 secs
+    energy 80666.1516572352 (-29489.9767226597), 9.912757e-01
+    diis takes 0.708 secs, 2565.497 Gflops
+mu_bar = -1.472958e+01, lambda = 6.689136e-02, hmax = 1.472559e+04, hmin = -1.495785e+04, nobtls = 986
+    purification takes 27.277 secs, 200 iterations, 4485.381 Gflops
+  iter 22
+**** PFock: correct F ...
+    fock build takes 41.060 secs
+    energy 80666.6508001405 (-29489.4775797544), 4.991429e-01
+    diis takes 0.774 secs, 2346.470 Gflops
+mu_bar = -1.472865e+01, lambda = 6.689261e-02, hmax = 1.472532e+04, hmin = -1.495757e+04, nobtls = 986
+    purification takes 26.815 secs, 200 iterations, 4562.659 Gflops
+  iter 23
+**** PFock: correct F ...
+    fock build takes 41.547 secs
+    energy 80668.8003685072 (-29487.3280113877), 2.149568e+00
+    diis takes 0.687 secs, 2644.747 Gflops
+mu_bar = -1.472840e+01, lambda = 6.689268e-02, hmax = 1.472530e+04, hmin = -1.495755e+04, nobtls = 986
+    purification takes 27.143 secs, 200 iterations, 4507.562 Gflops
+  iter 24
+**** PFock: correct F ...
+    fock build takes 42.604 secs
+    energy 80671.5409069031 (-29484.5874729918), 2.740538e+00
+    diis takes 0.700 secs, 2594.569 Gflops
+mu_bar = -1.472841e+01, lambda = 6.689254e-02, hmax = 1.472533e+04, hmin = -1.495758e+04, nobtls = 986
+    purification takes 26.411 secs, 200 iterations, 4632.395 Gflops
+  iter 25
+**** PFock: correct F ...
+    fock build takes 39.392 secs
+    energy 80671.0603808585 (-29485.0679990364), 4.805260e-01
+    diis takes 0.769 secs, 2361.421 Gflops
+mu_bar = -1.472926e+01, lambda = 6.689115e-02, hmax = 1.472564e+04, hmin = -1.495789e+04, nobtls = 986
+    purification takes 27.146 secs, 200 iterations, 4507.027 Gflops
+  iter 26
+**** PFock: correct F ...
+    fock build takes 40.592 secs
+    energy 80674.3254087186 (-29481.8029711764), 3.265028e+00
+    diis takes 0.684 secs, 2655.309 Gflops
+mu_bar = -1.472856e+01, lambda = 6.689248e-02, hmax = 1.472534e+04, hmin = -1.495760e+04, nobtls = 986
+    purification takes 9.527 secs, 69 iterations, 4513.693 Gflops
+  iter 27
+**** PFock: correct F ...
+slurmstepd: error: *** STEP 11163515.0 ON nid03915 CANCELLED AT 2018-03-24T09:46:49 DUE TO TIME LIMIT ***
+slurmstepd: error: *** JOB 11163515 ON nid03915 CANCELLED AT 2018-03-24T09:46:49 DUE TO TIME LIMIT ***
+srun: got SIGCONT
+srun: forcing job termination

@@ -36,8 +36,8 @@ srun -n 9 -c 88 --cpu_bind=cores ./scf data/aug-cc-pvtz/aug-cc-pvtz.gbs data/ben
 #echo "================= aug-cc-pvtz + protein_28 ================================"
 #srun -n 9 -c 88 --cpu_bind=cores ./scf data/aug-cc-pvtz/aug-cc-pvtz.gbs data/1hsg/protein_28.xyz 3 3 2 5 50
 
-echo "================= ano-dz + benzene ================================"
-srun -n 9 -c 88 --cpu_bind=cores ./scf data/ano-dz.gbs data/benzene.xyz 3 3 2 5 20
+#echo "================= ano-dz + benzene ================================"
+#srun -n 9 -c 88 --cpu_bind=cores ./scf data/ano-dz.gbs data/benzene.xyz 3 3 2 5 20
 
 #echo "================= ano-dz + protein_28 ================================"
 #srun -n 9 -c 88 --cpu_bind=cores ./scf data/ano-dz.gbs data/1hsg/protein_28.xyz 3 3 2 5 10
