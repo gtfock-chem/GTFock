@@ -133,23 +133,27 @@ void update_F_with_KetShellPairList(
     }
 }
 
-/*
+//#define fock_task_nonbatch fock_task
+#define fock_task_batched  fock_task
+
 // Non-batching version
 // for SCF, J = K
-void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
-               int *shellptr, double *shellvalue,
-               int *shellid, int *shellrid, int *f_startind,
-               int *rowpos, int *colpos, int *rowptr, int *colptr,
-               double tolscr2, int startrow, int startcol,
-               int startM, int endM, int startP, int endP,
-               double **D1, double **D2, double **D3,
-               double *F1, double *F2, double *F3,
-               double *F4, double *F5, double *F6, 
-               int ldX1, int ldX2, int ldX3,
-               int ldX4, int ldX5, int ldX6,
-               int sizeX1, int sizeX2, int sizeX3,
-               int sizeX4, int sizeX5, int sizeX6,
-               double *nitl, double *nsq)              
+void fock_task_nonbatch(
+    BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
+    int *shellptr, double *shellvalue,
+    int *shellid, int *shellrid, int *f_startind,
+    int *rowpos, int *colpos, int *rowptr, int *colptr,
+    double tolscr2, int startrow, int startcol,
+    int startM, int endM, int startP, int endP,
+    double **D1, double **D2, double **D3,
+    double *F1, double *F2, double *F3,
+    double *F4, double *F5, double *F6, 
+    int ldX1, int ldX2, int ldX3,
+    int ldX4, int ldX5, int ldX6,
+    int sizeX1, int sizeX2, int sizeX3,
+    int sizeX4, int sizeX5, int sizeX6,
+    double *nitl, double *nsq
+) 
 {
     int startMN = shellptr[startM];
     int endMN = shellptr[endM + 1];
@@ -255,24 +259,25 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
         }
     } // #pragma omp parallel
 }
-*/ 
 
 // for SCF, J = K
 // Batched ERI version
-void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
-               int *shellptr, double *shellvalue,
-               int *shellid, int *shellrid, int *f_startind,
-               int *rowpos, int *colpos, int *rowptr, int *colptr,
-               double tolscr2, int startrow, int startcol,
-               int startM, int endM, int startP, int endP,
-               double **D1, double **D2, double **D3,
-               double *F1, double *F2, double *F3,
-               double *F4, double *F5, double *F6, 
-               int ldX1, int ldX2, int ldX3,
-               int ldX4, int ldX5, int ldX6,
-               int sizeX1, int sizeX2, int sizeX3,
-               int sizeX4, int sizeX5, int sizeX6,
-               double *nitl, double *nsq)              
+void fock_task_batched(
+    BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
+    int *shellptr, double *shellvalue,
+    int *shellid, int *shellrid, int *f_startind,
+    int *rowpos, int *colpos, int *rowptr, int *colptr,
+    double tolscr2, int startrow, int startcol,
+    int startM, int endM, int startP, int endP,
+    double **D1, double **D2, double **D3,
+    double *F1, double *F2, double *F3,
+    double *F4, double *F5, double *F6, 
+    int ldX1, int ldX2, int ldX3,
+    int ldX4, int ldX5, int ldX6,
+    int sizeX1, int sizeX2, int sizeX3,
+    int sizeX4, int sizeX5, int sizeX6,
+    double *nitl, double *nsq
+)
 {
     int startMN = shellptr[startM];
     int endMN = shellptr[endM + 1];

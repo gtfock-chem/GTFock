@@ -28,8 +28,6 @@ MPI_INCDIR = .
 MPI_LIBDIR = .
 MPI_LIBS =
 
-# Use module: cray-ga/5.3.0.7, craype-hugepages2M
-# DO NOT use self-compiled GA and ARMCI, which may cause unknown error
 GA_INCDIR = /global/homes/h/huangh/scratch/GA-CrayMPI/include
 GA_LIBDIR = /global/homes/h/huangh/scratch/GA-CrayMPI/lib
 GA_LIBS   = -lga 
@@ -40,8 +38,6 @@ ARMCI_LIBS   = -larmci
 
 ERD_LIBDIR = /global/homes/h/huangh/scratch/libcint
 ERD_INCDIR = /global/homes/h/huangh/scratch/libcint
-
-# Simint is compiled by ICC 17.0.3.191, version compiled by 18.0.1.163 cannot converge with
-# benzene.aug-cc-pvtz on 3 nodes
+#OLD_ERD_LIBDIR = /global/homes/h/huangh/scratch/OptErd_Makefile/lib
+#ERD_LIBS = ${ERD_LIBDIR}/libcint.a ${OLD_ERD_LIBDIR}/liberd.a ${OLD_ERD_LIBDIR}/liboed.a
 ERD_LIBS = ${ERD_LIBDIR}/libcint.a /global/homes/h/huangh/scratch/gtfock-simint/build-avx512/install/lib64/libsimint.a
-#ERD_LIBS = ${ERD_LIBDIR}/libcint.a /global/homes/h/huangh/scratch/gtfock-simint-KNL5/lib64/libsimint.a
