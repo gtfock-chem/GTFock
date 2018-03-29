@@ -1,8 +1,6 @@
 #pragma once
 
-// Use thread-local buffer to reduce atomic add and unused cache line touch
-// of the D_** arrays. Permute the loop order to provide continuous memory 
-// access in the inner-most loop. 
+// Use thread-local buffer to reduce atomic add 
 static inline void update_F_opt_buffer(
     int tid, int num_dmat, double *integrals, int dimM, int dimN,
     int dimP, int dimQ,
@@ -24,20 +22,12 @@ static inline void update_F_opt_buffer(
     int flag7 = (flag4 == 1 && flag3 == 1) ? 1 : 0;
     
     double *thread_buf = update_F_buf + tid * update_F_buf_size;
-    int required_buf_size = 2 * ((dimP + dimN + dimM) * dimQ + (dimN + dimM) * dimP + dimM * dimN);
+    int required_buf_size = (dimP + dimN + dimM) * dimQ + (dimN + dimM) * dimP + dimM * dimN;
     assert(required_buf_size <= update_F_buf_size); 
     
-    double *read_buf  = thread_buf;
-    double *write_buf = thread_buf + (update_F_buf_size / 2);
+    double *write_buf = thread_buf;
     
     // Setup buffer pointers
-    double *D_MN_buf = read_buf;  read_buf += dimM * dimN;
-    double *D_MP_buf = read_buf;  read_buf += dimM * dimP;
-    double *D_NP_buf = read_buf;  read_buf += dimN * dimP;
-    double *D_PQ_buf = read_buf;  read_buf += dimP * dimQ;
-    double *D_NQ_buf = read_buf;  read_buf += dimN * dimQ;
-    double *D_MQ_buf = read_buf;  read_buf += dimM * dimQ;
-    
     double *J_MN_buf = write_buf;  write_buf += dimM * dimN;
     double *K_MP_buf = write_buf;  write_buf += dimM * dimP;
     double *K_NP_buf = write_buf;  write_buf += dimN * dimP;
@@ -61,39 +51,11 @@ static inline void update_F_opt_buffer(
         double *K_MQ = &F_MQ[i * sizeX5] + iMQ;
         double *K_NP = &F_NP[i * sizeX6] + iNP;
     
-        // Load required D_MN, D_PQ, D_NQ, D_MP, D_MQ, D_NP to buffer
-        if (load_MN)
-        {
-            for (int iM = 0; iM < dimM; iM++)
-                memcpy(D_MN_buf + iM * dimN, D_MN + iM * ldMN, sizeof(double) * dimN);
-            
-            memset(J_MN_buf, 0, sizeof(double) * dimM * dimN);
-        }
-        
-        if (load_P)
-        {
-            for (int iM = 0; iM < dimM; iM++)
-                memcpy(D_MP_buf + iM * dimP, D_MP + iM * ldNQ, sizeof(double) * dimP);
-            
-            for (int iN = 0; iN < dimN; iN++)
-                memcpy(D_NP_buf + iN * dimP, D_NP + iN * ldNQ, sizeof(double) * dimP);
-            
-            memset(K_MP_buf, 0, sizeof(double) * dimP * (dimM + dimN));
-        }
-        
-        
-        for (int iM = 0; iM < dimM; iM++)
-            memcpy(D_MQ_buf + iM * dimQ, D_MQ + iM * ldNQ, sizeof(double) * dimQ);
-        
-        for (int iN = 0; iN < dimN; iN++)
-            memcpy(D_NQ_buf + iN * dimQ, D_NQ + iN * ldNQ, sizeof(double) * dimQ);
-        
-        for (int iP = 0; iP < dimP; iP++)
-            memcpy(D_PQ_buf + iP * dimQ, D_PQ + iP * ldPQ, sizeof(double) * dimQ);
-        
         // Reset result buffer
+        if (load_MN) memset(J_MN_buf, 0, sizeof(double) * dimM * dimN);
+        if (load_P)  memset(K_MP_buf, 0, sizeof(double) * dimP * (dimM + dimN));
         memset(J_PQ_buf, 0, sizeof(double) * dimQ * (dimM + dimN + dimP));
-        
+
         double vPQ_coef = 2.0 * (flag3 + flag5 + flag6 + flag7);
         double vMQ_coef = (flag2 + flag6) * 1.0;
         double vNQ_coef = (flag4 + flag7) * 1.0;
@@ -107,14 +69,14 @@ static inline void update_F_opt_buffer(
             for (int iN = 0; iN < dimN; iN++) 
             {
                 int imn = iM * dimN + iN;
-                double vPQ = vPQ_coef * D_MN_buf[imn];
+                double vPQ = vPQ_coef * D_MN[iM * ldMN + iN]; //D_MN_buf[imn];
                 double j_MN = 0.0;
                 for (int iP = 0; iP < dimP; iP++) 
                 {
                     int inp = iN * dimP + iP;
                     int imp = iM * dimP + iP;
-                    double vMQ = vMQ_coef * D_NP_buf[inp];
-                    double vNQ = vNQ_coef * D_MP_buf[imp];
+                    double vMQ = vMQ_coef * D_NP[iN * ldNQ + iP]; //D_NP_buf[inp];
+                    double vNQ = vNQ_coef * D_MP[iM * ldNQ + iP]; //D_MP_buf[imp];
                     
                     int Ibase = dimQ * (iP + dimP * imn);
                     int ipq_base = iP * dimQ;
@@ -129,9 +91,9 @@ static inline void update_F_opt_buffer(
                     {
                         double I = integrals[Ibase + iQ];
                         
-                        j_MN += D_PQ_buf[ipq_base + iQ] * I;
-                        k_MN -= D_NQ_buf[inq_base + iQ] * I;
-                        k_NP -= D_MQ_buf[imq_base + iQ] * I;
+                        j_MN += I * D_PQ[iP * ldPQ + iQ];  //D_PQ_buf[ipq_base + iQ] * I;
+                        k_MN -= I * D_NQ[iN * ldNQ + iQ];  //D_NQ_buf[inq_base + iQ] * I;
+                        k_NP -= I * D_MQ[iM * ldNQ + iQ];  //D_MQ_buf[imq_base + iQ] * I;
                         J_PQ_buf[ipq_base + iQ] += vPQ * I;
                         K_MQ_buf[imq_base + iQ] -= vMQ * I;
                         K_NQ_buf[inq_base + iQ] -= vNQ * I;
@@ -233,20 +195,12 @@ static inline void update_F_opt_buffer_Q1(
     int flag7 = (flag4 == 1 && flag3 == 1) ? 1 : 0;
     
     double *thread_buf = update_F_buf + tid * update_F_buf_size;
-    int required_buf_size = 2 * ((dimP + dimN + dimM) * dimQ + (dimN + dimM) * dimP + dimM * dimN);
+    int required_buf_size = (dimP + dimN + dimM) * dimQ + (dimN + dimM) * dimP + dimM * dimN;
     assert(required_buf_size <= update_F_buf_size); 
     
-    double *read_buf  = thread_buf;
-    double *write_buf = thread_buf + (update_F_buf_size / 2);
+    double *write_buf = thread_buf;
     
     // Setup buffer pointers
-    double *D_MN_buf = read_buf;  read_buf += dimM * dimN;
-    double *D_MP_buf = read_buf;  read_buf += dimM * dimP;
-    double *D_NP_buf = read_buf;  read_buf += dimN * dimP;
-    double *D_PQ_buf = read_buf;  read_buf += dimP * dimQ;
-    double *D_NQ_buf = read_buf;  read_buf += dimN * dimQ;
-    double *D_MQ_buf = read_buf;  read_buf += dimM * dimQ;
-    
     double *J_MN_buf = write_buf;  write_buf += dimM * dimN;
     double *K_MP_buf = write_buf;  write_buf += dimM * dimP;
     double *K_NP_buf = write_buf;  write_buf += dimN * dimP;
@@ -270,37 +224,9 @@ static inline void update_F_opt_buffer_Q1(
         double *K_MQ = &F_MQ[i * sizeX5] + iMQ;
         double *K_NP = &F_NP[i * sizeX6] + iNP;
     
-        // Load required D_MN, D_PQ, D_NQ, D_MP, D_MQ, D_NP to buffer
-        if (load_MN)
-        {
-            for (int iM = 0; iM < dimM; iM++)
-                memcpy(D_MN_buf + iM * dimN, D_MN + iM * ldMN, sizeof(double) * dimN);
-            
-            memset(J_MN_buf, 0, sizeof(double) * dimM * dimN);
-        }
-        
-        if (load_P)
-        {
-            for (int iM = 0; iM < dimM; iM++)
-                memcpy(D_MP_buf + iM * dimP, D_MP + iM * ldNQ, sizeof(double) * dimP);
-            
-            for (int iN = 0; iN < dimN; iN++)
-                memcpy(D_NP_buf + iN * dimP, D_NP + iN * ldNQ, sizeof(double) * dimP);
-            
-            memset(K_MP_buf, 0, sizeof(double) * dimP * (dimM + dimN));
-        }
-        
-        
-        for (int iM = 0; iM < dimM; iM++)
-            memcpy(D_MQ_buf + iM * dimQ, D_MQ + iM * ldNQ, sizeof(double) * dimQ);
-        
-        for (int iN = 0; iN < dimN; iN++)
-            memcpy(D_NQ_buf + iN * dimQ, D_NQ + iN * ldNQ, sizeof(double) * dimQ);
-        
-        for (int iP = 0; iP < dimP; iP++)
-            memcpy(D_PQ_buf + iP * dimQ, D_PQ + iP * ldPQ, sizeof(double) * dimQ);
-        
         // Reset result buffer
+        if (load_MN) memset(J_MN_buf, 0, sizeof(double) * dimM * dimN);
+        if (load_P) memset(K_MP_buf, 0, sizeof(double) * dimP * (dimM + dimN));
         memset(J_PQ_buf, 0, sizeof(double) * dimQ * (dimM + dimN + dimP));
         
         double vPQ_coef = 2.0 * (flag3 + flag5 + flag6 + flag7);
@@ -316,14 +242,14 @@ static inline void update_F_opt_buffer_Q1(
             for (int iN = 0; iN < dimN; iN++) 
             {
                 int imn = iM * dimN + iN;
-                double vPQ = vPQ_coef * D_MN_buf[imn];
+                double vPQ = vPQ_coef * D_MN[iM * ldMN + iN]; // D_MN_buf[imn];
                 double j_MN = 0.0;
                 for (int iP = 0; iP < dimP; iP++) 
                 {
                     int inp = iN * dimP + iP;
                     int imp = iM * dimP + iP;
-                    double vMQ = vMQ_coef * D_NP_buf[inp];
-                    double vNQ = vNQ_coef * D_MP_buf[imp];
+                    double vMQ = vMQ_coef * D_NP[iN * ldNQ + iP]; // D_NP_buf[inp];
+                    double vNQ = vNQ_coef * D_MP[iM * ldNQ + iP]; // D_MP_buf[imp];
                     
                     int Ibase = iP + dimP * imn;
                     int ipq_base = iP * dimQ;
@@ -334,9 +260,9 @@ static inline void update_F_opt_buffer_Q1(
                     
                     double I = integrals[Ibase];
                         
-                    j_MN += D_PQ_buf[ipq_base] * I;
-                    k_MN -= D_NQ_buf[inq_base] * I;
-                    k_NP -= D_MQ_buf[imq_base] * I;
+                    j_MN += I * D_PQ[iP * ldPQ]; //D_PQ_buf[ipq_base] * I;
+                    k_MN -= I * D_NQ[iN * ldNQ]; //D_NQ_buf[inq_base] * I;
+                    k_NP -= I * D_MQ[iM * ldNQ]; //D_MQ_buf[imq_base] * I;
                     J_PQ_buf[ipq_base] += vPQ * I;
                     K_MQ_buf[imq_base] -= vMQ * I;
                     K_NQ_buf[inq_base] -= vNQ * I;
@@ -409,9 +335,6 @@ static inline void update_F_opt_buffer_Q1(
     } // for (int i = 0 ; i < num_dmat; i++) 
 }
 
-
-// Won't speedup too much, ~2% for cc-pVDZ, < 1% for aug-cc-pVTZ and ANO-DZ
-// Just for fulfilling my obsession :) 
 static inline void update_F_1111(
     int tid, int num_dmat, double *integrals, int dimM, int dimN,
     int dimP, int dimQ,
@@ -458,4 +381,5 @@ static inline void update_F_1111(
     } // for (int i = 0 ; i < num_dmat; i++)
 }
 
-// Original version can be found in the GitHub repository commit history
+// See update_F_orig.h for the original implementation of update_F()
+

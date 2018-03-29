@@ -195,7 +195,7 @@ void fock_task_nonbatch(
         max_buf_entry_size = (maxAM + 1) * (maxAM + 2) / 2;
         max_buf_entry_size = max_buf_entry_size * max_buf_entry_size;
         // max_buf_entry_size should be >= the product of any two items in {dimM, dimN, dimP, dimQ}
-        update_F_buf_size  = 12 * max_buf_entry_size;
+        update_F_buf_size  = 6 * max_buf_entry_size;
         int nthreads = omp_get_max_threads();
         update_F_buf = _mm_malloc(sizeof(double) * nthreads * update_F_buf_size, 64);
         assert(update_F_buf != NULL);
@@ -319,7 +319,7 @@ void fock_task_batched(
         max_buf_entry_size = (maxAM + 1) * (maxAM + 2) / 2;
         max_buf_entry_size = max_buf_entry_size * max_buf_entry_size;
         // max_buf_entry_size should be >= the product of any two items in {dimM, dimN, dimP, dimQ}
-        update_F_buf_size  = 12 * max_buf_entry_size;
+        update_F_buf_size  = 6 * max_buf_entry_size;
         int nthreads = omp_get_max_threads();
         update_F_buf = _mm_malloc(sizeof(double) * nthreads * update_F_buf_size, 64);
         assert(update_F_buf != NULL);
