@@ -583,7 +583,7 @@ static inline void update_F_opt_buffer_Q6(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
-                    #pragma ivdep
+                    #pragma simd
                     for (int iQ = 0; iQ < 6; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];
@@ -753,7 +753,7 @@ static inline void update_F_opt_buffer_Q10(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
-                    #pragma ivdep
+                    #pragma simd
                     for (int iQ = 0; iQ < 10; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];
@@ -923,7 +923,7 @@ static inline void update_F_opt_buffer_Q15(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
-                    #pragma ivdep
+                    #pragma simd
                     for (int iQ = 0; iQ < 15; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];
@@ -1020,7 +1020,8 @@ static inline void update_F_1111(
     double *F_MP, double *F_MQ, double *F_NP,
     int sizeX1, int sizeX2, int sizeX3,
     int sizeX4, int sizeX5, int sizeX6,
-    int ldMN, int ldPQ, int ldNQ, int ldMP, int ldMQ, int ldNP
+    int ldMN, int ldPQ, int ldNQ, int ldMP, int ldMQ, int ldNP,
+    int load_MN, int load_P, int write_MN, int write_P
 )
 {
     int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
