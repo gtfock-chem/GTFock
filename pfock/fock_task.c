@@ -31,6 +31,29 @@ int update_F_buf_size = 0;
 
 #include "update_F.h"
 
+#define UPDATE_F_OPT_BUFFER_ARGS    tid, num_dmat, &batch_integrals[ipair * batch_nints], \
+									fock_info_list[0],  \
+									fock_info_list[1],  \
+									fock_info_list[2],  \
+									fock_info_list[3],  \
+									fock_info_list[4],  \
+									fock_info_list[5],  \
+									fock_info_list[6],  \
+									fock_info_list[7],  \
+									fock_info_list[8],  \
+									fock_info_list[9],  \
+									fock_info_list[10], \
+									fock_info_list[11], \
+									fock_info_list[12], \
+									fock_info_list[13], \
+									fock_info_list[14], \
+									fock_info_list[15], \
+									D1, D2, D3, \
+									F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP, \
+									sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6, \
+									ldX1, ldX2, ldX3, ldX4, ldX5, ldX6, \
+									load_MN, load_P, write_MN, write_P 
+
 #include "thread_quartet_buf.h"
 
 void update_F_with_KetShellPairList(
@@ -81,82 +104,14 @@ void update_F_with_KetShellPairList(
         int is_1111 = fock_info_list[0] * fock_info_list[1] * fock_info_list[2] * fock_info_list[3];
         if (is_1111 == 1)
         {
-            update_F_1111(
-                tid, num_dmat, &batch_integrals[ipair * batch_nints], 
-                1,   // dimM
-                1,   // dimN
-                1,   // dimP
-                1,   // dimQ
-                fock_info_list[4],   // flag1
-                fock_info_list[5],   // flag2
-                fock_info_list[6],   // flag3
-                fock_info_list[7],   // iMN
-                fock_info_list[8],   // iPQ
-                fock_info_list[9],   // iMP
-                fock_info_list[10],  // iNP
-                fock_info_list[11],  // iMQ
-                fock_info_list[12],  // iNQ
-                fock_info_list[13],  // iMP0
-                fock_info_list[14],  // iMQ0
-                fock_info_list[15],  // iNP0
-                D1, D2, D3,
-                F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
-                sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
-            );
+            update_F_1111(UPDATE_F_OPT_BUFFER_ARGS);
         } else {
-            if (fock_info_list[3] == 1)
-            {
-                update_F_opt_buffer_Q1(
-                    tid, num_dmat, &batch_integrals[ipair * batch_nints], 
-                    fock_info_list[0],   // dimM
-                    fock_info_list[1],   // dimN
-                    fock_info_list[2],   // dimP
-                    1,   // dimQ
-                    fock_info_list[4],   // flag1
-                    fock_info_list[5],   // flag2
-                    fock_info_list[6],   // flag3
-                    fock_info_list[7],   // iMN
-                    fock_info_list[8],   // iPQ
-                    fock_info_list[9],   // iMP
-                    fock_info_list[10],  // iNP
-                    fock_info_list[11],  // iMQ
-                    fock_info_list[12],  // iNQ
-                    fock_info_list[13],  // iMP0
-                    fock_info_list[14],  // iMQ0
-                    fock_info_list[15],  // iNP0
-                    D1, D2, D3,
-                    F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
-                    sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                    ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
-                    load_MN, load_P, write_MN, write_P
-                );
-            } else {
-                update_F_opt_buffer(
-                    tid, num_dmat, &batch_integrals[ipair * batch_nints], 
-                    fock_info_list[0],   // dimM
-                    fock_info_list[1],   // dimN
-                    fock_info_list[2],   // dimP
-                    fock_info_list[3],   // dimQ
-                    fock_info_list[4],   // flag1
-                    fock_info_list[5],   // flag2
-                    fock_info_list[6],   // flag3
-                    fock_info_list[7],   // iMN
-                    fock_info_list[8],   // iPQ
-                    fock_info_list[9],   // iMP
-                    fock_info_list[10],  // iNP
-                    fock_info_list[11],  // iMQ
-                    fock_info_list[12],  // iNQ
-                    fock_info_list[13],  // iMP0
-                    fock_info_list[14],  // iMQ0
-                    fock_info_list[15],  // iNP0
-                    D1, D2, D3,
-                    F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
-                    sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                    ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
-                    load_MN, load_P, write_MN, write_P
-                );
-            }
+            if (fock_info_list[3] == 1) update_F_opt_buffer_Q1(UPDATE_F_OPT_BUFFER_ARGS);
+            else if (fock_info_list[3] == 3)  update_F_opt_buffer_Q3(UPDATE_F_OPT_BUFFER_ARGS);
+            else if (fock_info_list[3] == 6)  update_F_opt_buffer_Q6(UPDATE_F_OPT_BUFFER_ARGS);
+			else if (fock_info_list[3] == 10) update_F_opt_buffer_Q10(UPDATE_F_OPT_BUFFER_ARGS);
+			else if (fock_info_list[3] == 15) update_F_opt_buffer_Q15(UPDATE_F_OPT_BUFFER_ARGS);
+			else update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
         }
     }
 }
