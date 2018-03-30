@@ -241,36 +241,30 @@ static inline void update_F_opt_buffer_Q1(
         {
             for (int iN = 0; iN < dimN; iN++) 
             {
-                int imn = iM * dimN + iN;
+                const int imn = iM * dimN + iN;
+                const int imn_dimP = imn * dimP;
+                const int inp_base = iN * dimP;
+                const int imp_base = iM * dimP;
                 double vPQ = vPQ_coef * D_MN[iM * ldMN + iN]; // D_MN_buf[imn];
-                double j_MN = 0.0;
+                double j_MN = 0.0, k_MQ = 0.0, k_NQ = 0.0;
+                const int iN_ldNQ = iN * ldNQ, iM_ldNQ = iM * ldNQ;
                 for (int iP = 0; iP < dimP; iP++) 
                 {
-                    int inp = iN * dimP + iP;
-                    int imp = iM * dimP + iP;
-                    double vMQ = vMQ_coef * D_NP[iN * ldNQ + iP]; // D_NP_buf[inp];
-                    double vNQ = vNQ_coef * D_MP[iM * ldNQ + iP]; // D_MP_buf[imp];
+                    double vMQ = vMQ_coef * D_NP[iN_ldNQ + iP]; // D_NP_buf[inp];
+                    double vNQ = vNQ_coef * D_MP[iM_ldNQ + iP]; // D_MP_buf[imp];
                     
-                    int Ibase = iP + dimP * imn;
-                    int ipq_base = iP * dimQ;
-                    int imq_base = iM * dimQ;
-                    int inq_base = iN * dimQ;
-                    
-                    double k_MN = 0.0, k_NP = 0.0;
-                    
-                    double I = integrals[Ibase];
+                    double I = integrals[imn_dimP + iP];
                         
                     j_MN += I * D_PQ[iP * ldPQ]; //D_PQ_buf[ipq_base] * I;
-                    k_MN -= I * D_NQ[iN * ldNQ]; //D_NQ_buf[inq_base] * I;
-                    k_NP -= I * D_MQ[iM * ldNQ]; //D_MQ_buf[imq_base] * I;
-                    J_PQ_buf[ipq_base] += vPQ * I;
-                    K_MQ_buf[imq_base] -= vMQ * I;
-                    K_NQ_buf[inq_base] -= vNQ * I;
-                    
-                    K_MP_buf[imp] += k_MN * vMP_coef;
-                    K_NP_buf[inp] += k_NP * vNP_coef;
+                    k_MQ -= vMQ * I;
+                    k_NQ -= vNQ * I;
+                    J_PQ_buf[iP * dimQ] += vPQ * I;
+                    K_MP_buf[imp_base + iP] -= I * D_NQ[iN_ldNQ] * vMP_coef;
+                    K_NP_buf[inp_base + iP] -= I * D_MQ[iM_ldNQ] * vNP_coef;
                 } // for (int iM = 0; iM < dimM; iM++) 
-                J_MN_buf[imn] += j_MN * vMN_coef;
+                J_MN_buf[iM * dimN + iN] += j_MN * vMN_coef;
+                K_MQ_buf[iM * dimQ] += k_MQ;
+                K_NQ_buf[iN * dimQ] += k_NQ;
             } // for (int iQ = 0; iQ < dimQ; iQ++) 
         } // for (int iN = 0; iN < dimN; iN++)
         
