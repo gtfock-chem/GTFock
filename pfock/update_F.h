@@ -248,6 +248,7 @@ static inline void update_F_opt_buffer_Q1(
                 double vPQ = vPQ_coef * D_MN[iM * ldMN + iN]; // D_MN_buf[imn];
                 double j_MN = 0.0, k_MQ = 0.0, k_NQ = 0.0;
                 const int iN_ldNQ = iN * ldNQ, iM_ldNQ = iM * ldNQ;
+                // Don't vectorize this loop, too short
                 for (int iP = 0; iP < dimP; iP++) 
                 {
                     double vMQ = vMQ_coef * D_NP[iN_ldNQ + iP]; // D_NP_buf[inp];
