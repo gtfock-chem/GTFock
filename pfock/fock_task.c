@@ -31,6 +31,29 @@ int update_F_buf_size = 0;
 
 #include "update_F.h"
 
+#define UPDATE_F_OPT_BUFFER_ARGS    tid, num_dmat, &batch_integrals[ipair * batch_nints], \
+                                    fock_info_list[0],  \
+                                    fock_info_list[1],  \
+                                    fock_info_list[2],  \
+                                    fock_info_list[3],  \
+                                    fock_info_list[4],  \
+                                    fock_info_list[5],  \
+                                    fock_info_list[6],  \
+                                    fock_info_list[7],  \
+                                    fock_info_list[8],  \
+                                    fock_info_list[9],  \
+                                    fock_info_list[10], \
+                                    fock_info_list[11], \
+                                    fock_info_list[12], \
+                                    fock_info_list[13], \
+                                    fock_info_list[14], \
+                                    fock_info_list[15], \
+                                    D1, D2, D3, \
+                                    F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP, \
+                                    sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6, \
+                                    ldX1, ldX2, ldX3, ldX4, ldX5, ldX6, \
+                                    load_MN, load_P, write_MN, write_P 
+
 #include "thread_quartet_buf.h"
 
 void update_F_with_KetShellPairList(
@@ -62,8 +85,8 @@ void update_F_with_KetShellPairList(
         if (ipair + 1 == npairs) write_P = 1;
         if (ipair < npairs - 1)
         {
-            int *n_fock_info_list = fock_info_list + 16;
-            if (fock_info_list[9] != n_fock_info_list[9]) write_P = 1;
+            // fock_info_list[25] == the fock_info_list[9] for ipair+1
+            if (fock_info_list[9] != fock_info_list[25]) write_P = 1;
         }
         
         prev_iMP = fock_info_list[9];
@@ -78,48 +101,42 @@ void update_F_with_KetShellPairList(
             write_P  = 1;
         }
 
-        update_F_opt_buffer(
-            tid, num_dmat, &batch_integrals[ipair * batch_nints], 
-            fock_info_list[0],   // dimM
-            fock_info_list[1],   // dimN
-            fock_info_list[2],   // dimP
-            fock_info_list[3],   // dimQ
-            fock_info_list[4],   // flag1
-            fock_info_list[5],   // flag2
-            fock_info_list[6],   // flag3
-            fock_info_list[7],   // iMN
-            fock_info_list[8],   // iPQ
-            fock_info_list[9],   // iMP
-            fock_info_list[10],  // iNP
-            fock_info_list[11],  // iMQ
-            fock_info_list[12],  // iNQ
-            fock_info_list[13],  // iMP0
-            fock_info_list[14],  // iMQ0
-            fock_info_list[15],  // iNP0
-            D1, D2, D3,
-            F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
-            sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-            ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
-            load_MN, load_P, write_MN, write_P
-        );
+        int is_1111 = fock_info_list[0] * fock_info_list[1] * fock_info_list[2] * fock_info_list[3];
+        if (is_1111 == 1)
+        {
+            update_F_1111(UPDATE_F_OPT_BUFFER_ARGS);
+        } else {
+            if (fock_info_list[3] == 1) update_F_opt_buffer_Q1(UPDATE_F_OPT_BUFFER_ARGS);
+            else if (fock_info_list[3] == 3)  update_F_opt_buffer_Q3(UPDATE_F_OPT_BUFFER_ARGS);
+            else if (fock_info_list[3] == 6)  update_F_opt_buffer_Q6(UPDATE_F_OPT_BUFFER_ARGS);
+            else if (fock_info_list[3] == 10) update_F_opt_buffer_Q10(UPDATE_F_OPT_BUFFER_ARGS);
+            else if (fock_info_list[3] == 15) update_F_opt_buffer_Q15(UPDATE_F_OPT_BUFFER_ARGS);
+            else update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
+        }
     }
 }
 
+//#define fock_task_nonbatch fock_task
+#define fock_task_batched  fock_task
+
+// Non-batching version
 // for SCF, J = K
-void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
-               int *shellptr, double *shellvalue,
-               int *shellid, int *shellrid, int *f_startind,
-               int *rowpos, int *colpos, int *rowptr, int *colptr,
-               double tolscr2, int startrow, int startcol,
-               int startM, int endM, int startP, int endP,
-               double **D1, double **D2, double **D3,
-               double *F1, double *F2, double *F3,
-               double *F4, double *F5, double *F6, 
-               int ldX1, int ldX2, int ldX3,
-               int ldX4, int ldX5, int ldX6,
-               int sizeX1, int sizeX2, int sizeX3,
-               int sizeX4, int sizeX5, int sizeX6,
-               double *nitl, double *nsq)              
+void fock_task_nonbatch(
+    BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
+    int *shellptr, double *shellvalue,
+    int *shellid, int *shellrid, int *f_startind,
+    int *rowpos, int *colpos, int *rowptr, int *colptr,
+    double tolscr2, int startrow, int startcol,
+    int startM, int endM, int startP, int endP,
+    double **D1, double **D2, double **D3,
+    double *F1, double *F2, double *F3,
+    double *F4, double *F5, double *F6, 
+    int ldX1, int ldX2, int ldX3,
+    int ldX4, int ldX5, int ldX6,
+    int sizeX1, int sizeX2, int sizeX3,
+    int sizeX4, int sizeX5, int sizeX6,
+    double *nitl, double *nsq
+) 
 {
     int startMN = shellptr[startM];
     int endMN = shellptr[endM + 1];
@@ -133,7 +150,131 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
         max_buf_entry_size = (maxAM + 1) * (maxAM + 2) / 2;
         max_buf_entry_size = max_buf_entry_size * max_buf_entry_size;
         // max_buf_entry_size should be >= the product of any two items in {dimM, dimN, dimP, dimQ}
-        update_F_buf_size  = 12 * max_buf_entry_size;
+        update_F_buf_size  = 6 * max_buf_entry_size;
+        int nthreads = omp_get_max_threads();
+        update_F_buf = _mm_malloc(sizeof(double) * nthreads * update_F_buf_size, 64);
+        assert(update_F_buf != NULL);
+    }
+    
+    #pragma omp parallel
+    {
+        // init    
+        int nt = omp_get_thread_num ();
+        int nf = nt/ncpu_f;
+        double *F_MN = &(F1[nf * sizeX1 * num_dmat]);
+        double *F_PQ = &(F2[nf * sizeX2 * num_dmat]);
+        double *F_NQ = F3;
+        double *F_MP = &(F4[nf * sizeX4 * num_dmat]);
+        double *F_MQ = &(F5[nf * sizeX5 * num_dmat]);
+        double *F_NP = &(F6[nf * sizeX6 * num_dmat]);
+        double mynsq = 0.0;
+        double mynitl = 0.0;        
+        #pragma omp for schedule(dynamic)
+        for (int i = startMN; i < endMN; i++) {
+            int M = shellrid[i];
+            int N = shellid[i];
+            double value1 = shellvalue[i];            
+            int dimM = f_startind[M + 1] - f_startind[M];
+            int dimN = f_startind[N + 1] - f_startind[N];
+            int iX1M = f_startind[M] - f_startind[startrow];
+            int iX3M = rowpos[M]; 
+            int iXN = rowptr[i];
+            int iMN = iX1M * ldX1+ iXN;
+            int flag1 = (value1 < 0.0) ? 1 : 0;   
+            for (int j = startPQ; j < endPQ; j++) {
+                int P = shellrid[j];
+                int Q = shellid[j];
+                if ((M > P && (M + P) % 2 == 1) || 
+                    (M < P && (M + P) % 2 == 0))
+                    continue;                
+                if ((M == P) &&
+                    ((N > Q && (N + Q) % 2 == 1) ||
+                    (N < Q && (N + Q) % 2 == 0)))
+                    continue;
+                double value2 = shellvalue[j];
+                int dimP = f_startind[P + 1] - f_startind[P];
+                int dimQ =  f_startind[Q + 1] - f_startind[Q];
+                int iX2P = f_startind[P] - f_startind[startcol];
+                int iX3P = colpos[P];
+                int iXQ = colptr[j];               
+                int iPQ = iX2P * ldX2+ iXQ;                             
+                int iNQ = iXN * ldX3 + iXQ;                
+                int iMP = iX1M * ldX4 + iX2P;
+                int iMQ = iX1M * ldX5 + iXQ;
+                int iNP = iXN * ldX6 + iX2P;
+                int iMP0 = iX3M * ldX3 + iX3P;
+                int iMQ0 = iX3M * ldX3 + iXQ;
+                int iNP0 = iXN * ldX3 + iX3P;               
+                int flag3 = (M == P && Q == N) ? 0 : 1;                    
+                int flag2 = (value2 < 0.0) ? 1 : 0;
+                if (fabs(value1 * value2) >= tolscr2) {
+                    int nints;
+                    double *integrals;
+                    mynsq += 1.0;
+                    mynitl += dimM*dimN*dimP*dimQ;                       
+                    CInt_computeShellQuartet_SIMINT(simint, nt, M, N, P, Q, &integrals, &nints);
+                    if (nints != 0) 
+                    {
+                        double st, et;
+                        st = CInt_get_walltime_sec();
+                        update_F_opt_buffer(
+                            nt, num_dmat, integrals, dimM, dimN, dimP, dimQ,
+                            flag1, flag2, flag3,
+                            iMN, iPQ, iMP, iNP, iMQ, iNQ,
+                            iMP0, iMQ0, iNP0,
+                            D1, D2, D3,
+                            F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
+                            sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
+                            ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
+                            1, 1, 1, 1
+                        );
+                        et = CInt_get_walltime_sec();
+                        if (nt == 0) CInt_SIMINT_addupdateFtimer(simint, et - st);
+                    }
+                }
+            }
+        }
+
+        #pragma omp critical
+        {
+            *nitl += mynitl;
+            *nsq += mynsq;
+        }
+    } // #pragma omp parallel
+}
+
+// for SCF, J = K
+// Batched ERI version
+void fock_task_batched(
+    BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
+    int *shellptr, double *shellvalue,
+    int *shellid, int *shellrid, int *f_startind,
+    int *rowpos, int *colpos, int *rowptr, int *colptr,
+    double tolscr2, int startrow, int startcol,
+    int startM, int endM, int startP, int endP,
+    double **D1, double **D2, double **D3,
+    double *F1, double *F2, double *F3,
+    double *F4, double *F5, double *F6, 
+    int ldX1, int ldX2, int ldX3,
+    int ldX4, int ldX5, int ldX6,
+    int sizeX1, int sizeX2, int sizeX3,
+    int sizeX4, int sizeX5, int sizeX6,
+    double *nitl, double *nsq
+)
+{
+    int startMN = shellptr[startM];
+    int endMN = shellptr[endM + 1];
+    int startPQ = shellptr[startP];
+    int endPQ = shellptr[endP + 1];
+    
+    if (update_F_buf_size == 0)
+    {
+        int maxAM, max_buf_entry_size;
+        _maxMomentum(basis, &maxAM);
+        max_buf_entry_size = (maxAM + 1) * (maxAM + 2) / 2;
+        max_buf_entry_size = max_buf_entry_size * max_buf_entry_size;
+        // max_buf_entry_size should be >= the product of any two items in {dimM, dimN, dimP, dimQ}
+        update_F_buf_size  = 6 * max_buf_entry_size;
         int nthreads = omp_get_max_threads();
         update_F_buf = _mm_malloc(sizeof(double) * nthreads * update_F_buf_size, 64);
         assert(update_F_buf != NULL);
@@ -317,7 +458,7 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
         free_ThreadQuartetLists(thread_quartet_lists);
         
         free(thread_quartet_lists);
-    } /* #pragma omp parallel */
+    } // #pragma omp parallel
 }
 
 

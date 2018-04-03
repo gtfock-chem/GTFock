@@ -125,7 +125,7 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     MPI_Allreduce(&maxtmp, &(pfock->maxvalue), 1,
                   MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
     //CInt_destroyERD(erd);
-    CInt_destroySIMINT(simint);
+    CInt_destroySIMINT(simint, 0);
     PFOCK_FREE(sq_values);
 
     // init shellptr
