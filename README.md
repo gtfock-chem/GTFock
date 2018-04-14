@@ -6,7 +6,7 @@ Set `WORK_TOP` to where you will install the files.
 
 Please compile required libraries in the following sequence.
 
-### 1.(a) OptERD (for testing)
+### 1.(a) OptERD (deprecated)
 
 Notice: the compatibility of OptERD and GTFock is not tested after GTFock commit version e8398cb ([GTFock commit versions](https://github.com/gtfock-chem/gtfock/commits/master)), you can skip this if you do not need to test OptERD's performance
 
@@ -47,19 +47,21 @@ CC=icc CXX=icpc cmake ../ -DSIMINT_VECTOR=micavx512 -DSIMINT_C_FLAGS="-O3;-g" -D
 make -j16 install
 ```
 
+
+
 ### 2. libcint
 
 ```shell
 cd $WORK_TOP
 git clone https://github.com/gtfock-chem/libcint.git
 cd libcint
-# Adjust the Makefile according to the directory you compiled OptERD and Simint and your system
+# Adjust the Makefile according to the directory you compiled Simint (and OptERD) and your system
 make libcint.a 
 ```
 
-### 3. ARMCI-MPI
 
-Notice: you don't need to compile ARMCI-MPI on Cori.
+
+### 3. ARMCI-MPI
 
 The following commands will use ICC and Intel MPI to compile ARMCI-MPI. You can use other compilers and MPI environments. 
 
@@ -71,13 +73,15 @@ git checkout mpi3rma
 ./autogen.sh
 mkdir build
 cd build
-../configure CC=mpiicc --prefix=$WORK_TOP/ARMCI-MPI-lib
+../configure CC=mpiicc --prefix=$WORK_TOP/ARMCI-MPI
 make -j16 install
 ```
 
-### 4. Global Array
+For Cori, use `CC=cc` to replace `CC=mpicc`. 
 
-Notice: you don't need to compile ARMCI-MPI on Cori. 
+
+
+### 4. Global Array
 
 The following commands will use ICC and Intel MPI to compile ARMCI-MPI. You can use other compilers and MPI environments. Make sure that the compiler and MPI environment are the same as compiling ARMCI-MPI.
 
@@ -91,11 +95,20 @@ cd ga-5-3
 # Recommend using a build dir
 mkdir build
 cd build
-../configure CC=mpiicc MPICC=mpiicc CXX=mpiicpc MPICXX=mpiicpc \
-F77=mpiifort MPIF77=mpiifort FC=mpiifort MPIFC=mpiifort \
---with-mpi --with-armci=$WORK_TOP/ARMCI-MPI-lib --prefix=$WORK_TOP/GA-lib
+../configure CC=mpiicc MPICC=mpiicc CXX=mpiicpc MPICXX=mpiicpc F77=mpiifort MPIF77=mpiifort --with-mpi --with-armci=$WORK_TOP/ARMCI-MPI --prefix=$WORK_TOP/GAlib
 make -j16 install
 ```
+
+For Cori, use
+```shell
+CC=cc MPICC=cc CXX=CC MPICXX=CC F77=ftn MPIF77=ftn
+```
+to replace 
+```shell
+CC=mpiicc MPICC=mpiicc CXX=mpiicpc MPICXX=mpiicpc F77=mpiifort MPIF77=mpiifort
+```
+For `configure`. 
+
 
 
 
@@ -117,14 +130,7 @@ If your computing platform does not contain special network hardward or settings
 
 You can use ICC + Intel MPI to compile ARMCI-MPI, Global Array and GTFock on Cori, but it is likely that you cannot run the program on multiple nodes. 
 
-To run GTFock on Cori using multiple nodes, you should use Cray compiler wrapper, Cray SciLib (providing ScaLAPACK and BLASC), Cray MPI and Cray optimized Global Array with ARMCI-MPI. ScaLAPACK and BLASC in MKL relies on Intel MPI, and self-compiled ARMCI-MPI & Global Array may cause error. Cray compiler wrapper, Cray SciLib and Cray MPI are loaded by default. You need to load the Cray Global Array manually:
-
-```shell
-module load craype-hugepages2M
-module load cray-ga/5.3.0.7
-```
-
-Use `make.in.Cori` as a template to modify the `make.in`, then you can compile the GTFock.
+To run GTFock on Cori using multiple nodes, you should use Cray compiler wrapper, Cray MPI and Cray SciLib (providing ScaLAPACK and BLASC). Use Cray MPI to compile your own ARMCI-MPI and Global Arrays, DO NOT use the Global Arrays provided by Cray (the `cray-ga` module). Cray compiler wrapper, Cray SciLib and Cray MPI are loaded by default. Use `make.in.Cori` as a template to modify the `make.in`, then you can compile the GTFock.
 
 
 The gtfock libraries will be installed in `$WORK_TOP/gtfock/install/`, The example SCF code can be found in `$WORK_TOP/gtfock/pscf/`.
@@ -155,4 +161,4 @@ Note:
 * `np2` x `np2` x `np2` should be close to `nprocs` but must be smaller than nprocs
 * suggested values for `ntasks`: 3, 4, 5
 
-To run the example SCF program on Cori,  `Cori-KNL-3N.pbs` and `Cori-KNL-1N.pbs` are two example slurm batch file. For more information about writing job script for Cori, please refer to [this page](http://www.nersc.gov/users/computational-systems/cori/running-jobs/).
+To run the example SCF program on Cori,  `Cori-KNL-9N.pbs`, `Cori-KNL-3N.pbs` and `Cori-KNL-1N.pbs` are three example slurm batch file. For more information about writing job script for Cori, please refer to [this page](http://www.nersc.gov/users/computational-systems/cori/running-jobs/).

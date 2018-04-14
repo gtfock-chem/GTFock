@@ -1013,7 +1013,7 @@ PFockStatus_t PFock_destroy(PFock_t pfock)
     PFOCK_FREE(pfock->s_startind);
 
     //CInt_destroyERD(pfock->erd);    
-    CInt_destroySIMINT(pfock->simint);    
+    CInt_destroySIMINT(pfock->simint, 1);    
     clean_taskq(pfock);
     clean_screening(pfock);
     destroy_GA(pfock);
