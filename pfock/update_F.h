@@ -22,31 +22,57 @@ static void atomic_update_block(double *dst, int ldd, double *src, int lds,	int 
 	}
 }
 
+static void direct_update_block(double *dst, int ldd, double *src, int lds,	int nrows, int ncols)
+{
+	for (int irow = 0; irow < nrows; irow++)
+	{
+		int dst_base = irow * ldd;
+		int src_base = irow * lds;
+		for (int icol = 0; icol < ncols; icol++)
+			dst[dst_base + icol] += src[src_base + icol];
+	}
+}
+
 static void update_global_blocks(
-	int write_MN, int write_P, int dimM, int dimN, int dimP, int dimQ,
+	int use_atomic, int write_MN, int write_P, int dimM, int dimN, int dimP, int dimQ,
 	int ldMN, int ldMP, int ldNP, int ldPQ, int ldMQ, int ldNQ,
 	double *J_MN, double *J_MN_buf, double *K_MP, double *K_MP_buf,
 	double *K_NP, double *K_NP_buf, double *J_PQ, double *J_PQ_buf,
 	double *K_MQ, double *K_MQ_buf, double *K_NQ, double *K_NQ_buf
 )
 {
-	if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
-
-	if (write_P)
+	if (use_atomic)
 	{
-		atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
-		atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
+		if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
+
+		if (write_P)
+		{
+			atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
+			atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
+		}
+		
+		atomic_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
+		atomic_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
+		atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
+	} else {
+		if (write_MN) direct_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
+
+		if (write_P)
+		{
+			direct_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
+			direct_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
+		}
+		
+		direct_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
+		direct_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
+		direct_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
 	}
-	
-	atomic_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
-	atomic_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
-	atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
 }
 
 // Use thread-local buffer to reduce atomic add 
 static inline void update_F_opt_buffer(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int dimQ,
+    int use_atomic, int tid, int num_dmat, double *integrals, 
+	int dimM, int dimN, int dimP, int dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
     int iMP0, int iMQ0, int iNP0,
@@ -149,7 +175,7 @@ static inline void update_F_opt_buffer(
         
         // Update to the global array using atomic_add_f64()
 		update_global_blocks(
-			write_MN, write_P, dimM, dimN, dimP, dimQ, 
+			use_atomic, write_MN, write_P, dimM, dimN, dimP, dimQ, 
 			ldMN, ldMP, ldNP, ldPQ, ldMQ, ldNQ,
 			J_MN, J_MN_buf, K_MP, K_MP_buf, 
 			K_NP, K_NP_buf, J_PQ, J_PQ_buf,
@@ -159,8 +185,8 @@ static inline void update_F_opt_buffer(
 }
 
 static inline void update_F_opt_buffer_Q1(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int _dimQ,
+    int use_atomic, int tid, int num_dmat, double *integrals, 
+	int dimM, int dimN, int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
     int iMP0, int iMQ0, int iNP0,
@@ -256,7 +282,7 @@ static inline void update_F_opt_buffer_Q1(
         
         // Update to the global array using atomic_add_f64()
         update_global_blocks(
-			write_MN, write_P, dimM, dimN, dimP, dimQ, 
+			use_atomic, write_MN, write_P, dimM, dimN, dimP, dimQ, 
 			ldMN, ldMP, ldNP, ldPQ, ldMQ, ldNQ,
 			J_MN, J_MN_buf, K_MP, K_MP_buf, 
 			K_NP, K_NP_buf, J_PQ, J_PQ_buf,
@@ -266,8 +292,8 @@ static inline void update_F_opt_buffer_Q1(
 }
 
 static inline void update_F_opt_buffer_Q3(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int _dimQ,
+    int use_atomic, int tid, int num_dmat, double *integrals, 
+	int dimM, int dimN, int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
     int iMP0, int iMQ0, int iNP0,
@@ -371,7 +397,7 @@ static inline void update_F_opt_buffer_Q3(
         
         // Update to the global array using atomic_add_f64()
         update_global_blocks(
-			write_MN, write_P, dimM, dimN, dimP, dimQ, 
+			use_atomic, write_MN, write_P, dimM, dimN, dimP, dimQ, 
 			ldMN, ldMP, ldNP, ldPQ, ldMQ, ldNQ,
 			J_MN, J_MN_buf, K_MP, K_MP_buf, 
 			K_NP, K_NP_buf, J_PQ, J_PQ_buf,
@@ -381,8 +407,8 @@ static inline void update_F_opt_buffer_Q3(
 }
 
 static inline void update_F_opt_buffer_Q6(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int _dimQ,
+    int use_atomic, int tid, int num_dmat, double *integrals, 
+	int dimM, int dimN, int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
     int iMP0, int iMQ0, int iNP0,
@@ -486,7 +512,7 @@ static inline void update_F_opt_buffer_Q6(
         
         // Update to the global array using atomic_add_f64()
         update_global_blocks(
-			write_MN, write_P, dimM, dimN, dimP, dimQ, 
+			use_atomic, write_MN, write_P, dimM, dimN, dimP, dimQ, 
 			ldMN, ldMP, ldNP, ldPQ, ldMQ, ldNQ,
 			J_MN, J_MN_buf, K_MP, K_MP_buf, 
 			K_NP, K_NP_buf, J_PQ, J_PQ_buf,
@@ -496,8 +522,8 @@ static inline void update_F_opt_buffer_Q6(
 }
 
 static inline void update_F_opt_buffer_Q10(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int _dimQ,
+    int use_atomic, int tid, int num_dmat, double *integrals, 
+	int dimM, int dimN, int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
     int iMP0, int iMQ0, int iNP0,
@@ -600,7 +626,7 @@ static inline void update_F_opt_buffer_Q10(
         
         // Update to the global array using atomic_add_f64()
         update_global_blocks(
-			write_MN, write_P, dimM, dimN, dimP, dimQ, 
+			use_atomic, write_MN, write_P, dimM, dimN, dimP, dimQ, 
 			ldMN, ldMP, ldNP, ldPQ, ldMQ, ldNQ,
 			J_MN, J_MN_buf, K_MP, K_MP_buf, 
 			K_NP, K_NP_buf, J_PQ, J_PQ_buf,
@@ -610,8 +636,8 @@ static inline void update_F_opt_buffer_Q10(
 }
 
 static inline void update_F_opt_buffer_Q15(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int _dimQ,
+    int use_atomic, int tid, int num_dmat, double *integrals, 
+	int dimM, int dimN, int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
     int iMP0, int iMQ0, int iNP0,
@@ -714,7 +740,7 @@ static inline void update_F_opt_buffer_Q15(
         
         // Update to the global array using atomic_add_f64()
         update_global_blocks(
-			write_MN, write_P, dimM, dimN, dimP, dimQ, 
+			use_atomic, write_MN, write_P, dimM, dimN, dimP, dimQ, 
 			ldMN, ldMP, ldNP, ldPQ, ldMQ, ldNQ,
 			J_MN, J_MN_buf, K_MP, K_MP_buf, 
 			K_NP, K_NP_buf, J_PQ, J_PQ_buf,
@@ -724,8 +750,8 @@ static inline void update_F_opt_buffer_Q15(
 }
 
 static inline void update_F_1111(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int dimQ,
+    int use_atomic, int tid, int num_dmat, double *integrals, 
+	int dimM, int dimN, int dimP, int dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
     int iMP0, int iMQ0, int iNP0,

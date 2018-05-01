@@ -686,13 +686,14 @@ static PFockStatus_t create_buffers (PFock_t pfock)
     }
     
     int sizeX4 = maxrowfuncs * maxcolfuncs;
-    int sizeX6 = maxrowsize * maxcolfuncs;
+    int sizeX6 = maxrowsize  * maxcolfuncs;
     int sizeX5 = maxrowfuncs * maxcolsize;
     pfock->sizeX4 = sizeX4;
     pfock->sizeX5 = sizeX5;
     pfock->sizeX6 = sizeX6;
     pfock->ncpu_f = ncpu_f;
     int numF = pfock->numF = (nthreads + ncpu_f - 1)/ncpu_f;
+	if (myrank == 0) printf("ncpu_f, numF = %d, %d\n", ncpu_f, numF);
     // allocation
 
     pfock->F1 = (double *)PFOCK_MALLOC(sizeof(double) * sizeX1 *
@@ -700,7 +701,7 @@ static PFockStatus_t create_buffers (PFock_t pfock)
     pfock->F2 = (double *)PFOCK_MALLOC(sizeof(double) * sizeX2 *
         numF * pfock->max_numdmat2); 
     pfock->F3 = (double *)PFOCK_MALLOC(sizeof(double) * sizeX3 *
-        pfock->max_numdmat2);
+        numF * pfock->max_numdmat2);
     pfock->F4 = (double *)PFOCK_MALLOC(sizeof(double) * sizeX4 *
         numF * pfock->max_numdmat2);
     pfock->F5 = (double *)PFOCK_MALLOC(sizeof(double) * sizeX5 *

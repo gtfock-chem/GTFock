@@ -21,7 +21,7 @@ int update_F_buf_size = 0;
 
 #include "update_F.h"
 
-#define UPDATE_F_OPT_BUFFER_ARGS    tid, num_dmat, &batch_integrals[ipair * batch_nints], \
+#define UPDATE_F_OPT_BUFFER_ARGS    use_atomic, tid, num_dmat, &batch_integrals[ipair * batch_nints], \
                                     fock_info_list[0],  \
                                     fock_info_list[1],  \
                                     fock_info_list[2],  \
@@ -47,7 +47,8 @@ int update_F_buf_size = 0;
 #include "thread_quartet_buf.h"
 
 void update_F_with_KetShellPairList(
-    int tid, int num_dmat, double *batch_integrals, int batch_nints, int npairs, 
+    int use_atomic, int tid, int num_dmat, 
+	double *batch_integrals, int batch_nints, int npairs, 
     KetShellPairList_s *target_shellpair_list,
     double **D1, double **D2, double **D3,
     double *F_MN, double *F_PQ, double *F_NQ, double *F_MP, double *F_MQ, double *F_NP,
@@ -153,13 +154,15 @@ void fock_task_batched(
         int nf = nt/ncpu_f;
         double *F_MN = &(F1[nf * sizeX1 * num_dmat]);
         double *F_PQ = &(F2[nf * sizeX2 * num_dmat]);
-        double *F_NQ = F3;
+        double *F_NQ = &(F3[nf * sizeX3 * num_dmat]);
         double *F_MP = &(F4[nf * sizeX4 * num_dmat]);
         double *F_MQ = &(F5[nf * sizeX5 * num_dmat]);
         double *F_NP = &(F6[nf * sizeX6 * num_dmat]);
-        double mynsq = 0.0;
+        double mynsq  = 0.0;
         double mynitl = 0.0;        
         
+		int use_atomic = (ncpu_f > 1);
+		
         // Pending quartets that need to be computed
         ThreadQuartetLists_s *thread_quartet_lists = (ThreadQuartetLists_s*) malloc(sizeof(ThreadQuartetLists_s));
         init_ThreadQuartetLists(thread_quartet_lists);
@@ -252,7 +255,8 @@ void fock_task_batched(
                             double st, et;
                             st = CInt_get_walltime_sec();
                             update_F_with_KetShellPairList(
-                                nt, num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
+                                use_atomic, nt, num_dmat, 
+								thread_batch_integrals, thread_batch_nints, npairs, 
                                 target_shellpair_list,
                                 D1, D2, D3,
                                 F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
@@ -296,7 +300,8 @@ void fock_task_batched(
                         double st, et;
                         st = CInt_get_walltime_sec();
                         update_F_with_KetShellPairList(
-                            nt, num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
+                            use_atomic, nt, num_dmat, 
+							thread_batch_integrals, thread_batch_nints, npairs, 
                             target_shellpair_list,
                             D1, D2, D3,
                             F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
@@ -371,12 +376,15 @@ void fock_task_nonbatch(
         int nf = nt/ncpu_f;
         double *F_MN = &(F1[nf * sizeX1 * num_dmat]);
         double *F_PQ = &(F2[nf * sizeX2 * num_dmat]);
-        double *F_NQ = F3;
+        double *F_NQ = &(F3[nf * sizeX3 * num_dmat]);
         double *F_MP = &(F4[nf * sizeX4 * num_dmat]);
         double *F_MQ = &(F5[nf * sizeX5 * num_dmat]);
         double *F_NP = &(F6[nf * sizeX6 * num_dmat]);
-        double mynsq = 0.0;
+        double mynsq  = 0.0;
         double mynitl = 0.0;        
+		
+		int use_atomic = (ncpu_f > 1);
+		
         #pragma omp for schedule(dynamic)
         for (int i = startMN; i < endMN; i++) {
             int M = shellrid[i];
@@ -426,7 +434,8 @@ void fock_task_nonbatch(
                         double st, et;
                         st = CInt_get_walltime_sec();
                         update_F_opt_buffer(
-                            nt, num_dmat, integrals, dimM, dimN, dimP, dimQ,
+                            use_atomic, nt, num_dmat, integrals, 
+							dimM, dimN, dimP, dimQ,
                             flag1, flag2, flag3,
                             iMN, iPQ, iMP, iNP, iMQ, iNQ,
                             iMP0, iMQ0, iNP0,
@@ -467,7 +476,7 @@ void reset_F(int numF, int num_dmat, double *F1, double *F2, double *F3,
             F2[k] = 0.0;
         }
         #pragma omp for nowait
-        for (int k = 0; k < sizeX3 * num_dmat; k++) {
+        for (int k = 0; k < numF * sizeX3 * num_dmat; k++) {
             F3[k] = 0.0;
         }
         #pragma omp for nowait
@@ -508,6 +517,12 @@ void reduce_F(int numF, int num_dmat,
         for (int k = 0; k < sizeX2 * num_dmat; k++) {
             for (int p = 1; p < numF; p++) {
                 F2[k] += F2[k + p * sizeX2 * num_dmat];
+            }
+        }
+		#pragma omp for
+        for (int k = 0; k < sizeX3 * num_dmat; k++) {
+            for (int p = 1; p < numF; p++) {
+                F3[k] += F3[k + p * sizeX3 * num_dmat];
             }
         }
         #pragma omp for
