@@ -14,6 +14,9 @@
 #include "CInt.h"
 #include "purif.h"
 
+// Notice: for these four parameters, optimizations in pfock are tested 
+// with current values, I'm not sure if we can change these values
+// huangh223, 2018-05-01
 #define MAX_NUM_D    1
 #define NUM_D        1
 #define USE_D_ID     0

@@ -12,37 +12,37 @@
 #include "config.h"
 #include "taskq.h"
 #include "fock_task.h"
-
 #include "cint_basisset.h"
-
 
 double *update_F_buf  = NULL;
 int update_F_buf_size = 0;
+int use_atomic_add    = 1;
 
 #include "update_F.h"
 
-#define UPDATE_F_OPT_BUFFER_ARGS    tid, num_dmat, &batch_integrals[ipair * batch_nints], \
-                                    fock_info_list[0],  \
-                                    fock_info_list[1],  \
-                                    fock_info_list[2],  \
-                                    fock_info_list[3],  \
-                                    fock_info_list[4],  \
-                                    fock_info_list[5],  \
-                                    fock_info_list[6],  \
-                                    fock_info_list[7],  \
-                                    fock_info_list[8],  \
-                                    fock_info_list[9],  \
-                                    fock_info_list[10], \
-                                    fock_info_list[11], \
-                                    fock_info_list[12], \
-                                    fock_info_list[13], \
-                                    fock_info_list[14], \
-                                    fock_info_list[15], \
-                                    D1, D2, D3, \
-                                    F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP, \
-                                    sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6, \
-                                    ldX1, ldX2, ldX3, ldX4, ldX5, ldX6, \
-                                    load_MN, load_P, write_MN, write_P 
+#define UPDATE_F_OPT_BUFFER_ARGS \
+    tid, num_dmat, &batch_integrals[ipair * batch_nints], \
+    fock_info_list[0],  \
+    fock_info_list[1],  \
+    fock_info_list[2],  \
+    fock_info_list[3],  \
+    fock_info_list[4],  \
+    fock_info_list[5],  \
+    fock_info_list[6],  \
+    fock_info_list[7],  \
+    fock_info_list[8],  \
+    fock_info_list[9],  \
+    fock_info_list[10], \
+    fock_info_list[11], \
+    fock_info_list[12], \
+    fock_info_list[13], \
+    fock_info_list[14], \
+    fock_info_list[15], \
+    D1, D2, D3, \
+    F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP, \
+    sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6, \
+    ldX1, ldX2, ldX3, ldX4, ldX5, ldX6, \
+    load_MN, load_P, write_MN, write_P 
 
 #include "thread_quartet_buf.h"
 
@@ -144,6 +144,8 @@ void fock_task_batched(
         int nthreads = omp_get_max_threads();
         update_F_buf = _mm_malloc(sizeof(double) * nthreads * update_F_buf_size, 64);
         assert(update_F_buf != NULL);
+        
+        if (ncpu_f == 1) use_atomic_add = 0;
     }
     
     #pragma omp parallel
@@ -362,6 +364,8 @@ void fock_task_nonbatch(
         int nthreads = omp_get_max_threads();
         update_F_buf = _mm_malloc(sizeof(double) * nthreads * update_F_buf_size, 64);
         assert(update_F_buf != NULL);
+        
+        if (ncpu_f == 1) use_atomic_add = 0;
     }
     
     #pragma omp parallel
@@ -467,7 +471,7 @@ void reset_F(int numF, int num_dmat, double *F1, double *F2, double *F3,
             F2[k] = 0.0;
         }
         #pragma omp for nowait
-        for (int k = 0; k < sizeX3 * num_dmat; k++) {
+        for (int k = 0; k <    1 * sizeX3 * num_dmat; k++) {
             F3[k] = 0.0;
         }
         #pragma omp for nowait
