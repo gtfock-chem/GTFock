@@ -154,7 +154,7 @@ void fock_task_batched(
         int nf = nt/ncpu_f;
         double *F_MN = &(F1[nf * sizeX1 * num_dmat]);
         double *F_PQ = &(F2[nf * sizeX2 * num_dmat]);
-        double *F_NQ = &(F3[nf * sizeX3 * num_dmat]);
+        double *F_NQ = F3;
         double *F_MP = &(F4[nf * sizeX4 * num_dmat]);
         double *F_MQ = &(F5[nf * sizeX5 * num_dmat]);
         double *F_NP = &(F6[nf * sizeX6 * num_dmat]);
@@ -376,7 +376,7 @@ void fock_task_nonbatch(
         int nf = nt/ncpu_f;
         double *F_MN = &(F1[nf * sizeX1 * num_dmat]);
         double *F_PQ = &(F2[nf * sizeX2 * num_dmat]);
-        double *F_NQ = &(F3[nf * sizeX3 * num_dmat]);
+        double *F_NQ = F3;
         double *F_MP = &(F4[nf * sizeX4 * num_dmat]);
         double *F_MQ = &(F5[nf * sizeX5 * num_dmat]);
         double *F_NP = &(F6[nf * sizeX6 * num_dmat]);
@@ -476,7 +476,7 @@ void reset_F(int numF, int num_dmat, double *F1, double *F2, double *F3,
             F2[k] = 0.0;
         }
         #pragma omp for nowait
-        for (int k = 0; k < numF * sizeX3 * num_dmat; k++) {
+        for (int k = 0; k <    1 * sizeX3 * num_dmat; k++) {
             F3[k] = 0.0;
         }
         #pragma omp for nowait
@@ -517,12 +517,6 @@ void reduce_F(int numF, int num_dmat,
         for (int k = 0; k < sizeX2 * num_dmat; k++) {
             for (int p = 1; p < numF; p++) {
                 F2[k] += F2[k + p * sizeX2 * num_dmat];
-            }
-        }
-		#pragma omp for
-        for (int k = 0; k < sizeX3 * num_dmat; k++) {
-            for (int p = 1; p < numF; p++) {
-                F3[k] += F3[k + p * sizeX3 * num_dmat];
             }
         }
         #pragma omp for

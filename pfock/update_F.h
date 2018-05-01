@@ -65,7 +65,7 @@ static void update_global_blocks(
 		
 		direct_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
 		direct_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
-		direct_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
+		atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);  // K_NQ always needs atomic update
 	}
 }
 

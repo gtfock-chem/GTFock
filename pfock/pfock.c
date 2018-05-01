@@ -701,7 +701,7 @@ static PFockStatus_t create_buffers (PFock_t pfock)
     pfock->F2 = (double *)PFOCK_MALLOC(sizeof(double) * sizeX2 *
         numF * pfock->max_numdmat2); 
     pfock->F3 = (double *)PFOCK_MALLOC(sizeof(double) * sizeX3 *
-        numF * pfock->max_numdmat2);
+           1 * pfock->max_numdmat2);
     pfock->F4 = (double *)PFOCK_MALLOC(sizeof(double) * sizeX4 *
         numF * pfock->max_numdmat2);
     pfock->F5 = (double *)PFOCK_MALLOC(sizeof(double) * sizeX5 *
