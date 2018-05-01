@@ -1,6 +1,5 @@
 #pragma once
 
-
 static inline void atomic_add_f64(volatile double* global_value, double addend)
 {
     uint64_t expected_value, new_value;
@@ -21,6 +20,27 @@ static void atomic_update_block(double *dst, int ldd, double *src, int lds,	int 
 		for (int icol = 0; icol < ncols; icol++)
 			atomic_add_f64(&dst[dst_base + icol], src[src_base + icol]);
 	}
+}
+
+static void update_global_blocks(
+	int write_MN, int write_P, int dimM, int dimN, int dimP, int dimQ,
+	int ldMN, int ldMP, int ldNP, int ldPQ, int ldMQ, int ldNQ,
+	double *J_MN, double *J_MN_buf, double *K_MP, double *K_MP_buf,
+	double *K_NP, double *K_NP_buf, double *J_PQ, double *J_PQ_buf,
+	double *K_MQ, double *K_MQ_buf, double *K_NQ, double *K_NQ_buf
+)
+{
+	if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
+
+	if (write_P)
+	{
+		atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
+		atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
+	}
+	
+	atomic_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
+	atomic_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
+	atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
 }
 
 // Use thread-local buffer to reduce atomic add 
@@ -128,18 +148,13 @@ static inline void update_F_opt_buffer(
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
-
-        if (write_P)
-        {
-			atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
-			atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
-        }
-        
-		atomic_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
-		atomic_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
-		atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
-		
+		update_global_blocks(
+			write_MN, write_P, dimM, dimN, dimP, dimQ, 
+			ldMN, ldMP, ldNP, ldPQ, ldMQ, ldNQ,
+			J_MN, J_MN_buf, K_MP, K_MP_buf, 
+			K_NP, K_NP_buf, J_PQ, J_PQ_buf,
+			K_MQ, K_MQ_buf, K_NQ, K_NQ_buf
+		);
     } // for (int i = 0 ; i < num_dmat; i++) 
 }
 
@@ -240,23 +255,13 @@ static inline void update_F_opt_buffer_Q1(
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
-
-        if (write_P)
-        {
-			atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
-			atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
-        }
-        
-        for (int iP = 0; iP < dimP; iP++)
-            atomic_add_f64(&J_PQ[iP * ldPQ], J_PQ_buf[iP]);
-        
-        for (int iM = 0; iM < dimM; iM++)
-            atomic_add_f64(&K_MQ[iM * ldMQ], K_MQ_buf[iM]);
-        
-        for (int iN = 0; iN < dimN; iN++)
-            atomic_add_f64(&K_NQ[iN * ldNQ], K_NQ_buf[iN]);
-        
+        update_global_blocks(
+			write_MN, write_P, dimM, dimN, dimP, dimQ, 
+			ldMN, ldMP, ldNP, ldPQ, ldMQ, ldNQ,
+			J_MN, J_MN_buf, K_MP, K_MP_buf, 
+			K_NP, K_NP_buf, J_PQ, J_PQ_buf,
+			K_MQ, K_MQ_buf, K_NQ, K_NQ_buf
+		);
     } // for (int i = 0 ; i < num_dmat; i++) 
 }
 
@@ -365,18 +370,13 @@ static inline void update_F_opt_buffer_Q3(
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
-
-        if (write_P)
-        {
-			atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
-			atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
-        }
-        
-		atomic_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
-		atomic_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
-		atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
-        
+        update_global_blocks(
+			write_MN, write_P, dimM, dimN, dimP, dimQ, 
+			ldMN, ldMP, ldNP, ldPQ, ldMQ, ldNQ,
+			J_MN, J_MN_buf, K_MP, K_MP_buf, 
+			K_NP, K_NP_buf, J_PQ, J_PQ_buf,
+			K_MQ, K_MQ_buf, K_NQ, K_NQ_buf
+		);
     } // for (int i = 0 ; i < num_dmat; i++) 
 }
 
@@ -485,18 +485,13 @@ static inline void update_F_opt_buffer_Q6(
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
-
-        if (write_P)
-        {
-			atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
-			atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
-        }
-        
-		atomic_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
-		atomic_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
-		atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
-        
+        update_global_blocks(
+			write_MN, write_P, dimM, dimN, dimP, dimQ, 
+			ldMN, ldMP, ldNP, ldPQ, ldMQ, ldNQ,
+			J_MN, J_MN_buf, K_MP, K_MP_buf, 
+			K_NP, K_NP_buf, J_PQ, J_PQ_buf,
+			K_MQ, K_MQ_buf, K_NQ, K_NQ_buf
+		);
     } // for (int i = 0 ; i < num_dmat; i++) 
 }
 
@@ -604,18 +599,13 @@ static inline void update_F_opt_buffer_Q10(
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
-
-        if (write_P)
-        {
-			atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
-			atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
-        }
-        
-		atomic_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
-		atomic_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
-		atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
-        
+        update_global_blocks(
+			write_MN, write_P, dimM, dimN, dimP, dimQ, 
+			ldMN, ldMP, ldNP, ldPQ, ldMQ, ldNQ,
+			J_MN, J_MN_buf, K_MP, K_MP_buf, 
+			K_NP, K_NP_buf, J_PQ, J_PQ_buf,
+			K_MQ, K_MQ_buf, K_NQ, K_NQ_buf
+		);
     } // for (int i = 0 ; i < num_dmat; i++) 
 }
 
@@ -723,18 +713,13 @@ static inline void update_F_opt_buffer_Q15(
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
-
-        if (write_P)
-        {
-			atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
-			atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
-        }
-        
-		atomic_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
-		atomic_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
-		atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
-        
+        update_global_blocks(
+			write_MN, write_P, dimM, dimN, dimP, dimQ, 
+			ldMN, ldMP, ldNP, ldPQ, ldMQ, ldNQ,
+			J_MN, J_MN_buf, K_MP, K_MP_buf, 
+			K_NP, K_NP_buf, J_PQ, J_PQ_buf,
+			K_MQ, K_MQ_buf, K_NQ, K_NQ_buf
+		);
     } // for (int i = 0 ; i < num_dmat; i++) 
 }
 
