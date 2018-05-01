@@ -1,5 +1,28 @@
 #pragma once
 
+
+static inline void atomic_add_f64(volatile double* global_value, double addend)
+{
+    uint64_t expected_value, new_value;
+    do {
+        double old_value = *global_value;
+        expected_value = _castf64_u64(old_value);
+        new_value = _castf64_u64(old_value + addend);
+    } while (!__sync_bool_compare_and_swap((volatile uint64_t*)global_value,
+                                           expected_value, new_value));
+}
+
+static void atomic_update_block(double *dst, int ldd, double *src, int lds,	int nrows, int ncols)
+{
+	for (int irow = 0; irow < nrows; irow++)
+	{
+		int dst_base = irow * ldd;
+		int src_base = irow * lds;
+		for (int icol = 0; icol < ncols; icol++)
+			atomic_add_f64(&dst[dst_base + icol], src[src_base + icol]);
+	}
+}
+
 // Use thread-local buffer to reduce atomic add 
 static inline void update_F_opt_buffer(
     int tid, int num_dmat, double *integrals, int dimM, int dimN,
@@ -34,7 +57,6 @@ static inline void update_F_opt_buffer(
     double *J_PQ_buf = write_buf;  write_buf += dimP * dimQ;
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
-    
     
     for (int i = 0 ; i < num_dmat; i++) 
     {
@@ -106,69 +128,18 @@ static inline void update_F_opt_buffer(
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        if (write_MN)
-        {
-            for (int iM = 0; iM < dimM; iM++)
-            {
-                int iM_base1 = iM * dimN;
-                int iM_base2 = iM * ldMN;
-                for (int iN = 0; iN < dimN; iN++)
-                {
-                    double adder = J_MN_buf[iM_base1 + iN];
-                    atomic_add_f64(&J_MN[iM_base2 + iN], adder);
-                }
-            }
-        }
+        if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
 
         if (write_P)
         {
-            for (int iM = 0; iM < dimM; iM++)
-            {
-                int iM_base1 = iM * dimP;
-                int iM_base2 = iM * ldMP;
-                for (int iP = 0; iP < dimP; iP++)
-                {
-                    double adder = K_MP_buf[iM_base1 + iP];
-                    atomic_add_f64(&K_MP[iM_base2 + iP], adder);
-                }
-            }
-
-            for (int iN = 0; iN < dimN; iN++)
-            {
-                int iN_base1 = iN * dimP;
-                int iN_base2 = iN * ldNP;
-                for (int iP = 0; iP < dimP; iP++)
-                {
-                    double adder = K_NP_buf[iN_base1 + iP];
-                    atomic_add_f64(&K_NP[iN_base2 + iP], adder);
-                }
-            }
+			atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
+			atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
         }
         
-        for (int iP = 0; iP < dimP; iP++)
-        {
-            int iP_base1 = iP * dimQ;
-            int iP_base2 = iP * ldPQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&J_PQ[iP_base2 + iQ], J_PQ_buf[iP_base1 + iQ]);
-        }
-        
-        for (int iM = 0; iM < dimM; iM++)
-        {
-            int iM_base1 = iM * dimQ;
-            int iM_base2 = iM * ldMQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&K_MQ[iM_base2 + iQ], K_MQ_buf[iM_base1 + iQ]);
-        }
-        
-        for (int iN = 0; iN < dimN; iN++)
-        {
-            int iN_base1 = iN * dimQ;
-            int iN_base2 = iN * ldNQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&K_NQ[iN_base2 + iQ], K_NQ_buf[iN_base1 + iQ]);
-        }
-        
+		atomic_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
+		atomic_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
+		atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
+		
     } // for (int i = 0 ; i < num_dmat; i++) 
 }
 
@@ -207,7 +178,6 @@ static inline void update_F_opt_buffer_Q1(
     double *J_PQ_buf = write_buf;  write_buf += dimP * dimQ;
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
-    
     
     for (int i = 0 ; i < num_dmat; i++) 
     {
@@ -270,69 +240,29 @@ static inline void update_F_opt_buffer_Q1(
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        if (write_MN)
-        {
-            for (int iM = 0; iM < dimM; iM++)
-            {
-                int iM_base1 = iM * dimN;
-                int iM_base2 = iM * ldMN;
-                for (int iN = 0; iN < dimN; iN++)
-                {
-                    double adder = J_MN_buf[iM_base1 + iN];
-                    atomic_add_f64(&J_MN[iM_base2 + iN], adder);
-                }
-            }
-        }
+        if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
 
         if (write_P)
         {
-            for (int iM = 0; iM < dimM; iM++)
-            {
-                int iM_base1 = iM * dimP;
-                int iM_base2 = iM * ldMP;
-                for (int iP = 0; iP < dimP; iP++)
-                {
-                    double adder = K_MP_buf[iM_base1 + iP];
-                    atomic_add_f64(&K_MP[iM_base2 + iP], adder);
-                }
-            }
-
-            for (int iN = 0; iN < dimN; iN++)
-            {
-                int iN_base1 = iN * dimP;
-                int iN_base2 = iN * ldNP;
-                for (int iP = 0; iP < dimP; iP++)
-                {
-                    double adder = K_NP_buf[iN_base1 + iP];
-                    atomic_add_f64(&K_NP[iN_base2 + iP], adder);
-                }
-            }
+			atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
+			atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
         }
         
         for (int iP = 0; iP < dimP; iP++)
-        {
-            int iP_base2 = iP * ldPQ;
-            atomic_add_f64(&J_PQ[iP_base2], J_PQ_buf[iP]);
-        }
+            atomic_add_f64(&J_PQ[iP * ldPQ], J_PQ_buf[iP]);
         
         for (int iM = 0; iM < dimM; iM++)
-        {
-            int iM_base2 = iM * ldMQ;
-            atomic_add_f64(&K_MQ[iM_base2], K_MQ_buf[iM]);
-        }
+            atomic_add_f64(&K_MQ[iM * ldMQ], K_MQ_buf[iM]);
         
         for (int iN = 0; iN < dimN; iN++)
-        {
-            int iN_base2 = iN * ldNQ;
-            atomic_add_f64(&K_NQ[iN_base2], K_NQ_buf[iN]);
-        }
+            atomic_add_f64(&K_NQ[iN * ldNQ], K_NQ_buf[iN]);
         
     } // for (int i = 0 ; i < num_dmat; i++) 
 }
 
 static inline void update_F_opt_buffer_Q3(
     int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int dimQ,
+    int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
     int iMP0, int iMQ0, int iNP0,
@@ -345,6 +275,8 @@ static inline void update_F_opt_buffer_Q3(
     int load_MN, int load_P, int write_MN, int write_P
 )
 {
+	const int dimQ = 3;
+	
     int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
     int flag5 = (flag1 == 1 && flag3 == 1) ? 1 : 0;
     int flag6 = (flag2 == 1 && flag3 == 1) ? 1 : 0;
@@ -363,7 +295,6 @@ static inline void update_F_opt_buffer_Q3(
     double *J_PQ_buf = write_buf;  write_buf += dimP * dimQ;
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
-    
     
     for (int i = 0 ; i < num_dmat; i++) 
     {
@@ -434,75 +365,24 @@ static inline void update_F_opt_buffer_Q3(
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        if (write_MN)
-        {
-            for (int iM = 0; iM < dimM; iM++)
-            {
-                int iM_base1 = iM * dimN;
-                int iM_base2 = iM * ldMN;
-                for (int iN = 0; iN < dimN; iN++)
-                {
-                    double adder = J_MN_buf[iM_base1 + iN];
-                    atomic_add_f64(&J_MN[iM_base2 + iN], adder);
-                }
-            }
-        }
+        if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
 
         if (write_P)
         {
-            for (int iM = 0; iM < dimM; iM++)
-            {
-                int iM_base1 = iM * dimP;
-                int iM_base2 = iM * ldMP;
-                for (int iP = 0; iP < dimP; iP++)
-                {
-                    double adder = K_MP_buf[iM_base1 + iP];
-                    atomic_add_f64(&K_MP[iM_base2 + iP], adder);
-                }
-            }
-
-            for (int iN = 0; iN < dimN; iN++)
-            {
-                int iN_base1 = iN * dimP;
-                int iN_base2 = iN * ldNP;
-                for (int iP = 0; iP < dimP; iP++)
-                {
-                    double adder = K_NP_buf[iN_base1 + iP];
-                    atomic_add_f64(&K_NP[iN_base2 + iP], adder);
-                }
-            }
+			atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
+			atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
         }
         
-        for (int iP = 0; iP < dimP; iP++)
-        {
-            int iP_base1 = iP * dimQ;
-            int iP_base2 = iP * ldPQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&J_PQ[iP_base2 + iQ], J_PQ_buf[iP_base1 + iQ]);
-        }
-        
-        for (int iM = 0; iM < dimM; iM++)
-        {
-            int iM_base1 = iM * dimQ;
-            int iM_base2 = iM * ldMQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&K_MQ[iM_base2 + iQ], K_MQ_buf[iM_base1 + iQ]);
-        }
-        
-        for (int iN = 0; iN < dimN; iN++)
-        {
-            int iN_base1 = iN * dimQ;
-            int iN_base2 = iN * ldNQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&K_NQ[iN_base2 + iQ], K_NQ_buf[iN_base1 + iQ]);
-        }
+		atomic_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
+		atomic_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
+		atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
         
     } // for (int i = 0 ; i < num_dmat; i++) 
 }
 
 static inline void update_F_opt_buffer_Q6(
     int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int dimQ,
+    int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
     int iMP0, int iMQ0, int iNP0,
@@ -515,6 +395,8 @@ static inline void update_F_opt_buffer_Q6(
     int load_MN, int load_P, int write_MN, int write_P
 )
 {
+	const int dimQ = 6;
+	
     int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
     int flag5 = (flag1 == 1 && flag3 == 1) ? 1 : 0;
     int flag6 = (flag2 == 1 && flag3 == 1) ? 1 : 0;
@@ -584,7 +466,6 @@ static inline void update_F_opt_buffer_Q6(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
-                    #pragma simd
                     for (int iQ = 0; iQ < 6; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];
@@ -604,75 +485,24 @@ static inline void update_F_opt_buffer_Q6(
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        if (write_MN)
-        {
-            for (int iM = 0; iM < dimM; iM++)
-            {
-                int iM_base1 = iM * dimN;
-                int iM_base2 = iM * ldMN;
-                for (int iN = 0; iN < dimN; iN++)
-                {
-                    double adder = J_MN_buf[iM_base1 + iN];
-                    atomic_add_f64(&J_MN[iM_base2 + iN], adder);
-                }
-            }
-        }
+        if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
 
         if (write_P)
         {
-            for (int iM = 0; iM < dimM; iM++)
-            {
-                int iM_base1 = iM * dimP;
-                int iM_base2 = iM * ldMP;
-                for (int iP = 0; iP < dimP; iP++)
-                {
-                    double adder = K_MP_buf[iM_base1 + iP];
-                    atomic_add_f64(&K_MP[iM_base2 + iP], adder);
-                }
-            }
-
-            for (int iN = 0; iN < dimN; iN++)
-            {
-                int iN_base1 = iN * dimP;
-                int iN_base2 = iN * ldNP;
-                for (int iP = 0; iP < dimP; iP++)
-                {
-                    double adder = K_NP_buf[iN_base1 + iP];
-                    atomic_add_f64(&K_NP[iN_base2 + iP], adder);
-                }
-            }
+			atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
+			atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
         }
         
-        for (int iP = 0; iP < dimP; iP++)
-        {
-            int iP_base1 = iP * dimQ;
-            int iP_base2 = iP * ldPQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&J_PQ[iP_base2 + iQ], J_PQ_buf[iP_base1 + iQ]);
-        }
-        
-        for (int iM = 0; iM < dimM; iM++)
-        {
-            int iM_base1 = iM * dimQ;
-            int iM_base2 = iM * ldMQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&K_MQ[iM_base2 + iQ], K_MQ_buf[iM_base1 + iQ]);
-        }
-        
-        for (int iN = 0; iN < dimN; iN++)
-        {
-            int iN_base1 = iN * dimQ;
-            int iN_base2 = iN * ldNQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&K_NQ[iN_base2 + iQ], K_NQ_buf[iN_base1 + iQ]);
-        }
+		atomic_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
+		atomic_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
+		atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
         
     } // for (int i = 0 ; i < num_dmat; i++) 
 }
 
 static inline void update_F_opt_buffer_Q10(
     int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int dimQ,
+    int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
     int iMP0, int iMQ0, int iNP0,
@@ -685,6 +515,8 @@ static inline void update_F_opt_buffer_Q10(
     int load_MN, int load_P, int write_MN, int write_P
 )
 {
+	const int dimQ = 10;
+	
     int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
     int flag5 = (flag1 == 1 && flag3 == 1) ? 1 : 0;
     int flag6 = (flag2 == 1 && flag3 == 1) ? 1 : 0;
@@ -703,7 +535,6 @@ static inline void update_F_opt_buffer_Q10(
     double *J_PQ_buf = write_buf;  write_buf += dimP * dimQ;
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
-    
     
     for (int i = 0 ; i < num_dmat; i++) 
     {
@@ -754,7 +585,6 @@ static inline void update_F_opt_buffer_Q10(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
-                    #pragma simd
                     for (int iQ = 0; iQ < 10; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];
@@ -774,75 +604,24 @@ static inline void update_F_opt_buffer_Q10(
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        if (write_MN)
-        {
-            for (int iM = 0; iM < dimM; iM++)
-            {
-                int iM_base1 = iM * dimN;
-                int iM_base2 = iM * ldMN;
-                for (int iN = 0; iN < dimN; iN++)
-                {
-                    double adder = J_MN_buf[iM_base1 + iN];
-                    atomic_add_f64(&J_MN[iM_base2 + iN], adder);
-                }
-            }
-        }
+        if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
 
         if (write_P)
         {
-            for (int iM = 0; iM < dimM; iM++)
-            {
-                int iM_base1 = iM * dimP;
-                int iM_base2 = iM * ldMP;
-                for (int iP = 0; iP < dimP; iP++)
-                {
-                    double adder = K_MP_buf[iM_base1 + iP];
-                    atomic_add_f64(&K_MP[iM_base2 + iP], adder);
-                }
-            }
-
-            for (int iN = 0; iN < dimN; iN++)
-            {
-                int iN_base1 = iN * dimP;
-                int iN_base2 = iN * ldNP;
-                for (int iP = 0; iP < dimP; iP++)
-                {
-                    double adder = K_NP_buf[iN_base1 + iP];
-                    atomic_add_f64(&K_NP[iN_base2 + iP], adder);
-                }
-            }
+			atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
+			atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
         }
         
-        for (int iP = 0; iP < dimP; iP++)
-        {
-            int iP_base1 = iP * dimQ;
-            int iP_base2 = iP * ldPQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&J_PQ[iP_base2 + iQ], J_PQ_buf[iP_base1 + iQ]);
-        }
-        
-        for (int iM = 0; iM < dimM; iM++)
-        {
-            int iM_base1 = iM * dimQ;
-            int iM_base2 = iM * ldMQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&K_MQ[iM_base2 + iQ], K_MQ_buf[iM_base1 + iQ]);
-        }
-        
-        for (int iN = 0; iN < dimN; iN++)
-        {
-            int iN_base1 = iN * dimQ;
-            int iN_base2 = iN * ldNQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&K_NQ[iN_base2 + iQ], K_NQ_buf[iN_base1 + iQ]);
-        }
+		atomic_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
+		atomic_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
+		atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
         
     } // for (int i = 0 ; i < num_dmat; i++) 
 }
 
 static inline void update_F_opt_buffer_Q15(
     int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int dimQ,
+    int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
     int iMP0, int iMQ0, int iNP0,
@@ -855,6 +634,8 @@ static inline void update_F_opt_buffer_Q15(
     int load_MN, int load_P, int write_MN, int write_P
 )
 {
+	const int dimQ = 15;
+	
     int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
     int flag5 = (flag1 == 1 && flag3 == 1) ? 1 : 0;
     int flag6 = (flag2 == 1 && flag3 == 1) ? 1 : 0;
@@ -873,7 +654,6 @@ static inline void update_F_opt_buffer_Q15(
     double *J_PQ_buf = write_buf;  write_buf += dimP * dimQ;
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
-    
     
     for (int i = 0 ; i < num_dmat; i++) 
     {
@@ -924,7 +704,6 @@ static inline void update_F_opt_buffer_Q15(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
-                    #pragma simd
                     for (int iQ = 0; iQ < 15; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];
@@ -944,68 +723,17 @@ static inline void update_F_opt_buffer_Q15(
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        if (write_MN)
-        {
-            for (int iM = 0; iM < dimM; iM++)
-            {
-                int iM_base1 = iM * dimN;
-                int iM_base2 = iM * ldMN;
-                for (int iN = 0; iN < dimN; iN++)
-                {
-                    double adder = J_MN_buf[iM_base1 + iN];
-                    atomic_add_f64(&J_MN[iM_base2 + iN], adder);
-                }
-            }
-        }
+        if (write_MN) atomic_update_block(J_MN, ldMN, J_MN_buf, dimN, dimM, dimN);
 
         if (write_P)
         {
-            for (int iM = 0; iM < dimM; iM++)
-            {
-                int iM_base1 = iM * dimP;
-                int iM_base2 = iM * ldMP;
-                for (int iP = 0; iP < dimP; iP++)
-                {
-                    double adder = K_MP_buf[iM_base1 + iP];
-                    atomic_add_f64(&K_MP[iM_base2 + iP], adder);
-                }
-            }
-
-            for (int iN = 0; iN < dimN; iN++)
-            {
-                int iN_base1 = iN * dimP;
-                int iN_base2 = iN * ldNP;
-                for (int iP = 0; iP < dimP; iP++)
-                {
-                    double adder = K_NP_buf[iN_base1 + iP];
-                    atomic_add_f64(&K_NP[iN_base2 + iP], adder);
-                }
-            }
+			atomic_update_block(K_MP, ldMP, K_MP_buf, dimP, dimM, dimP);
+			atomic_update_block(K_NP, ldNP, K_NP_buf, dimP, dimN, dimP);
         }
         
-        for (int iP = 0; iP < dimP; iP++)
-        {
-            int iP_base1 = iP * dimQ;
-            int iP_base2 = iP * ldPQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&J_PQ[iP_base2 + iQ], J_PQ_buf[iP_base1 + iQ]);
-        }
-        
-        for (int iM = 0; iM < dimM; iM++)
-        {
-            int iM_base1 = iM * dimQ;
-            int iM_base2 = iM * ldMQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&K_MQ[iM_base2 + iQ], K_MQ_buf[iM_base1 + iQ]);
-        }
-        
-        for (int iN = 0; iN < dimN; iN++)
-        {
-            int iN_base1 = iN * dimQ;
-            int iN_base2 = iN * ldNQ;
-            for (int iQ = 0; iQ < dimQ; iQ++)
-                atomic_add_f64(&K_NQ[iN_base2 + iQ], K_NQ_buf[iN_base1 + iQ]);
-        }
+		atomic_update_block(J_PQ, ldPQ, J_PQ_buf, dimQ, dimP, dimQ);
+		atomic_update_block(K_MQ, ldMQ, K_MQ_buf, dimQ, dimM, dimQ);
+		atomic_update_block(K_NQ, ldNQ, K_NQ_buf, dimQ, dimN, dimQ);
         
     } // for (int i = 0 ; i < num_dmat; i++) 
 }

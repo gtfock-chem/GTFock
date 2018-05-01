@@ -15,16 +15,6 @@
 
 #include "cint_basisset.h"
 
-static inline void atomic_add_f64(volatile double* global_value, double addend)
-{
-    uint64_t expected_value, new_value;
-    do {
-        double old_value = *global_value;
-        expected_value = _castf64_u64(old_value);
-        new_value = _castf64_u64(old_value + addend);
-    } while (!__sync_bool_compare_and_swap((volatile uint64_t*)global_value,
-                                           expected_value, new_value));
-}
 
 double *update_F_buf  = NULL;
 int update_F_buf_size = 0;
@@ -106,6 +96,7 @@ void update_F_with_KetShellPairList(
         {
             update_F_1111(UPDATE_F_OPT_BUFFER_ARGS);
         } else {
+			
             if (fock_info_list[3] == 1) update_F_opt_buffer_Q1(UPDATE_F_OPT_BUFFER_ARGS);
             else if (fock_info_list[3] == 3)  update_F_opt_buffer_Q3(UPDATE_F_OPT_BUFFER_ARGS);
             else if (fock_info_list[3] == 6)  update_F_opt_buffer_Q6(UPDATE_F_OPT_BUFFER_ARGS);
