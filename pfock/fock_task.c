@@ -12,43 +12,42 @@
 #include "config.h"
 #include "taskq.h"
 #include "fock_task.h"
-
 #include "cint_basisset.h"
-
 
 double *update_F_buf  = NULL;
 int update_F_buf_size = 0;
+int use_atomic_add    = 1;
 
 #include "update_F.h"
 
-#define UPDATE_F_OPT_BUFFER_ARGS    use_atomic, tid, num_dmat, &batch_integrals[ipair * batch_nints], \
-                                    fock_info_list[0],  \
-                                    fock_info_list[1],  \
-                                    fock_info_list[2],  \
-                                    fock_info_list[3],  \
-                                    fock_info_list[4],  \
-                                    fock_info_list[5],  \
-                                    fock_info_list[6],  \
-                                    fock_info_list[7],  \
-                                    fock_info_list[8],  \
-                                    fock_info_list[9],  \
-                                    fock_info_list[10], \
-                                    fock_info_list[11], \
-                                    fock_info_list[12], \
-                                    fock_info_list[13], \
-                                    fock_info_list[14], \
-                                    fock_info_list[15], \
-                                    D1, D2, D3, \
-                                    F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP, \
-                                    sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6, \
-                                    ldX1, ldX2, ldX3, ldX4, ldX5, ldX6, \
-                                    load_MN, load_P, write_MN, write_P 
+#define UPDATE_F_OPT_BUFFER_ARGS \
+    tid, num_dmat, &batch_integrals[ipair * batch_nints], \
+    fock_info_list[0],  \
+    fock_info_list[1],  \
+    fock_info_list[2],  \
+    fock_info_list[3],  \
+    fock_info_list[4],  \
+    fock_info_list[5],  \
+    fock_info_list[6],  \
+    fock_info_list[7],  \
+    fock_info_list[8],  \
+    fock_info_list[9],  \
+    fock_info_list[10], \
+    fock_info_list[11], \
+    fock_info_list[12], \
+    fock_info_list[13], \
+    fock_info_list[14], \
+    fock_info_list[15], \
+    D1, D2, D3, \
+    F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP, \
+    sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6, \
+    ldX1, ldX2, ldX3, ldX4, ldX5, ldX6, \
+    load_MN, load_P, write_MN, write_P 
 
 #include "thread_quartet_buf.h"
 
 void update_F_with_KetShellPairList(
-    int use_atomic, int tid, int num_dmat, 
-	double *batch_integrals, int batch_nints, int npairs, 
+    int tid, int num_dmat, double *batch_integrals, int batch_nints, int npairs, 
     KetShellPairList_s *target_shellpair_list,
     double **D1, double **D2, double **D3,
     double *F_MN, double *F_PQ, double *F_NQ, double *F_MP, double *F_MQ, double *F_NP,
@@ -145,6 +144,8 @@ void fock_task_batched(
         int nthreads = omp_get_max_threads();
         update_F_buf = _mm_malloc(sizeof(double) * nthreads * update_F_buf_size, 64);
         assert(update_F_buf != NULL);
+        
+        if (ncpu_f == 1) use_atomic_add = 0;
     }
     
     #pragma omp parallel
@@ -158,11 +159,9 @@ void fock_task_batched(
         double *F_MP = &(F4[nf * sizeX4 * num_dmat]);
         double *F_MQ = &(F5[nf * sizeX5 * num_dmat]);
         double *F_NP = &(F6[nf * sizeX6 * num_dmat]);
-        double mynsq  = 0.0;
+        double mynsq = 0.0;
         double mynitl = 0.0;        
         
-		int use_atomic = (ncpu_f > 1);
-		
         // Pending quartets that need to be computed
         ThreadQuartetLists_s *thread_quartet_lists = (ThreadQuartetLists_s*) malloc(sizeof(ThreadQuartetLists_s));
         init_ThreadQuartetLists(thread_quartet_lists);
@@ -255,8 +254,7 @@ void fock_task_batched(
                             double st, et;
                             st = CInt_get_walltime_sec();
                             update_F_with_KetShellPairList(
-                                use_atomic, nt, num_dmat, 
-								thread_batch_integrals, thread_batch_nints, npairs, 
+                                nt, num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
                                 target_shellpair_list,
                                 D1, D2, D3,
                                 F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
@@ -300,8 +298,7 @@ void fock_task_batched(
                         double st, et;
                         st = CInt_get_walltime_sec();
                         update_F_with_KetShellPairList(
-                            use_atomic, nt, num_dmat, 
-							thread_batch_integrals, thread_batch_nints, npairs, 
+                            nt, num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
                             target_shellpair_list,
                             D1, D2, D3,
                             F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
@@ -367,6 +364,8 @@ void fock_task_nonbatch(
         int nthreads = omp_get_max_threads();
         update_F_buf = _mm_malloc(sizeof(double) * nthreads * update_F_buf_size, 64);
         assert(update_F_buf != NULL);
+        
+        if (ncpu_f == 1) use_atomic_add = 0;
     }
     
     #pragma omp parallel
@@ -380,11 +379,8 @@ void fock_task_nonbatch(
         double *F_MP = &(F4[nf * sizeX4 * num_dmat]);
         double *F_MQ = &(F5[nf * sizeX5 * num_dmat]);
         double *F_NP = &(F6[nf * sizeX6 * num_dmat]);
-        double mynsq  = 0.0;
+        double mynsq = 0.0;
         double mynitl = 0.0;        
-		
-		int use_atomic = (ncpu_f > 1);
-		
         #pragma omp for schedule(dynamic)
         for (int i = startMN; i < endMN; i++) {
             int M = shellrid[i];
@@ -434,8 +430,7 @@ void fock_task_nonbatch(
                         double st, et;
                         st = CInt_get_walltime_sec();
                         update_F_opt_buffer(
-                            use_atomic, nt, num_dmat, integrals, 
-							dimM, dimN, dimP, dimQ,
+                            nt, num_dmat, integrals, dimM, dimN, dimP, dimQ,
                             flag1, flag2, flag3,
                             iMN, iPQ, iMP, iNP, iMQ, iNQ,
                             iMP0, iMQ0, iNP0,

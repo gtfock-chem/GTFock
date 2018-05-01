@@ -157,59 +157,59 @@ static PFockStatus_t init_fock(PFock_t pfock)
 static void recursive_bisection (int *rowptr, int first, int last,
                                  int npartitions, int *partition_ptr)
 {
-	int offset = rowptr[first];
-	int nnz = rowptr[last] - rowptr[first];
+    int offset = rowptr[first];
+    int nnz = rowptr[last] - rowptr[first];
 
-	if(npartitions == 1)
-	{
-		partition_ptr[0] = first;
-		return;
-	}
+    if(npartitions == 1)
+    {
+        partition_ptr[0] = first;
+        return;
+    }
 
-	int left = npartitions/2;
-	double ideal = ((double)nnz * (double)left)/npartitions;
-	int i;
-	for(i = first; i < last; i++)
-	{
-		double count = rowptr[i] - offset;
-		double next_count = rowptr[i + 1] - offset;
-		if(next_count > ideal)
-		{
-			if(next_count - ideal > ideal - count)
-			{
-				recursive_bisection(rowptr, first, i, left, partition_ptr);
-				recursive_bisection(rowptr, i, last,
+    int left = npartitions/2;
+    double ideal = ((double)nnz * (double)left)/npartitions;
+    int i;
+    for(i = first; i < last; i++)
+    {
+        double count = rowptr[i] - offset;
+        double next_count = rowptr[i + 1] - offset;
+        if(next_count > ideal)
+        {
+            if(next_count - ideal > ideal - count)
+            {
+                recursive_bisection(rowptr, first, i, left, partition_ptr);
+                recursive_bisection(rowptr, i, last,
                                     npartitions - left, partition_ptr + left);
-				return;
-			}
-			else
-			{
-				recursive_bisection(rowptr, first, i + 1, left, partition_ptr);
-				recursive_bisection(rowptr, i + 1, last,
+                return;
+            }
+            else
+            {
+                recursive_bisection(rowptr, first, i + 1, left, partition_ptr);
+                recursive_bisection(rowptr, i + 1, last,
                                     npartitions - left, partition_ptr + left);
-				return;
-			}
-		}
-	}
+                return;
+            }
+        }
+    }
 }
 
 
 static int nnz_partition (int m, int nnz, int min_nrows,
                           int *rowptr, int npartitions, int *partition_ptr)
 {
-	recursive_bisection(rowptr, 0, m, npartitions, partition_ptr);
-	partition_ptr[npartitions] = m;
+    recursive_bisection(rowptr, 0, m, npartitions, partition_ptr);
+    partition_ptr[npartitions] = m;
 
-	for (int i = 0; i < npartitions; i++)
-	{
-		int nrows = partition_ptr[i + 1] - partition_ptr[i];
-		if (nrows < min_nrows)
-		{
-			return -1;
-		}
-	}
+    for (int i = 0; i < npartitions; i++)
+    {
+        int nrows = partition_ptr[i + 1] - partition_ptr[i];
+        if (nrows < min_nrows)
+        {
+            return -1;
+        }
+    }
     
-	return 0;
+    return 0;
 }
 
 
@@ -693,9 +693,9 @@ static PFockStatus_t create_buffers (PFock_t pfock)
     pfock->sizeX6 = sizeX6;
     pfock->ncpu_f = ncpu_f;
     int numF = pfock->numF = (nthreads + ncpu_f - 1)/ncpu_f;
-	if (myrank == 0) printf("ncpu_f, numF = %d, %d\n", ncpu_f, numF);
-    // allocation
+    if (myrank == 0) printf("%d threads will share a buffer of J, K matrix, %d copies in total\n", ncpu_f, numF);
 
+    // allocation
     pfock->F1 = (double *)PFOCK_MALLOC(sizeof(double) * sizeX1 *
         numF * pfock->max_numdmat2);
     pfock->F2 = (double *)PFOCK_MALLOC(sizeof(double) * sizeX2 *
