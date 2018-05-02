@@ -489,6 +489,16 @@ void reset_F(int numF, int num_dmat, double *F1, double *F2, double *F3,
     }
 }
 
+static int block_low(int i, int n, int block_size)
+{
+    long long bs = block_size;
+    long long _n = n;
+    long long _i = i;
+    bs *= _i;
+    bs /= _n;
+    int res = bs;
+    return res;
+}
 
 void reduce_F(int numF, int num_dmat,
               double *F1, double *F2, double *F3,
@@ -500,38 +510,58 @@ void reduce_F(int numF, int num_dmat,
               int iX3M, int iX3P,
               int ldX3, int ldX4, int ldX5, int ldX6)
 {
+    int nthreads = omp_get_max_threads();
     #pragma omp parallel
     {
-        #pragma omp for
-        for (int k = 0; k < sizeX1 * num_dmat; k++) {
-            for (int p = 1; p < numF; p++) {
+        int spos, epos;
+        int tid = omp_get_thread_num();
+        
+        spos = block_low(tid,     nthreads, sizeX1 * num_dmat);
+        epos = block_low(tid + 1, nthreads, sizeX1 * num_dmat);
+        for (int p = 1; p < numF; p++)
+        {
+            #pragma simd
+            for (int k = spos; k < epos; k++)
                 F1[k] += F1[k + p * sizeX1 * num_dmat];
-            }
         }
-        #pragma omp for
-        for (int k = 0; k < sizeX2 * num_dmat; k++) {
-            for (int p = 1; p < numF; p++) {
+        
+        spos = block_low(tid,     nthreads, sizeX2 * num_dmat);
+        epos = block_low(tid + 1, nthreads, sizeX2 * num_dmat);
+        for (int p = 1; p < numF; p++)
+        {
+            #pragma simd
+            for (int k = spos; k < epos; k++)
                 F2[k] += F2[k + p * sizeX2 * num_dmat];
-            }
         }
-        #pragma omp for
-        for (int k = 0; k < sizeX4 * num_dmat; k++) {
-            for (int p = 1; p < numF; p++) {
-                F4[k] += F4[k + p * sizeX4 * num_dmat];   
-            }
+        
+        spos = block_low(tid,     nthreads, sizeX4 * num_dmat);
+        epos = block_low(tid + 1, nthreads, sizeX4 * num_dmat);
+        for (int p = 1; p < numF; p++)
+        {
+            #pragma simd
+            for (int k = spos; k < epos; k++)
+                F4[k] += F4[k + p * sizeX4 * num_dmat];
         }
-        #pragma omp for
-        for (int k = 0; k < sizeX5 * num_dmat; k++) {
-            for (int p = 1; p < numF; p++) {
-                F5[k] += F5[k + p * sizeX5 * num_dmat];   
-            }
+        
+        spos = block_low(tid,     nthreads, sizeX5 * num_dmat);
+        epos = block_low(tid + 1, nthreads, sizeX5 * num_dmat);
+        for (int p = 1; p < numF; p++)
+        {
+            #pragma simd
+            for (int k = spos; k < epos; k++)
+                F5[k] += F5[k + p * sizeX5 * num_dmat];
         }
-        #pragma omp for
-        for (int k = 0; k < sizeX6 * num_dmat; k++) {
-            for (int p = 1; p < numF; p++) {
-                F6[k] += F6[k + p * sizeX6 * num_dmat];   
-            }
+        
+        spos = block_low(tid,     nthreads, sizeX6 * num_dmat);
+        epos = block_low(tid + 1, nthreads, sizeX6 * num_dmat);
+        for (int p = 1; p < numF; p++)
+        {
+            #pragma simd
+            for (int k = spos; k < epos; k++)
+                F6[k] += F6[k + p * sizeX6 * num_dmat];
         }
+        
+        #pragma omp barrier
 
         int iMP = iX3M * ldX3 + iX3P;
         int iMQ = iX3M * ldX3;
