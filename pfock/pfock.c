@@ -693,7 +693,7 @@ static PFockStatus_t create_buffers (PFock_t pfock)
     pfock->sizeX6 = sizeX6;
     pfock->ncpu_f = ncpu_f;
     int numF = pfock->numF = (nthreads + ncpu_f - 1)/ncpu_f;
-    if (myrank == 0) printf("%d threads will share a buffer of J, K matrix, %d copies in total\n", ncpu_f, numF);
+    if (myrank == 0) printf("  %d threads will share a buffer of J, K matrix, %d copies in total\n", ncpu_f, numF);
 
     // allocation
     pfock->F1 = (double *)PFOCK_MALLOC(sizeof(double) * sizeX1 *
@@ -926,7 +926,7 @@ PFockStatus_t PFock_create(BasisSet_t basis, int nprow, int npcol, int ntasks,
     }
     double t2 = MPI_Wtime();
     if (myrank == 0) {
-        PFOCK_INFO("takes %.3lf secs\n", t2 - t1);
+        PFOCK_INFO("schwartz screening takes %.3lf secs\n", t2 - t1);
     }
 
     // repartition
