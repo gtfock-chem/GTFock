@@ -1396,7 +1396,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                   ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
                   sizeX1, sizeX2, sizeX3,
                   sizeX4, sizeX5, sizeX6,
-                  &(pfock->uitl), &(pfock->usq));
+                  &(pfock->uitl), &(pfock->usq), pfock->nbf, pfock->nshells);
         gettimeofday (&tv4, NULL);
         pfock->timecomp += (tv4.tv_sec - tv3.tv_sec) +
                     (tv4.tv_usec - tv3.tv_usec) / 1000.0 / 1000.0;
@@ -1571,7 +1571,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                       D1_task, D2_task, VD3, F1, F2, F3, F4, F5, F6,
                       ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
                       sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                      &(pfock->uitl), &(pfock->usq));
+                      &(pfock->uitl), &(pfock->usq), pfock->nbf, pfock->nshells);
             gettimeofday (&tv4, NULL);
             pfock->timecomp += (tv4.tv_sec - tv3.tv_sec) +
                         (tv4.tv_usec - tv3.tv_usec) / 1000.0 / 1000.0;
