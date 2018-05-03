@@ -18,6 +18,12 @@ double *update_F_buf  = NULL;
 int update_F_buf_size = 0;
 int use_atomic_add    = 1;
 
+int nbf = 0, nshells = 0, nsp, nbf2;
+int *mat_block_ptr;
+volatile int *block_packed;
+int *shell_bf_num;
+double *D_blocks;
+
 #include "update_F.h"
 
 #define UPDATE_F_OPT_BUFFER_ARGS \
@@ -52,11 +58,13 @@ void update_F_with_KetShellPairList(
     double **D1, double **D2, double **D3,
     double *F_MN, double *F_PQ, double *F_NQ, double *F_MP, double *F_MQ, double *F_NP,
     int sizeX1, int sizeX2, int sizeX3, int sizeX4, int sizeX5, int sizeX6,
-    int ldX1, int ldX2, int ldX3, int ldX4, int ldX5, int ldX6
+    int ldX1, int ldX2, int ldX3, int ldX4, int ldX5, int ldX6, int M, int N
 )
 {
     int load_MN, load_P, write_MN, write_P;
     int prev_iMP = -1;
+    int *P_list = target_shellpair_list->P_list;
+    int *Q_list = target_shellpair_list->Q_list;
     for (int ipair = 0; ipair < npairs; ipair++)
     {
         int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
@@ -91,6 +99,7 @@ void update_F_with_KetShellPairList(
             write_P  = 1;
         }
 
+        /*
         int is_1111 = fock_info_list[0] * fock_info_list[1] * fock_info_list[2] * fock_info_list[3];
         if (is_1111 == 1)
         {
@@ -103,14 +112,10 @@ void update_F_with_KetShellPairList(
             else if (fock_info_list[3] == 15) update_F_opt_buffer_Q15(UPDATE_F_OPT_BUFFER_ARGS);
             else update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
         }
+        */
+        update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS, M, N, P_list[ipair], Q_list[ipair]);
     }
 }
-
-int nbf = 0, nshells = 0, nsp, nbf2;
-int *mat_block_ptr;
-volatile int *block_packed;
-int *shell_bf_num;
-double *D_blocks;
 
 static void init_block_buf(int _nbf, int _nshells, int *f_startind)
 {
@@ -188,7 +193,7 @@ void fock_task(
     int startM, int endM, int startP, int endP,
     double **D1, double **D2, double **D3,
     double *F1, double *F2, double *F3,
-    double *F4, double *F5, double *F6, 
+    double *F4, double *F5, double *F6,
     int ldX1, int ldX2, int ldX3,
     int ldX4, int ldX5, int ldX6,
     int sizeX1, int sizeX2, int sizeX3,
@@ -339,7 +344,7 @@ void fock_task(
                                 D1, D2, D3,
                                 F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
                                 sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                                ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
+                                ldX1, ldX2, ldX3, ldX4, ldX5, ldX6, M, N
                             );
                             et = CInt_get_walltime_sec();
                             if (nt == 0) 
@@ -383,7 +388,7 @@ void fock_task(
                             D1, D2, D3,
                             F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
                             sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                            ldX1, ldX2, ldX3, ldX4, ldX5, ldX6
+                            ldX1, ldX2, ldX3, ldX4, ldX5, ldX6, M, N
                         );
                         et = CInt_get_walltime_sec();
                         if (nt == 0) 
