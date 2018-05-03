@@ -48,7 +48,8 @@ double *D_blocks;
     F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP, \
     sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6, \
     ldX1, ldX2, ldX3, ldX4, ldX5, ldX6, \
-    load_MN, load_P, write_MN, write_P 
+    load_MN, load_P, write_MN, write_P, \
+    M, N, P_list[ipair], Q_list[ipair]
 
 #include "thread_quartet_buf.h"
 
@@ -99,7 +100,6 @@ void update_F_with_KetShellPairList(
             write_P  = 1;
         }
 
-        /*
         int is_1111 = fock_info_list[0] * fock_info_list[1] * fock_info_list[2] * fock_info_list[3];
         if (is_1111 == 1)
         {
@@ -112,13 +112,17 @@ void update_F_with_KetShellPairList(
             else if (fock_info_list[3] == 15) update_F_opt_buffer_Q15(UPDATE_F_OPT_BUFFER_ARGS);
             else update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
         }
-        */
-        update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS, M, N, P_list[ipair], Q_list[ipair]);
     }
 }
 
-static void init_block_buf(int _nbf, int _nshells, int *f_startind)
+static void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat)
 {
+    if (num_dmat != 1)
+    {
+        printf("  FATAL: currently JKD blocking only supports num_dmat==1 !! Please check scf.c\n");
+        assert(num_dmat == 1);
+    }
+    
     if (nbf > 0)
     {
         if ((nbf != _nbf) || (nshells != _nshells)) 
@@ -221,7 +225,7 @@ void fock_task(
         if (ncpu_f == 1) use_atomic_add = 0;
     }
     
-    init_block_buf(_nbf, _nshells, f_startind);
+    init_block_buf(_nbf, _nshells, f_startind, num_dmat);
     
     #pragma omp parallel
     {
