@@ -72,12 +72,10 @@ static void update_global_blocks(
 
 // Use thread-local buffer to reduce atomic add 
 static inline void update_F_opt_buffer(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int dimQ,
+    int tid, int num_dmat, double *integrals, 
+    int dimM, int dimN, int dimP, int dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
-    int iMP0, int iMQ0, int iNP0,
-    double **D1, double **D2, double **D3,
     double *F_MN, double *F_PQ, double *F_NQ,
     double *F_MP, double *F_MQ, double *F_NP,
     int sizeX1, int sizeX2, int sizeX3,
@@ -188,12 +186,10 @@ static inline void update_F_opt_buffer(
 }
 
 static inline void update_F_opt_buffer_Q1(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int _dimQ,
+    int tid, int num_dmat, double *integrals, 
+    int dimM, int dimN, int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
-    int iMP0, int iMQ0, int iNP0,
-    double **D1, double **D2, double **D3,
     double *F_MN, double *F_PQ, double *F_NQ,
     double *F_MP, double *F_MQ, double *F_NP,
     int sizeX1, int sizeX2, int sizeX3,
@@ -224,7 +220,7 @@ static inline void update_F_opt_buffer_Q1(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
     
-    for (int i = 0 ; i < num_dmat; i++) 
+    for (int i = 0; i < num_dmat; i++) 
     {
         double *J_MN = &F_MN[i * sizeX1] + iMN;
         double *J_PQ = &F_PQ[i * sizeX2] + iPQ;
@@ -296,12 +292,10 @@ static inline void update_F_opt_buffer_Q1(
 }
 
 static inline void update_F_opt_buffer_Q3(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int _dimQ,
+    int tid, int num_dmat, double *integrals, 
+    int dimM, int dimN, int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
-    int iMP0, int iMQ0, int iNP0,
-    double **D1, double **D2, double **D3,
     double *F_MN, double *F_PQ, double *F_NQ,
     double *F_MP, double *F_MQ, double *F_NP,
     int sizeX1, int sizeX2, int sizeX3,
@@ -332,7 +326,7 @@ static inline void update_F_opt_buffer_Q3(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
     
-    for (int i = 0 ; i < num_dmat; i++) 
+    for (int i = 0; i < num_dmat; i++) 
     {
         double *J_MN = &F_MN[i * sizeX1] + iMN;
         double *J_PQ = &F_PQ[i * sizeX2] + iPQ;
@@ -382,11 +376,10 @@ static inline void update_F_opt_buffer_Q3(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
-                    #pragma ivdep
+					#pragma unroll
                     for (int iQ = 0; iQ < 3; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];
-                        
                         j_MN += D_PQ_buf[ipq_base + iQ] * I;
                         k_MN -= D_NQ_buf[inq_base + iQ] * I;
                         k_NP -= D_MQ_buf[imq_base + iQ] * I;
@@ -413,12 +406,10 @@ static inline void update_F_opt_buffer_Q3(
 }
 
 static inline void update_F_opt_buffer_Q6(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int _dimQ,
+    int tid, int num_dmat, double *integrals, 
+    int dimM, int dimN, int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
-    int iMP0, int iMQ0, int iNP0,
-    double **D1, double **D2, double **D3,
     double *F_MN, double *F_PQ, double *F_NQ,
     double *F_MP, double *F_MQ, double *F_NP,
     int sizeX1, int sizeX2, int sizeX3,
@@ -450,7 +441,7 @@ static inline void update_F_opt_buffer_Q6(
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
     
     
-    for (int i = 0 ; i < num_dmat; i++) 
+    for (int i = 0; i < num_dmat; i++) 
     {
         double *J_MN = &F_MN[i * sizeX1] + iMN;
         double *J_PQ = &F_PQ[i * sizeX2] + iPQ;
@@ -500,10 +491,10 @@ static inline void update_F_opt_buffer_Q6(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
+					#pragma ivdep
                     for (int iQ = 0; iQ < 6; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];
-                        
                         j_MN += D_PQ_buf[ipq_base + iQ] * I;
                         k_MN -= D_NQ_buf[inq_base + iQ] * I;
                         k_NP -= D_MQ_buf[imq_base + iQ] * I;
@@ -530,12 +521,10 @@ static inline void update_F_opt_buffer_Q6(
 }
 
 static inline void update_F_opt_buffer_Q10(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int _dimQ,
+    int tid, int num_dmat, double *integrals,
+    int dimM, int dimN, int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
-    int iMP0, int iMQ0, int iNP0,
-    double **D1, double **D2, double **D3,
     double *F_MN, double *F_PQ, double *F_NQ,
     double *F_MP, double *F_MQ, double *F_NP,
     int sizeX1, int sizeX2, int sizeX3,
@@ -566,7 +555,7 @@ static inline void update_F_opt_buffer_Q10(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
     
-    for (int i = 0 ; i < num_dmat; i++) 
+    for (int i = 0; i < num_dmat; i++) 
     {
         double *J_MN = &F_MN[i * sizeX1] + iMN;
         double *J_PQ = &F_PQ[i * sizeX2] + iPQ;
@@ -616,10 +605,10 @@ static inline void update_F_opt_buffer_Q10(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
+					#pragma ivdep
                     for (int iQ = 0; iQ < 10; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];
-                        
                         j_MN += D_PQ_buf[ipq_base + iQ] * I;
                         k_MN -= D_NQ_buf[inq_base + iQ] * I;
                         k_NP -= D_MQ_buf[imq_base + iQ] * I;
@@ -646,12 +635,10 @@ static inline void update_F_opt_buffer_Q10(
 }
 
 static inline void update_F_opt_buffer_Q15(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int _dimQ,
+    int tid, int num_dmat, double *integrals, 
+    int dimM, int dimN, int dimP, int _dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
-    int iMP0, int iMQ0, int iNP0,
-    double **D1, double **D2, double **D3,
     double *F_MN, double *F_PQ, double *F_NQ,
     double *F_MP, double *F_MQ, double *F_NP,
     int sizeX1, int sizeX2, int sizeX3,
@@ -682,7 +669,7 @@ static inline void update_F_opt_buffer_Q15(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
     
-    for (int i = 0 ; i < num_dmat; i++) 
+    for (int i = 0; i < num_dmat; i++) 
     {
         double *J_MN = &F_MN[i * sizeX1] + iMN;
         double *J_PQ = &F_PQ[i * sizeX2] + iPQ;
@@ -732,10 +719,10 @@ static inline void update_F_opt_buffer_Q15(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
+					#pragma ivdep
                     for (int iQ = 0; iQ < 15; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];
-                        
                         j_MN += D_PQ_buf[ipq_base + iQ] * I;
                         k_MN -= D_NQ_buf[inq_base + iQ] * I;
                         k_NP -= D_MQ_buf[imq_base + iQ] * I;
@@ -762,12 +749,10 @@ static inline void update_F_opt_buffer_Q15(
 }
 
 static inline void update_F_1111(
-    int tid, int num_dmat, double *integrals, int dimM, int dimN,
-    int dimP, int dimQ,
+    int tid, int num_dmat, double *integrals,
+    int dimM, int dimN, int dimP, int dimQ,
     int flag1, int flag2, int flag3,
     int iMN, int iPQ, int iMP, int iNP, int iMQ, int iNQ,
-    int iMP0, int iMQ0, int iNP0,
-    double **D1, double **D2, double **D3,
     double *F_MN, double *F_PQ, double *F_NQ,
     double *F_MP, double *F_MQ, double *F_NP,
     int sizeX1, int sizeX2, int sizeX3,
@@ -782,7 +767,7 @@ static inline void update_F_1111(
     int flag6 = (flag2 == 1 && flag3 == 1) ? 1 : 0;
     int flag7 = (flag4 == 1 && flag3 == 1) ? 1 : 0;
     
-    for (int i = 0 ; i < num_dmat; i++) 
+    for (int i = 0; i < num_dmat; i++) 
     {
         double *D_MN_buf = D_blocks + mat_block_ptr[M * nshells + N];
         double *D_PQ_buf = D_blocks + mat_block_ptr[P * nshells + Q];

@@ -14,15 +14,18 @@
 #include "fock_task.h"
 #include "cint_basisset.h"
 
+// Using global variables is a bad habit, but it is convenient.
+// Consider fix this problem later.
+
 double *update_F_buf  = NULL;
 int update_F_buf_size = 0;
 int use_atomic_add    = 1;
 
 int nbf = 0, nshells = 0, nsp, nbf2;
-int *mat_block_ptr;
-volatile int *block_packed;
-int *shell_bf_num;
-double *D_blocks;
+int *mat_block_ptr;          // The offset of the 1st element of a block in the packed buffer
+volatile int *block_packed;  // Flags for marking if a block of D has been packed
+int *shell_bf_num;           // Number of basis functions of each shell
+double *D_blocks;            // Packed density matrix (D) blocks
 
 #include "update_F.h"
 
@@ -41,10 +44,6 @@ double *D_blocks;
     fock_info_list[10], \
     fock_info_list[11], \
     fock_info_list[12], \
-    fock_info_list[13], \
-    fock_info_list[14], \
-    fock_info_list[15], \
-    D1, D2, D3, \
     F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP, \
     sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6, \
     ldX1, ldX2, ldX3, ldX4, ldX5, ldX6, \
