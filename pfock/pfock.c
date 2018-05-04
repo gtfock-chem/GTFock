@@ -691,7 +691,8 @@ static PFockStatus_t create_buffers (PFock_t pfock)
     pfock->sizeX4 = sizeX4;
     pfock->sizeX5 = sizeX5;
     pfock->sizeX6 = sizeX6;
-    pfock->ncpu_f = ncpu_f;
+    // pfock->ncpu_f = ncpu_f;
+	pfock->ncpu_f = nthreads;  // For JK blocking
     int numF = pfock->numF = (nthreads + ncpu_f - 1)/ncpu_f;
     if (myrank == 0) printf("  %d threads will share a buffer of J, K matrix, %d copies in total\n", ncpu_f, numF);
 

@@ -106,12 +106,19 @@ static inline void update_F_opt_buffer(
     
     for (int i = 0; i < num_dmat; i++) 
     { 
-        double *J_MN = &F_MN[i * sizeX1] + iMN;
-        double *J_PQ = &F_PQ[i * sizeX2] + iPQ;
-        double *K_NQ = &F_NQ[i * sizeX3] + iNQ;
-        double *K_MP = &F_MP[i * sizeX4] + iMP;
-        double *K_MQ = &F_MQ[i * sizeX5] + iMQ;
-        double *K_NP = &F_NP[i * sizeX6] + iNP;
+		double *J_MN = F_MN_blocks + mat_block_ptr[M * nshells + N];
+		double *J_PQ = F_PQ_blocks + mat_block_ptr[P * nshells + Q];
+		double *K_MP = F_MP_blocks + mat_block_ptr[M * nshells + P];
+		double *K_NP = F_NQ_blocks + mat_block_ptr[N * nshells + P];
+		double *K_MQ = F_MQ_blocks + mat_block_ptr[M * nshells + Q];
+		double *K_NQ = F_NQ_blocks + mat_block_ptr[N * nshells + Q];
+		
+        //double *J_MN = &F_MN[i * sizeX1] + iMN;
+        //double *J_PQ = &F_PQ[i * sizeX2] + iPQ;
+        //double *K_NQ = &F_NQ[i * sizeX3] + iNQ;
+        //double *K_MP = &F_MP[i * sizeX4] + iMP;
+        //double *K_MQ = &F_MQ[i * sizeX5] + iMQ;
+        //double *K_NP = &F_NP[i * sizeX6] + iNP;
         
         double *D_MN_buf = D_blocks + mat_block_ptr[M * nshells + N];
         double *D_PQ_buf = D_blocks + mat_block_ptr[P * nshells + Q];
@@ -177,7 +184,7 @@ static inline void update_F_opt_buffer(
         // Update to the global array using atomic_add_f64()
         update_global_blocks(
             write_MN, write_P, dimM, dimN, dimP, dimQ, 
-            ldMN, ldMP, ldNP, ldPQ, ldMQ, ldNQ,
+            dimN, dimP, dimP, dimQ, dimQ, dimQ,
             J_MN, J_MN_buf, K_MP, K_MP_buf, 
             K_NP, K_NP_buf, J_PQ, J_PQ_buf,
             K_MQ, K_MQ_buf, K_NQ, K_NQ_buf
