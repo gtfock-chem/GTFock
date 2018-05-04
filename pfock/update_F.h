@@ -376,7 +376,7 @@ static inline void update_F_opt_buffer_Q3(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
-					#pragma unroll
+                    #pragma unroll
                     for (int iQ = 0; iQ < 3; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];
@@ -491,7 +491,7 @@ static inline void update_F_opt_buffer_Q6(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
-					#pragma ivdep
+                    #pragma ivdep
                     for (int iQ = 0; iQ < 6; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];
@@ -605,7 +605,7 @@ static inline void update_F_opt_buffer_Q10(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
-					#pragma ivdep
+                    #pragma ivdep
                     for (int iQ = 0; iQ < 10; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];
@@ -719,7 +719,7 @@ static inline void update_F_opt_buffer_Q15(
                     
                     double k_MN = 0.0, k_NP = 0.0;
                     
-					#pragma ivdep
+                    #pragma ivdep
                     for (int iQ = 0; iQ < 15; iQ++) 
                     {
                         double I = integrals[Ibase + iQ];

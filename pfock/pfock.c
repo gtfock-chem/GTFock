@@ -1375,7 +1375,9 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     /* own part */
     reset_taskq(pfock);
     int task;
-    while ((task = taskq_next (pfock, myrow, mycol, 1)) < pfock->ntasks) {
+    int repack_D = 1;
+    while ((task = taskq_next (pfock, myrow, mycol, 1)) < pfock->ntasks) 
+    {
         int rowid = task/pfock->nblks_col;
         int colid = task%pfock->nblks_col;
         int startM = pfock->blkrowptr_sh[pfock->sblk_row + rowid];
@@ -1396,8 +1398,10 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                   ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
                   sizeX1, sizeX2, sizeX3,
                   sizeX4, sizeX5, sizeX6,
-                  &(pfock->uitl), &(pfock->usq), pfock->nbf, pfock->nshells);
+                  &(pfock->uitl), &(pfock->usq), 
+                  pfock->nbf, pfock->nshells, repack_D);
         gettimeofday (&tv4, NULL);
+        repack_D = 0;
         pfock->timecomp += (tv4.tv_sec - tv3.tv_sec) +
                     (tv4.tv_usec - tv3.tv_usec) / 1000.0 / 1000.0;
     } /* own part */
@@ -1459,7 +1463,8 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     int prevrow = myrow;
     int prevcol = mycol;   
     /* steal tasks */
-    for (int idx = 0; idx < pfock->nprocs - 1; idx++) {
+    for (int idx = 0; idx < pfock->nprocs - 1; idx++) 
+    {
         int vpid = (myrank + idx + 1)%pfock->nprocs;
         int vrow = vpid/pfock->npcol;
         int vcol = vpid%pfock->npcol;
@@ -1472,9 +1477,11 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
         int vsshellcol = pfock->colptr_sh[vcol];
         int stealed = 0;
         int task;
-        while ((task = taskq_next(pfock, vrow, vcol, 1)) < pfock->ntasks) {
+        while ((task = taskq_next(pfock, vrow, vcol, 1)) < pfock->ntasks) 
+        {
             gettimeofday (&tv3, NULL);
-            if (0 == stealed) {
+            if (0 == stealed) 
+            {
                 if (vrow != prevrow && vrow != myrow) {
                     D1_task = VD1;
                     lo[0] = vpid;
@@ -1571,7 +1578,8 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                       D1_task, D2_task, VD3, F1, F2, F3, F4, F5, F6,
                       ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
                       sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                      &(pfock->uitl), &(pfock->usq), pfock->nbf, pfock->nshells);
+                      &(pfock->uitl), &(pfock->usq), 
+                      pfock->nbf, pfock->nshells, 1 - stealed);
             gettimeofday (&tv4, NULL);
             pfock->timecomp += (tv4.tv_sec - tv3.tv_sec) +
                         (tv4.tv_usec - tv3.tv_usec) / 1000.0 / 1000.0;
@@ -1579,7 +1587,8 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
             stealed = 1;
         }
         gettimeofday (&tv3, NULL);
-        if (1 == stealed) {
+        if (1 == stealed) 
+        {
             // reduction
             reduce_F(pfock->numF, pfock->num_dmat2, F1, F2, F3, F4, F5, F6,
                      sizeX1, sizeX2, sizeX3,

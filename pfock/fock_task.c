@@ -201,7 +201,8 @@ void fock_task(
     int ldX4, int ldX5, int ldX6,
     int sizeX1, int sizeX2, int sizeX3,
     int sizeX4, int sizeX5, int sizeX6,
-    double *nitl, double *nsq, int _nbf, int _nshells
+    double *nitl, double *nsq, 
+    int _nbf, int _nshells, int repack_D
 )
 {
     int startMN = shellptr[startM];
@@ -240,8 +241,11 @@ void fock_task(
         double mynsq = 0.0;
         double mynitl = 0.0;
         
-        #pragma omp for
-        for (int i = 0; i < nsp; i++) block_packed[i] = 0;
+        if (repack_D)
+        {
+            #pragma omp for
+            for (int i = 0; i < nsp; i++) block_packed[i] = 0;
+        }
         
         // Pending quartets that need to be computed
         ThreadQuartetLists_s *thread_quartet_lists = (ThreadQuartetLists_s*) malloc(sizeof(ThreadQuartetLists_s));
