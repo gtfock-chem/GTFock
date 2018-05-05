@@ -72,8 +72,8 @@ static void update_global_blocks(
 
 static inline void atomic_add_vector(double *dst, double *src, int length)
 {
-	for (int i = 0; i < length; i++)
-		atomic_add_f64(&dst[i], src[i]);
+    for (int i = 0; i < length; i++)
+        atomic_add_f64(&dst[i], src[i]);
 }
 
 static inline void update_global_vectors(
@@ -83,17 +83,17 @@ static inline void update_global_vectors(
     double *K_MQ, double *K_MQ_buf, double *K_NQ, double *K_NQ_buf
 )
 {
-	if (write_MN) atomic_add_vector(J_MN, J_MN_buf, dimM * dimN);
+    if (write_MN) atomic_add_vector(J_MN, J_MN_buf, dimM * dimN);
 
-	if (write_P)
-	{
-		atomic_add_vector(K_MP, K_MP_buf, dimM * dimP);
-		atomic_add_vector(K_NP, K_NP_buf, dimN * dimP);
-	}
-	
-	atomic_add_vector(J_PQ, J_PQ_buf, dimP * dimQ);
-	atomic_add_vector(K_MQ, K_MQ_buf, dimM * dimQ);
-	atomic_add_vector(K_NQ, K_NQ_buf, dimN * dimQ);
+    if (write_P)
+    {
+        atomic_add_vector(K_MP, K_MP_buf, dimM * dimP);
+        atomic_add_vector(K_NP, K_NP_buf, dimN * dimP);
+    }
+    
+    atomic_add_vector(J_PQ, J_PQ_buf, dimP * dimQ);
+    atomic_add_vector(K_MQ, K_MQ_buf, dimM * dimQ);
+    atomic_add_vector(K_NQ, K_NQ_buf, dimN * dimQ);
 }
 
 // Use thread-local buffer to reduce atomic add 
@@ -132,12 +132,12 @@ static inline void update_F_opt_buffer(
     
     for (int i = 0; i < num_dmat; i++) 
     { 
-		double *J_MN = F_MN_blocks + mat_block_ptr[M * nshells + N];
-		double *J_PQ = F_PQ_blocks + mat_block_ptr[P * nshells + Q];
-		double *K_MP = F_MP_blocks + mat_block_ptr[M * nshells + P];
-		double *K_NP = F_NP_blocks + mat_block_ptr[N * nshells + P];
-		double *K_MQ = F_MQ_blocks + mat_block_ptr[M * nshells + Q];
-		double *K_NQ = F_NQ_blocks + mat_block_ptr[N * nshells + Q];
+        double *J_MN = F_MN_blocks + mat_block_ptr[M * nshells + N];
+        double *J_PQ = F_PQ_blocks + mat_block_ptr[P * nshells + Q];
+        double *K_MP = F_MP_blocks + mat_block_ptr[M * nshells + P];
+        double *K_NP = F_NP_blocks + mat_block_ptr[N * nshells + P];
+        double *K_MQ = F_MQ_blocks + mat_block_ptr[M * nshells + Q];
+        double *K_NQ = F_NQ_blocks + mat_block_ptr[N * nshells + Q];
         
         double *D_MN_buf = D_blocks + mat_block_ptr[M * nshells + N];
         double *D_PQ_buf = D_blocks + mat_block_ptr[P * nshells + Q];
