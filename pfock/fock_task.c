@@ -50,15 +50,6 @@ int *F_NQ_blocks_to_F3;      // Mapping blocks in F_NQ_blocks to F3
     fock_info_list[4],  \
     fock_info_list[5],  \
     fock_info_list[6],  \
-    fock_info_list[7],  \
-    fock_info_list[8],  \
-    fock_info_list[9],  \
-    fock_info_list[10], \
-    fock_info_list[11], \
-    fock_info_list[12], \
-    F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP, \
-    sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6, \
-    ldX1, ldX2, ldX3, ldX4, ldX5, ldX6, \
     load_MN, load_P, write_MN, write_P, \
     M, N, P_list[ipair], Q_list[ipair]
 
@@ -66,15 +57,11 @@ int *F_NQ_blocks_to_F3;      // Mapping blocks in F_NQ_blocks to F3
 
 void update_F_with_KetShellPairList(
     int tid, int num_dmat, double *batch_integrals, int batch_nints, int npairs, 
-    KetShellPairList_s *target_shellpair_list,
-    double **D1, double **D2, double **D3,
-    double *F_MN, double *F_PQ, double *F_NQ, double *F_MP, double *F_MQ, double *F_NP,
-    int sizeX1, int sizeX2, int sizeX3, int sizeX4, int sizeX5, int sizeX6,
-    int ldX1, int ldX2, int ldX3, int ldX4, int ldX5, int ldX6, int M, int N
+    int M, int N, KetShellPairList_s *target_shellpair_list
 )
 {
     int load_MN, load_P, write_MN, write_P;
-    int prev_iMP = -1;
+    int prev_P = -1;
     int *P_list = target_shellpair_list->P_list;
     int *Q_list = target_shellpair_list->Q_list;
     for (int ipair = 0; ipair < npairs; ipair++)
@@ -84,7 +71,7 @@ void update_F_with_KetShellPairList(
         if (ipair == 0)          load_MN  = 1; else load_MN  = 0;
         if (ipair + 1 == npairs) write_MN = 1; else write_MN = 0;
         
-        if (prev_iMP == fock_info_list[9])  // iMP == previous iMP, P == previous P
+        if (prev_P == P_list[ipair]) 
         {
             load_P = 0;
         } else {
@@ -95,23 +82,11 @@ void update_F_with_KetShellPairList(
         if (ipair + 1 == npairs) write_P = 1;
         if (ipair < npairs - 1)
         {
-            // fock_info_list[25] == the fock_info_list[9] for ipair+1
-            if (fock_info_list[9] != fock_info_list[25]) write_P = 1;
+            if (P_list[ipair] != P_list[ipair + 1]) write_P = 1;
         }
         
-        prev_iMP = fock_info_list[9];
-        
-        // Just use a lazy way here. Actually we can still do the same thing when
-        // num_dmat > 1, but it needs to inline update_F to this function. 
-        if (num_dmat > 1)  
-        {
-            load_MN  = 1;
-            load_P   = 1;
-            write_MN = 1;
-            write_P  = 1;
-        }
+        prev_P = P_list[ipair];
 
-        /*
         int is_1111 = fock_info_list[0] * fock_info_list[1] * fock_info_list[2] * fock_info_list[3];
         if (is_1111 == 1)
         {
@@ -123,8 +98,7 @@ void update_F_with_KetShellPairList(
             else if (fock_info_list[3] == 10) update_F_opt_buffer_Q10(UPDATE_F_OPT_BUFFER_ARGS);
             else if (fock_info_list[3] == 15) update_F_opt_buffer_Q15(UPDATE_F_OPT_BUFFER_ARGS);
             else update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
-        }*/
-        update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
+        }
     }
 }
 
@@ -283,20 +257,10 @@ void fock_task(
         
         if (ncpu_f == 1) use_atomic_add = 0;
     }
-    
-    //init_block_buf(_nbf, _nshells, f_startind, num_dmat);
-    
+
     #pragma omp parallel
     {
-        // init    
         int nt = omp_get_thread_num();
-        int nf = nt/ncpu_f;
-        double *F_MN = &(F1[nf * sizeX1 * num_dmat]);
-        double *F_PQ = &(F2[nf * sizeX2 * num_dmat]);
-        double *F_NQ = F3;
-        double *F_MP = &(F4[nf * sizeX4 * num_dmat]);
-        double *F_MQ = &(F5[nf * sizeX5 * num_dmat]);
-        double *F_NP = &(F6[nf * sizeX6 * num_dmat]);
         double mynsq = 0.0;
         double mynitl = 0.0;
         
@@ -410,12 +374,8 @@ void fock_task(
                             double st, et;
                             st = CInt_get_walltime_sec();
                             update_F_with_KetShellPairList(
-                                nt, num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
-                                target_shellpair_list,
-                                D1, D2, D3,
-                                F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
-                                sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                                ldX1, ldX2, ldX3, ldX4, ldX5, ldX6, M, N
+                                nt, num_dmat, thread_batch_integrals, thread_batch_nints,
+                                npairs, M, N, target_shellpair_list
                             );
                             et = CInt_get_walltime_sec();
                             if (nt == 0) 
@@ -454,12 +414,8 @@ void fock_task(
                         double st, et;
                         st = CInt_get_walltime_sec();
                         update_F_with_KetShellPairList(
-                            nt, num_dmat, thread_batch_integrals, thread_batch_nints, npairs, 
-                            target_shellpair_list,
-                            D1, D2, D3,
-                            F_MN, F_PQ, F_NQ, F_MP, F_MQ, F_NP,
-                            sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                            ldX1, ldX2, ldX3, ldX4, ldX5, ldX6, M, N
+                            nt, num_dmat, thread_batch_integrals, thread_batch_nints, 
+                            npairs, M, N, target_shellpair_list
                         );
                         et = CInt_get_walltime_sec();
                         if (nt == 0) 
@@ -533,17 +489,6 @@ void reset_F(int numF, int num_dmat, double *F1, double *F2, double *F3,
             F_NQ_blocks[i] = 0.0;
         }
     }
-}
-
-static int block_low(int i, int n, int block_size)
-{
-    long long bs = block_size;
-    long long _n = n;
-    long long _i = i;
-    bs *= _i;
-    bs /= _n;
-    int res = bs;
-    return res;
 }
 
 void reduce_F(int numF, int num_dmat,
