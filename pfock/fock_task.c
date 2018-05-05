@@ -500,7 +500,7 @@ void fock_task(
             *nsq += mynsq;
         }
 		
-		#pragma omp for
+		#pragma omp for schedule(dynamic, 10)
 		for (int i = 0; i < nsp; i++)
 		{
 			add_Fxx_block_to_Fxx(F_MN_blocks_to_F1, i, F_MN_blocks, F_MN, ldX1);

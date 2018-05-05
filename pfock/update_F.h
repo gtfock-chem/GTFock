@@ -70,6 +70,32 @@ static void update_global_blocks(
     }
 }
 
+static inline void atomic_add_vector(double *dst, double *src, int length)
+{
+	for (int i = 0; i < length; i++)
+		atomic_add_f64(&dst[i], src[i]);
+}
+
+static inline void update_global_vectors(
+    int write_MN, int write_P, int dimM, int dimN, int dimP, int dimQ,
+    double *J_MN, double *J_MN_buf, double *K_MP, double *K_MP_buf,
+    double *K_NP, double *K_NP_buf, double *J_PQ, double *J_PQ_buf,
+    double *K_MQ, double *K_MQ_buf, double *K_NQ, double *K_NQ_buf
+)
+{
+	if (write_MN) atomic_add_vector(J_MN, J_MN_buf, dimM * dimN);
+
+	if (write_P)
+	{
+		atomic_add_vector(K_MP, K_MP_buf, dimM * dimP);
+		atomic_add_vector(K_NP, K_NP_buf, dimN * dimP);
+	}
+	
+	atomic_add_vector(J_PQ, J_PQ_buf, dimP * dimQ);
+	atomic_add_vector(K_MQ, K_MQ_buf, dimM * dimQ);
+	atomic_add_vector(K_NQ, K_NQ_buf, dimN * dimQ);
+}
+
 // Use thread-local buffer to reduce atomic add 
 static inline void update_F_opt_buffer(
     int tid, int num_dmat, double *integrals, 
@@ -109,16 +135,9 @@ static inline void update_F_opt_buffer(
 		double *J_MN = F_MN_blocks + mat_block_ptr[M * nshells + N];
 		double *J_PQ = F_PQ_blocks + mat_block_ptr[P * nshells + Q];
 		double *K_MP = F_MP_blocks + mat_block_ptr[M * nshells + P];
-		double *K_NP = F_NQ_blocks + mat_block_ptr[N * nshells + P];
+		double *K_NP = F_NP_blocks + mat_block_ptr[N * nshells + P];
 		double *K_MQ = F_MQ_blocks + mat_block_ptr[M * nshells + Q];
 		double *K_NQ = F_NQ_blocks + mat_block_ptr[N * nshells + Q];
-		
-        //double *J_MN = &F_MN[i * sizeX1] + iMN;
-        //double *J_PQ = &F_PQ[i * sizeX2] + iPQ;
-        //double *K_NQ = &F_NQ[i * sizeX3] + iNQ;
-        //double *K_MP = &F_MP[i * sizeX4] + iMP;
-        //double *K_MQ = &F_MQ[i * sizeX5] + iMQ;
-        //double *K_NP = &F_NP[i * sizeX6] + iNP;
         
         double *D_MN_buf = D_blocks + mat_block_ptr[M * nshells + N];
         double *D_PQ_buf = D_blocks + mat_block_ptr[P * nshells + Q];
@@ -182,9 +201,8 @@ static inline void update_F_opt_buffer(
         } // for (int iN = 0; iN < dimN; iN++)
         
         // Update to the global array using atomic_add_f64()
-        update_global_blocks(
+        update_global_vectors(
             write_MN, write_P, dimM, dimN, dimP, dimQ, 
-            dimN, dimP, dimP, dimQ, dimQ, dimQ,
             J_MN, J_MN_buf, K_MP, K_MP_buf, 
             K_NP, K_NP_buf, J_PQ, J_PQ_buf,
             K_MQ, K_MQ_buf, K_NQ, K_NQ_buf
