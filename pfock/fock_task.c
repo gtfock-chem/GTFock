@@ -218,6 +218,59 @@ static inline void add_Fxx_block_to_Fxx(
     }
 }
 
+void pack_D_mark_JK_with_KetShellPairList(
+    int M, int N, int npairs, KetShellPairList_s *target_shellpair_list,
+    double **D1, double **D2, double **D3,    int ldX1, int ldX2, int ldX3
+)
+{
+    int prev_P = -1;
+    int *P_list = target_shellpair_list->P_list;
+    int *Q_list = target_shellpair_list->Q_list;
+    
+    int dimM = target_shellpair_list->fock_quartet_info[0];
+    int dimN = target_shellpair_list->fock_quartet_info[1];
+    int iMN  = target_shellpair_list->fock_quartet_info[7];
+    pack_D_block(M, N, dimM, dimN, D1[0] + iMN, ldX1);
+    F_MN_blocks_to_F1[M * nshells + N] = iMN;
+    
+    for (int ipair = 0; ipair < npairs; ipair++)
+    {
+        int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
+
+        int P    = P_list[ipair];
+        int Q    = Q_list[ipair];
+        int dimM = fock_info_list[0];
+        int dimN = fock_info_list[1];
+        int dimP = fock_info_list[2];
+        int dimQ = fock_info_list[3];
+        int iPQ  = fock_info_list[8];
+        int iMP  = fock_info_list[9];
+        int iNP  = fock_info_list[10];
+        int iMQ  = fock_info_list[11];
+        int iNQ  = fock_info_list[12];
+        int iMP0 = fock_info_list[13];
+        int iMQ0 = fock_info_list[14];
+        int iNP0 = fock_info_list[15];
+        
+        if (prev_P != P_list[ipair]) 
+        {
+            pack_D_block(M, P, dimM, dimP, D3[0] + iMP0, ldX3);
+            pack_D_block(N, P, dimN, dimP, D3[0] + iNP0, ldX3);
+            F_MP_blocks_to_F4[M * nshells + P] = iMP;
+            F_NP_blocks_to_F6[N * nshells + P] = iNP;
+        }
+        
+        pack_D_block(P, Q, dimP, dimQ, D2[0] + iPQ,  ldX2);
+        pack_D_block(M, Q, dimM, dimQ, D3[0] + iMQ0, ldX3);
+        pack_D_block(N, Q, dimN, dimQ, D3[0] + iNQ,  ldX3);
+        F_PQ_blocks_to_F2[P * nshells + Q] = iPQ;
+        F_MQ_blocks_to_F5[M * nshells + Q] = iMQ;
+        F_NQ_blocks_to_F3[N * nshells + Q] = iNQ;
+        
+        prev_P = P_list[ipair];
+    }
+}
+
 // for SCF, J = K
 // Batched ERI version
 void fock_task(
@@ -325,21 +378,7 @@ void fock_task(
                 {
                     mynsq  += 1.0;
                     mynitl += dimM * dimN * dimP * dimQ;
-                    
-                    // Pack D blocks
-                    pack_D_block(M, N, dimM, dimN, D1[0] + iMN,  ldX1);
-                    pack_D_block(P, Q, dimP, dimQ, D2[0] + iPQ,  ldX2);
-                    pack_D_block(M, P, dimM, dimP, D3[0] + iMP0, ldX3);
-                    pack_D_block(N, P, dimN, dimP, D3[0] + iNP0, ldX3);
-                    pack_D_block(M, Q, dimM, dimQ, D3[0] + iMQ0, ldX3);
-                    pack_D_block(N, Q, dimN, dimQ, D3[0] + iNQ,  ldX3);
-                    F_MN_blocks_to_F1[M * nshells + N] = iMN;
-                    F_PQ_blocks_to_F2[P * nshells + Q] = iPQ;
-                    F_MP_blocks_to_F4[M * nshells + P] = iMP;
-                    F_NP_blocks_to_F6[N * nshells + P] = iNP;
-                    F_MQ_blocks_to_F5[M * nshells + Q] = iMQ;
-                    F_NQ_blocks_to_F3[N * nshells + Q] = iNQ;
-                    
+
                     // Save this shell pair to the target ket shellpair list
                     int am_pair_index = CInt_SIMINT_getShellpairAMIndex(simint, P, Q);
                     KetShellPairList_s *target_shellpair_list = &thread_quartet_lists->ket_shellpair_lists[am_pair_index];
@@ -358,6 +397,12 @@ void fock_task(
                         int npairs = target_shellpair_list->num_shellpairs;
                         double *thread_batch_integrals;
                         int thread_batch_nints;
+                        
+                        // Pack D blocks and mark the original write position of JK blocks
+                        pack_D_mark_JK_with_KetShellPairList(
+                            M, N, npairs, target_shellpair_list,
+                            D1, D2, D3, ldX1, ldX2, ldX3
+                        );
                         
                         CInt_computeShellQuartetBatch_SIMINT(
                             simint, nt,
@@ -398,6 +443,12 @@ void fock_task(
                     int npairs = target_shellpair_list->num_shellpairs;
                     double *thread_batch_integrals;
                     int thread_batch_nints;
+                    
+                    // Pack D blocks and mark the original write position of JK blocks
+                    pack_D_mark_JK_with_KetShellPairList(
+                        M, N, npairs, target_shellpair_list,
+                        D1, D2, D3, ldX1, ldX2, ldX3
+                    );
                     
                     CInt_computeShellQuartetBatch_SIMINT(
                         simint, nt,
