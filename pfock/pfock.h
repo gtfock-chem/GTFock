@@ -176,6 +176,8 @@ struct PFock {
     double ngacalls;
     double *mpi_volumega;
     double volumega;
+    double *mpi_timenexttask;
+    double timenexttask;
 };
 
 
