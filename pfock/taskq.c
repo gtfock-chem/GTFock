@@ -58,6 +58,10 @@ int taskq_next(PFock_t pfock, int myrow, int mycol, int ntasks)
 
     idx[0] = myrow;
     idx[1] = mycol;
+    struct timeval tv1, tv2;
+    gettimeofday(&tv1, NULL);    
     int nxtask = NGA_Read_inc(pfock->ga_taskid, idx, ntasks);   
+    gettimeofday(&tv2, NULL);    
+    pfock->timenexttask += (tv2.tv_sec - tv1.tv_sec) + (tv2.tv_usec - tv1.tv_usec) / 1000000.0;
     return nxtask;
 }

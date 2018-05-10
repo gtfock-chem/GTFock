@@ -976,6 +976,8 @@ PFockStatus_t PFock_create(BasisSet_t basis, int nprow, int npcol, int ntasks,
         = (double *)PFOCK_MALLOC(sizeof(double) * pfock->nprocs);
     pfock->mpi_volumega
         = (double *)PFOCK_MALLOC(sizeof(double) * pfock->nprocs);
+    pfock->mpi_timenexttask
+        = (double *)PFOCK_MALLOC(sizeof(double) * pfock->nprocs);
     if (pfock->mpi_timepass == NULL ||
         pfock->mpi_timereduce == NULL ||
         pfock->mpi_timeinit == NULL ||
@@ -987,8 +989,9 @@ PFockStatus_t PFock_create(BasisSet_t basis, int nprow, int npcol, int ntasks,
         pfock->mpi_ngacalls == NULL ||
         pfock->mpi_volumega == NULL ||
         pfock->mpi_timegather == NULL ||
-        pfock->mpi_timescatter == NULL) {
-        PFOCK_PRINTF(1, "memory allocation failed\n");
+        pfock->mpi_timescatter == NULL  ||
+        pfock->mpi_timenexttask == NULL) {
+        PFOCK_PRINTF(1, "Mmemory allocation for statistic info failed\n");
         return PFOCK_STATUS_ALLOC_FAILED;
     }
     
@@ -1032,6 +1035,7 @@ PFockStatus_t PFock_destroy(PFock_t pfock)
     PFOCK_FREE(pfock->mpi_stealfrom);
     PFOCK_FREE(pfock->mpi_ngacalls);
     PFOCK_FREE(pfock->mpi_volumega);
+    PFOCK_FREE(pfock->mpi_timenexttask);
     
     PFOCK_FREE(pfock);
   
@@ -1301,6 +1305,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     pfock->stealfrom = 0.0;
     pfock->ngacalls = 0.0;
     pfock->volumega = 0.0;
+    pfock->timenexttask = 0.0;
     int my_sshellrow = pfock->sshell_row;
     int my_sshellcol = pfock->sshell_col;
     int myrow = myrank/pfock->npcol;
@@ -1948,6 +1953,8 @@ PFockStatus_t PFock_getStatistics(PFock_t pfock)
         pfock->mpi_volumega, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Gather (&pfock->ngacalls, 1, MPI_DOUBLE, 
         pfock->mpi_ngacalls, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Gather (&pfock->timenexttask, 1, MPI_DOUBLE, 
+        pfock->mpi_timenexttask, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     if (myrank == 0) {
         double total_timepass;
         double max_timepass;
@@ -1964,6 +1971,7 @@ PFockStatus_t PFock_getStatistics(PFock_t pfock)
         double total_stealfrom;
         double total_ngacalls;
         double total_volumega;
+        double total_timenexttask;
         for (int i = 0; i < pfock->nprocs; i++) {
             total_timepass += pfock->mpi_timepass[i];
             max_timepass =
@@ -1984,6 +1992,7 @@ PFockStatus_t PFock_getStatistics(PFock_t pfock)
             total_timescatter += pfock->mpi_timescatter[i];
             total_ngacalls += pfock->mpi_ngacalls[i];
             total_volumega += pfock->mpi_volumega[i];
+            total_timenexttask += pfock->mpi_timenexttask[i];
         }
         double tsq = pfock->nshells;
         tsq = ((tsq + 1) * tsq/2.0 + 1) * tsq * (tsq + 1)/4.0;
@@ -1993,6 +2002,7 @@ PFockStatus_t PFock_getStatistics(PFock_t pfock)
                "      average timeinit    = %.3g\n"
                "      average timecomp    = %.3g\n"
                "      average timereduce  = %.3g\n"
+               "      average timenexttask= %.3g\n"
                "      average timescatter = %.3g\n"
                "      comp/total = %.3g\n",
                total_timepass/pfock->nprocs,
@@ -2000,6 +2010,7 @@ PFockStatus_t PFock_getStatistics(PFock_t pfock)
                total_timeinit/pfock->nprocs,
                total_timecomp/pfock->nprocs,
                total_timereduce/pfock->nprocs,
+               total_timenexttask/pfock->nprocs,
                total_timescatter/pfock->nprocs,
                total_timecomp/total_timepass);
         printf("      usq = %.4g (lb = %.3g)\n"
