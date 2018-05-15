@@ -19,9 +19,9 @@ static inline void atomic_add_vector(double *dst, double *src, int length)
 
 static inline void direct_add_vector(double *dst, double *src, int length)
 {
-	#pragma simd
+    #pragma simd
     for (int i = 0; i < length; i++) 
-		dst[i] += src[i];
+        dst[i] += src[i];
 }
 
 static inline void update_global_vectors(
@@ -51,8 +51,8 @@ static inline void update_F_opt_buffer(
     int flag1, int flag2, int flag3,
     int load_MN, int load_P, int write_MN, int write_P,
     int M, int N, int P, int Q, 
-	double *thread_F_MQ_blocks, double *thread_F_MP_blocks, int thread_M_bank_offset,
-	double *thread_F_NQ_blocks, double *thread_F_NP_blocks, int thread_N_bank_offset
+    double *thread_F_M_band_blocks, int thread_M_bank_offset,
+    double *thread_F_N_band_blocks, int thread_N_bank_offset
 )
 {
     int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
@@ -74,83 +74,84 @@ static inline void update_F_opt_buffer(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
     
-	double *J_MN = F_MN_blocks + mat_block_ptr[M * nshells + N];
-	double *J_PQ = F_PQ_blocks + mat_block_ptr[P * nshells + Q];
-	double *K_MP = thread_F_MP_blocks + mat_block_ptr[M * nshells + P] - thread_M_bank_offset; 
-	double *K_NP = thread_F_NP_blocks + mat_block_ptr[N * nshells + P] - thread_N_bank_offset;
-	double *K_MQ = thread_F_MQ_blocks + mat_block_ptr[M * nshells + Q] - thread_M_bank_offset;
-	double *K_NQ = thread_F_NQ_blocks + mat_block_ptr[N * nshells + Q] - thread_N_bank_offset;
-	
-	double *D_MN_buf = D_blocks + mat_block_ptr[M * nshells + N];
-	double *D_PQ_buf = D_blocks + mat_block_ptr[P * nshells + Q];
-	double *D_MP_buf = D_blocks + mat_block_ptr[M * nshells + P];
-	double *D_NP_buf = D_blocks + mat_block_ptr[N * nshells + P];
-	double *D_MQ_buf = D_blocks + mat_block_ptr[M * nshells + Q];
-	double *D_NQ_buf = D_blocks + mat_block_ptr[N * nshells + Q];
+    double *J_MN = F_MN_blocks + mat_block_ptr[M * nshells + N];
+    double *J_PQ = F_PQ_blocks + mat_block_ptr[P * nshells + Q];
+    double *K_MP = thread_F_M_band_blocks + mat_block_ptr[M * nshells + P] - thread_M_bank_offset; 
+    double *K_NP = thread_F_N_band_blocks + mat_block_ptr[N * nshells + P] - thread_N_bank_offset;
+    double *K_MQ = thread_F_M_band_blocks + mat_block_ptr[M * nshells + Q] - thread_M_bank_offset;
+    double *K_NQ = thread_F_N_band_blocks + mat_block_ptr[N * nshells + Q] - thread_N_bank_offset;
+    
+    double *D_MN_buf = D_blocks + mat_block_ptr[M * nshells + N];
+    double *D_PQ_buf = D_blocks + mat_block_ptr[P * nshells + Q];
+    double *D_MP_buf = D_blocks + mat_block_ptr[M * nshells + P];
+    double *D_NP_buf = D_blocks + mat_block_ptr[N * nshells + P];
+    double *D_MQ_buf = D_blocks + mat_block_ptr[M * nshells + Q];
+    double *D_NQ_buf = D_blocks + mat_block_ptr[N * nshells + Q];
 
-	// Reset result buffer
-	if (load_MN) memset(J_MN_buf, 0, sizeof(double) * dimM * dimN);
-	if (load_P)  memset(K_MP_buf, 0, sizeof(double) * dimP * (dimM + dimN));
-	memset(J_PQ_buf, 0, sizeof(double) * dimQ * (dimM + dimN + dimP));
+    // Reset result buffer
+    if (load_MN) memset(J_MN_buf, 0, sizeof(double) * dimM * dimN);
+    if (load_P)  memset(K_MP_buf, 0, sizeof(double) * dimP * (dimM + dimN));
+    memset(J_PQ_buf, 0, sizeof(double) * dimQ * (dimM + dimN + dimP));
 
-	double vPQ_coef = 2.0 * (flag3 + flag5 + flag6 + flag7);
-	double vMQ_coef = (flag2 + flag6) * 1.0;
-	double vNQ_coef = (flag4 + flag7) * 1.0;
-	double vMN_coef = 2.0 * (1 + flag1 + flag2 + flag4);
-	double vMP_coef = (1 + flag3) * 1.0;
-	double vNP_coef = (flag1 + flag5) * 1.0;
+    double vPQ_coef = 2.0 * (flag3 + flag5 + flag6 + flag7);
+    double vMQ_coef = (flag2 + flag6) * 1.0;
+    double vNQ_coef = (flag4 + flag7) * 1.0;
+    double vMN_coef = 2.0 * (1 + flag1 + flag2 + flag4);
+    double vMP_coef = (1 + flag3) * 1.0;
+    double vNP_coef = (flag1 + flag5) * 1.0;
 
-	// Start computation
-	for (int iM = 0; iM < dimM; iM++) 
-	{
-		for (int iN = 0; iN < dimN; iN++) 
-		{
-			int imn = iM * dimN + iN;
-			double vPQ = vPQ_coef * D_MN_buf[imn];
-			double j_MN = 0.0;
-			for (int iP = 0; iP < dimP; iP++) 
-			{
-				int inp = iN * dimP + iP;
-				int imp = iM * dimP + iP;
-				double vMQ = vMQ_coef * D_NP_buf[inp];
-				double vNQ = vNQ_coef * D_MP_buf[imp];
-				
-				int Ibase = dimQ * (iP + dimP * imn);
-				int ipq_base = iP * dimQ;
-				int imq_base = iM * dimQ;
-				int inq_base = iN * dimQ;
-				
-				double k_MN = 0.0, k_NP = 0.0;
-				
-				// dimQ is small, vectorizing short loops may hurt performance since
-				// it needs horizon reduction after the loop
-				for (int iQ = 0; iQ < dimQ; iQ++) 
-				{
-					double I = integrals[Ibase + iQ];
-					
-					j_MN += D_PQ_buf[ipq_base + iQ] * I;
-					k_MN -= D_NQ_buf[inq_base + iQ] * I;
-					k_NP -= D_MQ_buf[imq_base + iQ] * I;
-					J_PQ_buf[ipq_base + iQ] += vPQ * I;
-					K_MQ_buf[imq_base + iQ] -= vMQ * I;
-					K_NQ_buf[inq_base + iQ] -= vNQ * I;
-				}
-				K_MP_buf[imp] += k_MN * vMP_coef;
-				K_NP_buf[inp] += k_NP * vNP_coef;
-			} // for (int iM = 0; iM < dimM; iM++) 
-			J_MN_buf[imn] += j_MN * vMN_coef;
-		} // for (int iQ = 0; iQ < dimQ; iQ++) 
-	} // for (int iN = 0; iN < dimN; iN++)
-	
-	// Update to the global array using atomic_add_f64()
-	update_global_vectors(
-		write_MN, write_P, dimM, dimN, dimP, dimQ, 
-		J_MN, J_MN_buf, K_MP, K_MP_buf, 
-		K_NP, K_NP_buf, J_PQ, J_PQ_buf,
-		K_MQ, K_MQ_buf, K_NQ, K_NQ_buf
-	);
+    // Start computation
+    for (int iM = 0; iM < dimM; iM++) 
+    {
+        for (int iN = 0; iN < dimN; iN++) 
+        {
+            int imn = iM * dimN + iN;
+            double vPQ = vPQ_coef * D_MN_buf[imn];
+            double j_MN = 0.0;
+            for (int iP = 0; iP < dimP; iP++) 
+            {
+                int inp = iN * dimP + iP;
+                int imp = iM * dimP + iP;
+                double vMQ = vMQ_coef * D_NP_buf[inp];
+                double vNQ = vNQ_coef * D_MP_buf[imp];
+                
+                int Ibase = dimQ * (iP + dimP * imn);
+                int ipq_base = iP * dimQ;
+                int imq_base = iM * dimQ;
+                int inq_base = iN * dimQ;
+                
+                double k_MN = 0.0, k_NP = 0.0;
+                
+                // dimQ is small, vectorizing short loops may hurt performance since
+                // it needs horizon reduction after the loop
+                for (int iQ = 0; iQ < dimQ; iQ++) 
+                {
+                    double I = integrals[Ibase + iQ];
+                    
+                    j_MN += D_PQ_buf[ipq_base + iQ] * I;
+                    k_MN -= D_NQ_buf[inq_base + iQ] * I;
+                    k_NP -= D_MQ_buf[imq_base + iQ] * I;
+                    J_PQ_buf[ipq_base + iQ] += vPQ * I;
+                    K_MQ_buf[imq_base + iQ] -= vMQ * I;
+                    K_NQ_buf[inq_base + iQ] -= vNQ * I;
+                }
+                K_MP_buf[imp] += k_MN * vMP_coef;
+                K_NP_buf[inp] += k_NP * vNP_coef;
+            } // for (int iM = 0; iM < dimM; iM++) 
+            J_MN_buf[imn] += j_MN * vMN_coef;
+        } // for (int iQ = 0; iQ < dimQ; iQ++) 
+    } // for (int iN = 0; iN < dimN; iN++)
+    
+    // Update to the global array using atomic_add_f64()
+    update_global_vectors(
+        write_MN, write_P, dimM, dimN, dimP, dimQ, 
+        J_MN, J_MN_buf, K_MP, K_MP_buf, 
+        K_NP, K_NP_buf, J_PQ, J_PQ_buf,
+        K_MQ, K_MQ_buf, K_NQ, K_NQ_buf
+    );
 }
 
+/*
 static inline void update_F_opt_buffer_Q1(
     int tid, int num_dmat, double *integrals, 
     int dimM, int dimN, int dimP, int _dimQ,
@@ -725,6 +726,7 @@ static inline void update_F_1111(
         atomic_add_f64(&K_NQ[0], -vNQ);
     } // for (int i = 0 ; i < num_dmat; i++)
 }
+*/
 
 // See update_F_orig.h for the original implementation of update_F()
 

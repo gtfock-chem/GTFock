@@ -30,25 +30,15 @@ int *shell_bf_num;           // Number of basis functions of each shell
 double *D_blocks;            // Packed density matrix (D) blocks
 double *F_MN_blocks;         // Packed F_MN (J_MN) blocks
 double *F_PQ_blocks;         // Packed F_PQ (J_PQ) blocks
-double *F_MP_blocks;         // Packed F_MP (K_MP) blocks
-double *F_NP_blocks;         // Packed F_NP (K_NP) blocks
-double *F_MQ_blocks;         // Packed F_MQ (K_MQ) blocks
-double *F_NQ_blocks;         // Packed F_NQ (K_NQ) blocks
+double *F_MNPQ_blocks;       // Packed F_{MP, NP, MQ, NQ} (K_{MP, NP, MQ, NQ}) blocks
 int *F_MN_blocks_to_F1;      // Mapping blocks in F_MN_blocks to F1
 int *F_PQ_blocks_to_F2;      // Mapping blocks in F_PQ_blocks to F2
-int *F_MP_blocks_to_F4;      // Mapping blocks in F_MP_blocks to F4
-int *F_NP_blocks_to_F6;      // Mapping blocks in F_NP_blocks to F6
-int *F_MQ_blocks_to_F5;      // Mapping blocks in F_MQ_blocks to F5
-int *F_NQ_blocks_to_F3;      // Mapping blocks in F_NQ_blocks to F3
+int *F_MNPQ_blocks_to_F3;    // Mapping blocks in F_MNPQ_blocks to F3
 
-double *F_MQ_band_blocks;
-double *F_NQ_band_blocks; 
-double *F_MP_band_blocks;
-double *F_NP_band_blocks; 
-int *visited_MQpairs;
-int *visited_NQpairs;
-int *visited_MPpairs;
-int *visited_NPpairs;
+double *F_M_band_blocks;
+double *F_N_band_blocks; 
+int    *visited_Mpairs;
+int    *visited_Npairs;
 
 #include "update_F.h"
 
@@ -63,24 +53,23 @@ int *visited_NPpairs;
     fock_info_list[6],  \
     load_MN, load_P, write_MN, write_P, \
     M, N, P_list[ipair], Q_list[ipair], \
-	thread_F_MQ_blocks, thread_F_MP_blocks, thread_M_bank_offset, \
-	thread_F_NQ_blocks, thread_F_NP_blocks, thread_N_bank_offset
+    thread_F_M_band_blocks, thread_M_bank_offset, \
+    thread_F_N_band_blocks, thread_N_bank_offset
 
 #include "thread_quartet_buf.h"
 
 void update_F_with_KetShellPairList(
     int tid, int num_dmat, double *batch_integrals, int batch_nints, int npairs, 
     int M, int N, KetShellPairList_s *target_shellpair_list, 
-	double *thread_F_MQ_blocks, double *thread_F_NQ_blocks,
-	double *thread_F_MP_blocks, double *thread_F_NP_blocks
+    double *thread_F_M_band_blocks, double *thread_F_N_band_blocks
 )
 {
     int load_MN, load_P, write_MN, write_P;
     int prev_P = -1;
     int *P_list = target_shellpair_list->P_list;
     int *Q_list = target_shellpair_list->Q_list;
-	int thread_M_bank_offset = mat_block_ptr[M * nshells];
-	int thread_N_bank_offset = mat_block_ptr[N * nshells];
+    int thread_M_bank_offset = mat_block_ptr[M * nshells];
+    int thread_N_bank_offset = mat_block_ptr[N * nshells];
     for (int ipair = 0; ipair < npairs; ipair++)
     {
         int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
@@ -104,7 +93,7 @@ void update_F_with_KetShellPairList(
         
         prev_P = P_list[ipair];
 
-		/*
+        /*
         int is_1111 = fock_info_list[0] * fock_info_list[1] * fock_info_list[2] * fock_info_list[3];
         if (is_1111 == 1)
         {
@@ -117,8 +106,8 @@ void update_F_with_KetShellPairList(
             else if (fock_info_list[3] == 15) update_F_opt_buffer_Q15(UPDATE_F_OPT_BUFFER_ARGS);
             else update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
         }
-		*/
-		update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
+        */
+        update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
     }
 }
 
@@ -149,55 +138,35 @@ void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, Basis
     shell_bf_num  = (int*) malloc(sizeof(int) * nshells);
     mat_block_ptr = (int*) malloc(sizeof(int) * nsp);
     block_packed  = (volatile int*) malloc(sizeof(int) * nsp);
-    D_blocks    = (double*) malloc(sizeof(double) * nbf2);
-    F_MN_blocks = (double*) malloc(sizeof(double) * nbf2);
-    F_PQ_blocks = (double*) malloc(sizeof(double) * nbf2);
-    F_MP_blocks = (double*) malloc(sizeof(double) * nbf2);
-    F_NP_blocks = (double*) malloc(sizeof(double) * nbf2);
-    F_MQ_blocks = (double*) malloc(sizeof(double) * nbf2);
-    F_NQ_blocks = (double*) malloc(sizeof(double) * nbf2);
-    F_MN_blocks_to_F1 = (int*) malloc(sizeof(int) * nsp);
-    F_PQ_blocks_to_F2 = (int*) malloc(sizeof(int) * nsp);
-    F_MP_blocks_to_F4 = (int*) malloc(sizeof(int) * nsp);
-    F_NP_blocks_to_F6 = (int*) malloc(sizeof(int) * nsp);
-    F_MQ_blocks_to_F5 = (int*) malloc(sizeof(int) * nsp);
-    F_NQ_blocks_to_F3 = (int*) malloc(sizeof(int) * nsp);
+    D_blocks      = (double*) malloc(sizeof(double) * nbf2);
+    F_MN_blocks   = (double*) malloc(sizeof(double) * nbf2);
+    F_PQ_blocks   = (double*) malloc(sizeof(double) * nbf2);
+    F_MNPQ_blocks = (double*) malloc(sizeof(double) * nbf2);
+    F_MN_blocks_to_F1   = (int*) malloc(sizeof(int) * nsp);
+    F_PQ_blocks_to_F2   = (int*) malloc(sizeof(int) * nsp);
+    F_MNPQ_blocks_to_F3 = (int*) malloc(sizeof(int) * nsp);
     assert(mat_block_ptr != NULL);
     assert(block_packed  != NULL);
     assert(shell_bf_num  != NULL);
-    assert(D_blocks    != NULL);
-    assert(F_MN_blocks != NULL);
-    assert(F_PQ_blocks != NULL);
-    assert(F_MP_blocks != NULL);
-    assert(F_NP_blocks != NULL);
-    assert(F_MQ_blocks != NULL);
-    assert(F_NQ_blocks != NULL);
-    assert(F_MN_blocks_to_F1 != NULL);
-    assert(F_PQ_blocks_to_F2 != NULL);
-    assert(F_MP_blocks_to_F4 != NULL);
-    assert(F_NP_blocks_to_F6 != NULL);
-    assert(F_MQ_blocks_to_F5 != NULL);
-    assert(F_NQ_blocks_to_F3 != NULL);
-	
-	nthreads = omp_get_max_threads();
-	_maxMomentum(basis, &maxAM);
-	max_dim = (maxAM + 1) * (maxAM + 2) / 2;
-	F_MQ_band_blocks = (double*) malloc(sizeof(double) * nthreads * max_dim * nbf);
-	F_NQ_band_blocks = (double*) malloc(sizeof(double) * nthreads * max_dim * nbf);
-	F_MP_band_blocks = (double*) malloc(sizeof(double) * nthreads * max_dim * nbf);
-	F_NP_band_blocks = (double*) malloc(sizeof(double) * nthreads * max_dim * nbf);
-	visited_MQpairs = (int*) malloc(sizeof(int) * nthreads * nshells);
-	visited_NQpairs = (int*) malloc(sizeof(int) * nthreads * nshells);
-	visited_MPpairs = (int*) malloc(sizeof(int) * nthreads * nshells);
-	visited_NPpairs = (int*) malloc(sizeof(int) * nthreads * nshells);
-	assert(F_MQ_band_blocks != NULL);
-	assert(F_NQ_band_blocks != NULL);
-	assert(F_MP_band_blocks != NULL);
-	assert(F_NP_band_blocks != NULL);
-	assert(visited_MQpairs != NULL);
-	assert(visited_NQpairs != NULL);
-	assert(visited_MPpairs != NULL);
-	assert(visited_NPpairs != NULL);
+    assert(D_blocks      != NULL);
+    assert(F_MN_blocks   != NULL);
+    assert(F_PQ_blocks   != NULL);
+    assert(F_MNPQ_blocks != NULL);
+    assert(F_MN_blocks_to_F1   != NULL);
+    assert(F_PQ_blocks_to_F2   != NULL);
+    assert(F_MNPQ_blocks_to_F3 != NULL);
+    
+    nthreads = omp_get_max_threads();
+    _maxMomentum(basis, &maxAM);
+    max_dim = (maxAM + 1) * (maxAM + 2) / 2;
+    F_M_band_blocks = (double*) malloc(sizeof(double) * nthreads * max_dim * nbf);
+    F_N_band_blocks = (double*) malloc(sizeof(double) * nthreads * max_dim * nbf);
+    visited_Mpairs  = (int*) malloc(sizeof(int) * nthreads * nshells);
+    visited_Npairs  = (int*) malloc(sizeof(int) * nthreads * nshells);
+    assert(F_M_band_blocks != NULL);
+    assert(F_N_band_blocks != NULL);
+    assert(visited_Mpairs  != NULL);
+    assert(visited_Npairs  != NULL);
     
     for (int i = 0; i < nshells; i++)
         shell_bf_num[i] = f_startind[i + 1] - f_startind[i];
@@ -261,8 +230,7 @@ static inline void add_Fxx_block_to_Fxx(
 void pack_D_mark_JK_with_KetShellPairList(
     int M, int N, int npairs, KetShellPairList_s *target_shellpair_list,
     double **D1, double **D2, double **D3, int ldX1, int ldX2, int ldX3,
-	int *thread_visited_MQpairs, int *thread_visited_NQpairs,
-	int *thread_visited_MPpairs, int *thread_visited_NPpairs
+    int *thread_visited_Mpairs, int *thread_visited_Npairs
 )
 {
     int prev_P = -1;
@@ -300,8 +268,11 @@ void pack_D_mark_JK_with_KetShellPairList(
             pack_D_block(N, P, dimN, dimP, D3[0] + iNP0, ldX3);
             //F_MP_blocks_to_F4[M * nshells + P] = iMP;
             //F_NP_blocks_to_F6[N * nshells + P] = iNP;
-			F_NQ_blocks_to_F3[M * nshells + P] = iMP;
-			F_NQ_blocks_to_F3[N * nshells + P] = iNP;
+            F_MNPQ_blocks_to_F3[M * nshells + P] = iMP;
+            F_MNPQ_blocks_to_F3[N * nshells + P] = iNP;
+            
+            thread_visited_Mpairs[P] = 1;
+            thread_visited_Npairs[P] = 1;
         }
         
         pack_D_block(P, Q, dimP, dimQ, D2[0] + iPQ,  ldX2);
@@ -309,14 +280,12 @@ void pack_D_mark_JK_with_KetShellPairList(
         pack_D_block(N, Q, dimN, dimQ, D3[0] + iNQ,  ldX3);
         F_PQ_blocks_to_F2[P * nshells + Q] = iPQ;
         //F_MQ_blocks_to_F5[M * nshells + Q] = iMQ;
-		F_NQ_blocks_to_F3[M * nshells + Q] = iMQ;
-        F_NQ_blocks_to_F3[N * nshells + Q] = iNQ;
+        F_MNPQ_blocks_to_F3[M * nshells + Q] = iMQ;
+        F_MNPQ_blocks_to_F3[N * nshells + Q] = iNQ;
         
-		thread_visited_MQpairs[Q] = 1;
-		thread_visited_NQpairs[Q] = 1;
-		thread_visited_MPpairs[P] = 1;
-		thread_visited_NPpairs[P] = 1;
-		
+        thread_visited_Mpairs[Q] = 1;
+        thread_visited_Npairs[Q] = 1;
+        
         prev_P = P_list[ipair];
     }
 }
@@ -349,7 +318,7 @@ void fock_task(
     if (update_F_buf_size == 0)
     {
         // max_buf_entry_size should be >= the product of any two items in {dimM, dimN, dimP, dimQ}
-		int max_buf_entry_size = max_dim * max_dim;
+        int max_buf_entry_size = max_dim * max_dim;
         update_F_buf_size  = 6 * max_buf_entry_size;
         int nthreads = omp_get_max_threads();
         update_F_buf = _mm_malloc(sizeof(double) * nthreads * update_F_buf_size, 64);
@@ -357,24 +326,20 @@ void fock_task(
         
         if (ncpu_f == 1) use_atomic_add = 0;
     }
-	
-	int _iX3M = rowpos[startrow];
-	int _iX3P = colpos[startcol];
-	
+    
+    int _iX3M = rowpos[startrow];
+    int _iX3P = colpos[startcol];
+    
     #pragma omp parallel
     {
         int nt = omp_get_thread_num();
-        double mynsq = 0.0;
+        double mynsq  = 0.0;
         double mynitl = 0.0;
-		
-		double *thread_F_MQ_blocks  = F_MQ_band_blocks + nt * nbf * max_dim;
-		double *thread_F_NQ_blocks  = F_NQ_band_blocks + nt * nbf * max_dim;
-		double *thread_F_MP_blocks  = F_MP_band_blocks + nt * nbf * max_dim;
-		double *thread_F_NP_blocks  = F_NP_band_blocks + nt * nbf * max_dim;
-		int *thread_visited_MQpairs = visited_MQpairs + nt * nshells;
-		int *thread_visited_NQpairs = visited_NQpairs + nt * nshells;
-		int *thread_visited_MPpairs = visited_MPpairs + nt * nshells;
-		int *thread_visited_NPpairs = visited_NPpairs + nt * nshells;
+        
+        double *thread_F_M_band_blocks = F_M_band_blocks + nt * nbf * max_dim;
+        double *thread_F_N_band_blocks = F_N_band_blocks + nt * nbf * max_dim;
+        int    *thread_visited_Mpairs  = visited_Mpairs + nt * nshells;
+        int    *thread_visited_Npairs  = visited_Npairs + nt * nshells;
         
         if (repack_D)
         {
@@ -397,15 +362,11 @@ void fock_task(
             int N = shellid[i];
             
             reset_ThreadQuartetLists(thread_quartet_lists, M, N);
-			
-			memset(thread_F_MQ_blocks, 0, sizeof(double) * nbf * max_dim);
-			memset(thread_F_NQ_blocks, 0, sizeof(double) * nbf * max_dim);
-			memset(thread_F_MP_blocks, 0, sizeof(double) * nbf * max_dim);
-			memset(thread_F_NP_blocks, 0, sizeof(double) * nbf * max_dim);
-			memset(thread_visited_MQpairs, 0, sizeof(int) * nshells);
-			memset(thread_visited_NQpairs, 0, sizeof(int) * nshells);
-			memset(thread_visited_MPpairs, 0, sizeof(int) * nshells);
-			memset(thread_visited_NPpairs, 0, sizeof(int) * nshells);
+            
+            memset(thread_F_M_band_blocks, 0, sizeof(double) * nbf * max_dim);
+            memset(thread_F_N_band_blocks, 0, sizeof(double) * nbf * max_dim);
+            memset(thread_visited_Mpairs, 0, sizeof(int) * nshells);
+            memset(thread_visited_Npairs, 0, sizeof(int) * nshells);
             
             double value1 = shellvalue[i];            
             int dimM = f_startind[M + 1] - f_startind[M];
@@ -413,7 +374,7 @@ void fock_task(
             int iX1M = f_startind[M] - f_startind[startrow];
             int iX3M = rowpos[M]; 
             int iXN  = rowptr[i];
-            int iMN  = iX1M * ldX1+ iXN;
+            int iMN  = iX1M * ldX1 + iXN;
             int flag1 = (value1 < 0.0) ? 1 : 0;   
             for (int j = startPQ; j < endPQ; j++) 
             {
@@ -434,19 +395,20 @@ void fock_task(
                 int iXQ  = colptr[j];               
                 int iPQ  = iX2P * ldX2 + iXQ;                             
                 int iNQ  = iXN  * ldX3 + iXQ;                
-                int iMP  = iX1M * ldX4 + iX2P;
-                int iMQ  = iX1M * ldX5 + iXQ;
-                int iNP  = iXN  * ldX6 + iX2P;
                 int iMP0 = iX3M * ldX3 + iX3P;
                 int iMQ0 = iX3M * ldX3 + iXQ;
-                int iNP0 = iXN  * ldX3 + iX3P;               
+                int iNP0 = iXN  * ldX3 + iX3P;  
+                
+                //int iMP  = iX1M * ldX4 + iX2P;
+                //int iMQ  = iX1M * ldX5 + iXQ;
+                //int iNP  = iXN  * ldX6 + iX2P;
+                int iMP_F3 = (iX1M * ldX3 + iX2P) + (_iX3M * ldX3 + _iX3P);
+                int iNP_F3 = (iXN  * ldX3 + iX2P) + _iX3P;
+                int iMQ_F3 = (iX1M * ldX3 + iXQ)  + (_iX3M * ldX3);
+                
                 int flag3 = (M == P && Q == N) ? 0 : 1;                    
                 int flag2 = (value2 < 0.0) ? 1 : 0;
-				
-				int iMP_F3 = (iX1M * ldX3 + iX2P) + (_iX3M * ldX3 + _iX3P);
-				int iNP_F3 = (iXN  * ldX3 + iX2P) + _iX3P;
-				int iMQ_F3 = (iX1M * ldX3 + iXQ)  + (_iX3M * ldX3);
-				
+                
                 if (fabs(value1 * value2) >= tolscr2) 
                 {
                     mynsq  += 1.0;
@@ -475,8 +437,7 @@ void fock_task(
                         pack_D_mark_JK_with_KetShellPairList(
                             M, N, npairs, target_shellpair_list,
                             D1, D2, D3, ldX1, ldX2, ldX3,
-							thread_visited_MQpairs,	thread_visited_NQpairs,
-							thread_visited_MPpairs,	thread_visited_NPpairs
+                            thread_visited_Mpairs, thread_visited_Npairs
                         );
                         
                         CInt_computeShellQuartetBatch_SIMINT(
@@ -496,8 +457,7 @@ void fock_task(
                             update_F_with_KetShellPairList(
                                 nt, num_dmat, thread_batch_integrals, thread_batch_nints,
                                 npairs, M, N, target_shellpair_list,
-								thread_F_MQ_blocks, thread_F_NQ_blocks,
-								thread_F_MP_blocks, thread_F_NP_blocks
+                                thread_F_M_band_blocks, thread_F_N_band_blocks
                             );
                             et = CInt_get_walltime_sec();
                             if (nt == 0) 
@@ -525,8 +485,7 @@ void fock_task(
                     pack_D_mark_JK_with_KetShellPairList(
                         M, N, npairs, target_shellpair_list,
                         D1, D2, D3, ldX1, ldX2, ldX3,
-						thread_visited_MQpairs, thread_visited_NQpairs,
-						thread_visited_MPpairs, thread_visited_NPpairs
+                        thread_visited_Mpairs, thread_visited_Npairs
                     );
                     
                     CInt_computeShellQuartetBatch_SIMINT(
@@ -546,8 +505,7 @@ void fock_task(
                         update_F_with_KetShellPairList(
                             nt, num_dmat, thread_batch_integrals, thread_batch_nints, 
                             npairs, M, N, target_shellpair_list,
-							thread_F_MQ_blocks, thread_F_NQ_blocks,
-							thread_F_MP_blocks, thread_F_NP_blocks
+                            thread_F_M_band_blocks, thread_F_N_band_blocks
                         );
                         et = CInt_get_walltime_sec();
                         if (nt == 0) 
@@ -558,44 +516,28 @@ void fock_task(
                     reset_KetShellPairList(target_shellpair_list);
                 }
             }
-			
-			int thread_M_bank_offset = mat_block_ptr[M * nshells];
-			int thread_N_bank_offset = mat_block_ptr[N * nshells];
-			for (int iQ = 0; iQ < nshells; iQ++)
-			{
-				int dim_iQ = shell_bf_num[iQ];
-				int dim_iP = shell_bf_num[iQ];
-				if (thread_visited_MQpairs[iQ]) 
-				{
-					int MQ_block_ptr = mat_block_ptr[M * nshells + iQ];
-					double *thread_F_MQ_block_ptr = thread_F_MQ_blocks + MQ_block_ptr - thread_M_bank_offset;
-					double *global_F_MQ_block_ptr = F_NQ_blocks + MQ_block_ptr;
-					atomic_add_vector(global_F_MQ_block_ptr, thread_F_MQ_block_ptr, dimM * dim_iQ);
-				}
-				if (thread_visited_NQpairs[iQ]) 
-				{
-					int NQ_block_ptr = mat_block_ptr[N * nshells + iQ];
-					double *thread_F_NQ_block_ptr = thread_F_NQ_blocks + NQ_block_ptr - thread_N_bank_offset;
-					double *global_F_NQ_block_ptr = F_NQ_blocks + NQ_block_ptr;
-					atomic_add_vector(global_F_NQ_block_ptr, thread_F_NQ_block_ptr, dimN * dim_iQ);
-				}
-				
-				if (thread_visited_MPpairs[iQ]) 
-				{
-					int MP_block_ptr = mat_block_ptr[M * nshells + iQ];
-					double *thread_F_MP_block_ptr = thread_F_MP_blocks + MP_block_ptr - thread_M_bank_offset;
-					double *global_F_MP_block_ptr = F_NQ_blocks + MP_block_ptr;
-					atomic_add_vector(global_F_MP_block_ptr, thread_F_MP_block_ptr, dimM * dim_iP);
-				}
-				if (thread_visited_NPpairs[iQ]) 
-				{
-					int NP_block_ptr = mat_block_ptr[N * nshells + iQ];
-					double *thread_F_NP_block_ptr = thread_F_NP_blocks + NP_block_ptr - thread_N_bank_offset;
-					double *global_F_NP_block_ptr = F_NQ_blocks + NP_block_ptr;
-					atomic_add_vector(global_F_NP_block_ptr, thread_F_NP_block_ptr, dimN * dim_iP);
-				}
-			}
-			
+            
+            int thread_M_bank_offset = mat_block_ptr[M * nshells];
+            int thread_N_bank_offset = mat_block_ptr[N * nshells];
+            for (int iPQ = 0; iPQ < nshells; iPQ++)
+            {
+                int dim_iPQ = shell_bf_num[iPQ];
+                if (thread_visited_Mpairs[iPQ]) 
+                {
+                    int MPQ_block_ptr = mat_block_ptr[M * nshells + iPQ];
+                    double *global_F_MNPQ_block_ptr   = F_MNPQ_blocks + MPQ_block_ptr;
+                    double *thread_F_M_band_block_ptr = thread_F_M_band_blocks + MPQ_block_ptr - thread_M_bank_offset;
+                    atomic_add_vector(global_F_MNPQ_block_ptr, thread_F_M_band_block_ptr, dimM * dim_iPQ);
+                }
+                if (thread_visited_Npairs[iPQ]) 
+                {
+                    int NPQ_block_ptr = mat_block_ptr[N * nshells + iPQ];
+                    double *global_F_MNPQ_block_ptr   = F_MNPQ_blocks + NPQ_block_ptr;
+                    double *thread_F_N_band_block_ptr = thread_F_N_band_blocks + NPQ_block_ptr - thread_N_bank_offset;
+                    atomic_add_vector(global_F_MNPQ_block_ptr, thread_F_N_band_block_ptr, dimN * dim_iPQ);
+                }
+            }
+            
         }  // for (int i = startMN; i < endMN; i++)
 
         #pragma omp critical
@@ -627,25 +569,13 @@ void reset_F(int numF, int num_dmat, double *F1, double *F2, double *F3,
         #pragma omp for nowait
         for (int k = 0; k <    1 * sizeX3 * num_dmat; k++) F3[k] = 0.0;
         
-        #pragma omp for nowait
-        for (int k = 0; k < numF * sizeX4 * num_dmat; k++) F4[k] = 0.0;
-        
-        #pragma omp for nowait
-        for (int k = 0; k < numF * sizeX5 * num_dmat; k++) F5[k] = 0.0;
-        
-        #pragma omp for nowait
-        for (int k = 0; k < numF * sizeX6 * num_dmat; k++) F6[k] = 0.0;
-        
         
         #pragma omp for nowait
         for (int i = 0; i < nsp; i++)
         {
             F_MN_blocks_to_F1[i] = -1;
             F_PQ_blocks_to_F2[i] = -1;
-            F_MP_blocks_to_F4[i] = -1;
-            F_NP_blocks_to_F6[i] = -1;
-            F_MQ_blocks_to_F5[i] = -1;
-            F_NQ_blocks_to_F3[i] = -1;
+            F_MNPQ_blocks_to_F3[i] = -1;
         }
         
         #pragma omp for nowait
@@ -653,10 +583,7 @@ void reset_F(int numF, int num_dmat, double *F1, double *F2, double *F3,
         {
             F_MN_blocks[i] = 0.0;
             F_PQ_blocks[i] = 0.0;
-            F_MP_blocks[i] = 0.0;
-            F_NP_blocks[i] = 0.0;
-            F_MQ_blocks[i] = 0.0;
-            F_NQ_blocks[i] = 0.0;
+            F_MNPQ_blocks[i] = 0.0;
         }
     }
 }
@@ -671,43 +598,11 @@ void reduce_F(int numF, int num_dmat,
               int iX3M, int iX3P,
               int ldX3, int ldX4, int ldX5, int ldX6)
 {
-    #pragma omp parallel
+    #pragma omp parallel for schedule(dynamic, 10)
+    for (int i = 0; i < nsp; i++)
     {
-        #pragma omp for schedule(dynamic, 10)
-        for (int i = 0; i < nsp; i++)
-        {
-            add_Fxx_block_to_Fxx(F_MN_blocks_to_F1, i, F_MN_blocks, F1, maxrowsize);
-            add_Fxx_block_to_Fxx(F_PQ_blocks_to_F2, i, F_PQ_blocks, F2, maxcolsize);
-            //add_Fxx_block_to_Fxx(F_MP_blocks_to_F4, i, F_MP_blocks, F4, ldX4);
-            //add_Fxx_block_to_Fxx(F_NP_blocks_to_F6, i, F_NP_blocks, F6, ldX6);
-            //add_Fxx_block_to_Fxx(F_MQ_blocks_to_F5, i, F_MQ_blocks, F5, ldX5);
-            add_Fxx_block_to_Fxx(F_NQ_blocks_to_F3, i, F_NQ_blocks, F3, ldX3);
-        }
-
-		/*
-        int iMP = iX3M * ldX3 + iX3P;
-        int iMQ = iX3M * ldX3;
-        int iNP = iX3P;
-        for (int k = 0; k < num_dmat; k++) {
-            #pragma omp for
-            for (int iM = 0; iM < maxrowfuncs; iM++) {
-                for (int iP = 0; iP < maxcolfuncs; iP++) {
-                    F3[k * sizeX3 + iMP + iM * ldX3 + iP]
-                        += F4[k * sizeX4 + iM * ldX4 + iP];
-                }
-                for (int iQ = 0; iQ < maxcolsize; iQ++) {
-                    F3[k * sizeX3 + iMQ + iM * ldX3 + iQ] +=
-                        F5[k * sizeX5 + iM * ldX5 + iQ];    
-                }
-            }
-            #pragma omp for
-            for (int iN = 0; iN < maxrowsize; iN++) {
-                for (int iP = 0; iP < maxcolfuncs; iP++) {
-                    F3[k * sizeX3 + iNP + iN * ldX3 + iP] +=
-                        F6[k * sizeX6 + iN * ldX6 + iP];
-                }
-            }
-        }
-		*/
+        add_Fxx_block_to_Fxx(F_MN_blocks_to_F1, i, F_MN_blocks, F1, maxrowsize);
+        add_Fxx_block_to_Fxx(F_PQ_blocks_to_F2, i, F_PQ_blocks, F2, maxcolsize);
+        add_Fxx_block_to_Fxx(F_MNPQ_blocks_to_F3, i, F_MNPQ_blocks, F3, ldX3);
     }
 }
