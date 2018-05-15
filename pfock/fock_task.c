@@ -21,6 +21,8 @@ double *update_F_buf  = NULL;
 int update_F_buf_size = 0;
 int use_atomic_add    = 1;
 
+int maxAM, max_dim, nthreads;
+
 int nbf = 0, nshells = 0, nsp, nbf2;
 int *mat_block_ptr;          // The offset of the 1st element of a block in the packed buffer
 volatile int *block_packed;  // Flags for marking if a block of D has been packed
@@ -39,6 +41,11 @@ int *F_NP_blocks_to_F6;      // Mapping blocks in F_NP_blocks to F6
 int *F_MQ_blocks_to_F5;      // Mapping blocks in F_MQ_blocks to F5
 int *F_NQ_blocks_to_F3;      // Mapping blocks in F_NQ_blocks to F3
 
+double *F_MQ_band_blocks;
+double *F_NQ_band_blocks; 
+int *visited_Mpairs;
+int *visited_Npairs;
+
 #include "update_F.h"
 
 #define UPDATE_F_OPT_BUFFER_ARGS \
@@ -51,19 +58,24 @@ int *F_NQ_blocks_to_F3;      // Mapping blocks in F_NQ_blocks to F3
     fock_info_list[5],  \
     fock_info_list[6],  \
     load_MN, load_P, write_MN, write_P, \
-    M, N, P_list[ipair], Q_list[ipair]
+    M, N, P_list[ipair], Q_list[ipair], \
+	thread_F_MQ_blocks, thread_M_bank_offset, \
+	thread_F_NQ_blocks, thread_N_bank_offset
 
 #include "thread_quartet_buf.h"
 
 void update_F_with_KetShellPairList(
     int tid, int num_dmat, double *batch_integrals, int batch_nints, int npairs, 
-    int M, int N, KetShellPairList_s *target_shellpair_list
+    int M, int N, KetShellPairList_s *target_shellpair_list, 
+	double *thread_F_MQ_blocks, double *thread_F_NQ_blocks
 )
 {
     int load_MN, load_P, write_MN, write_P;
     int prev_P = -1;
     int *P_list = target_shellpair_list->P_list;
     int *Q_list = target_shellpair_list->Q_list;
+	int thread_M_bank_offset = mat_block_ptr[M * nshells];
+	int thread_N_bank_offset = mat_block_ptr[N * nshells];
     for (int ipair = 0; ipair < npairs; ipair++)
     {
         int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
@@ -87,6 +99,7 @@ void update_F_with_KetShellPairList(
         
         prev_P = P_list[ipair];
 
+		/*
         int is_1111 = fock_info_list[0] * fock_info_list[1] * fock_info_list[2] * fock_info_list[3];
         if (is_1111 == 1)
         {
@@ -99,10 +112,12 @@ void update_F_with_KetShellPairList(
             else if (fock_info_list[3] == 15) update_F_opt_buffer_Q15(UPDATE_F_OPT_BUFFER_ARGS);
             else update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
         }
+		*/
+		update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
     }
 }
 
-void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat)
+void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, BasisSet_t basis)
 {
     if (num_dmat != 1)
     {
@@ -158,6 +173,18 @@ void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat)
     assert(F_NP_blocks_to_F6 != NULL);
     assert(F_MQ_blocks_to_F5 != NULL);
     assert(F_NQ_blocks_to_F3 != NULL);
+	
+	nthreads = omp_get_max_threads();
+	_maxMomentum(basis, &maxAM);
+	max_dim = (maxAM + 1) * (maxAM + 2) / 2;
+	F_MQ_band_blocks = (double*) malloc(sizeof(double) * nthreads * max_dim * nbf);
+	F_NQ_band_blocks = (double*) malloc(sizeof(double) * nthreads * max_dim * nbf);
+	visited_Mpairs = (int*) malloc(sizeof(int) * nthreads * nshells);
+	visited_Npairs = (int*) malloc(sizeof(int) * nthreads * nshells);
+	assert(F_MQ_band_blocks != NULL);
+	assert(F_NQ_band_blocks != NULL);
+	assert(visited_Mpairs != NULL);
+	assert(visited_Npairs != NULL);
     
     for (int i = 0; i < nshells; i++)
         shell_bf_num[i] = f_startind[i + 1] - f_startind[i];
@@ -220,7 +247,8 @@ static inline void add_Fxx_block_to_Fxx(
 
 void pack_D_mark_JK_with_KetShellPairList(
     int M, int N, int npairs, KetShellPairList_s *target_shellpair_list,
-    double **D1, double **D2, double **D3,    int ldX1, int ldX2, int ldX3
+    double **D1, double **D2, double **D3, int ldX1, int ldX2, int ldX3,
+	int *thread_visited_Mpairs, int *thread_visited_Npairs
 )
 {
     int prev_P = -1;
@@ -267,6 +295,9 @@ void pack_D_mark_JK_with_KetShellPairList(
         F_MQ_blocks_to_F5[M * nshells + Q] = iMQ;
         F_NQ_blocks_to_F3[N * nshells + Q] = iNQ;
         
+		thread_visited_Mpairs[Q] = 1;
+		thread_visited_Npairs[Q] = 1;
+		
         prev_P = P_list[ipair];
     }
 }
@@ -298,11 +329,8 @@ void fock_task(
     
     if (update_F_buf_size == 0)
     {
-        int maxAM, max_buf_entry_size;
-        _maxMomentum(basis, &maxAM);
-        max_buf_entry_size = (maxAM + 1) * (maxAM + 2) / 2;
-        max_buf_entry_size = max_buf_entry_size * max_buf_entry_size;
         // max_buf_entry_size should be >= the product of any two items in {dimM, dimN, dimP, dimQ}
+		int max_buf_entry_size = max_dim * max_dim;
         update_F_buf_size  = 6 * max_buf_entry_size;
         int nthreads = omp_get_max_threads();
         update_F_buf = _mm_malloc(sizeof(double) * nthreads * update_F_buf_size, 64);
@@ -310,12 +338,17 @@ void fock_task(
         
         if (ncpu_f == 1) use_atomic_add = 0;
     }
-
+	
     #pragma omp parallel
     {
         int nt = omp_get_thread_num();
         double mynsq = 0.0;
         double mynitl = 0.0;
+		
+		double *thread_F_MQ_blocks = F_MQ_band_blocks + nt * nbf * max_dim;
+		double *thread_F_NQ_blocks = F_NQ_band_blocks + nt * nbf * max_dim;
+		int *thread_visited_Mpairs = visited_Mpairs + nt * nshells;
+		int *thread_visited_Npairs = visited_Npairs + nt * nshells;
         
         if (repack_D)
         {
@@ -338,6 +371,11 @@ void fock_task(
             int N = shellid[i];
             
             reset_ThreadQuartetLists(thread_quartet_lists, M, N);
+			
+			memset(thread_F_MQ_blocks, 0, sizeof(double) * nbf * max_dim);
+			memset(thread_F_NQ_blocks, 0, sizeof(double) * nbf * max_dim);
+			memset(thread_visited_Mpairs, 0, sizeof(int) * nshells);
+			memset(thread_visited_Npairs, 0, sizeof(int) * nshells);
             
             double value1 = shellvalue[i];            
             int dimM = f_startind[M + 1] - f_startind[M];
@@ -401,7 +439,9 @@ void fock_task(
                         // Pack D blocks and mark the original write position of JK blocks
                         pack_D_mark_JK_with_KetShellPairList(
                             M, N, npairs, target_shellpair_list,
-                            D1, D2, D3, ldX1, ldX2, ldX3
+                            D1, D2, D3, ldX1, ldX2, ldX3,
+							thread_visited_Mpairs,
+							thread_visited_Npairs
                         );
                         
                         CInt_computeShellQuartetBatch_SIMINT(
@@ -420,7 +460,8 @@ void fock_task(
                             st = CInt_get_walltime_sec();
                             update_F_with_KetShellPairList(
                                 nt, num_dmat, thread_batch_integrals, thread_batch_nints,
-                                npairs, M, N, target_shellpair_list
+                                npairs, M, N, target_shellpair_list,
+								thread_F_MQ_blocks, thread_F_NQ_blocks
                             );
                             et = CInt_get_walltime_sec();
                             if (nt == 0) 
@@ -447,7 +488,9 @@ void fock_task(
                     // Pack D blocks and mark the original write position of JK blocks
                     pack_D_mark_JK_with_KetShellPairList(
                         M, N, npairs, target_shellpair_list,
-                        D1, D2, D3, ldX1, ldX2, ldX3
+                        D1, D2, D3, ldX1, ldX2, ldX3,
+						thread_visited_Mpairs,
+						thread_visited_Npairs
                     );
                     
                     CInt_computeShellQuartetBatch_SIMINT(
@@ -466,7 +509,8 @@ void fock_task(
                         st = CInt_get_walltime_sec();
                         update_F_with_KetShellPairList(
                             nt, num_dmat, thread_batch_integrals, thread_batch_nints, 
-                            npairs, M, N, target_shellpair_list
+                            npairs, M, N, target_shellpair_list,
+							thread_F_MQ_blocks, thread_F_NQ_blocks
                         );
                         et = CInt_get_walltime_sec();
                         if (nt == 0) 
@@ -477,6 +521,28 @@ void fock_task(
                     reset_KetShellPairList(target_shellpair_list);
                 }
             }
+			
+			int thread_M_bank_offset = mat_block_ptr[M * nshells];
+			int thread_N_bank_offset = mat_block_ptr[N * nshells];
+			for (int iQ = 0; iQ < nshells; iQ++)
+			{
+				int dim_iQ = shell_bf_num[iQ];
+				if (thread_visited_Mpairs[iQ]) 
+				{
+					int MQ_block_ptr = mat_block_ptr[M * nshells + iQ];
+					double *thread_F_MQ_block_ptr = thread_F_MQ_blocks + MQ_block_ptr - thread_M_bank_offset;
+					double *global_F_MQ_block_ptr = F_MQ_blocks + MQ_block_ptr;
+					atomic_add_vector(global_F_MQ_block_ptr, thread_F_MQ_block_ptr, dimM * dim_iQ);
+				}
+				if (thread_visited_Npairs[iQ]) 
+				{
+					int NQ_block_ptr = mat_block_ptr[N * nshells + iQ];
+					double *thread_F_NQ_block_ptr = thread_F_NQ_blocks + NQ_block_ptr - thread_N_bank_offset;
+					double *global_F_NQ_block_ptr = F_NQ_blocks + NQ_block_ptr;
+					atomic_add_vector(global_F_NQ_block_ptr, thread_F_NQ_block_ptr, dimN * dim_iQ);
+				}
+			}
+			
         }  // for (int i = startMN; i < endMN; i++)
 
         #pragma omp critical
