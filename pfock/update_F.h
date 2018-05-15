@@ -35,8 +35,8 @@ static inline void update_global_vectors(
 
     if (write_P)
     {
-        atomic_add_vector(K_MP, K_MP_buf, dimM * dimP);
-        atomic_add_vector(K_NP, K_NP_buf, dimN * dimP);
+        direct_add_vector(K_MP, K_MP_buf, dimM * dimP);
+        direct_add_vector(K_NP, K_NP_buf, dimN * dimP);
     }
     
     atomic_add_vector(J_PQ, J_PQ_buf, dimP * dimQ);
@@ -51,8 +51,8 @@ static inline void update_F_opt_buffer(
     int flag1, int flag2, int flag3,
     int load_MN, int load_P, int write_MN, int write_P,
     int M, int N, int P, int Q, 
-	double *thread_F_MQ_blocks, int thread_M_bank_offset,
-	double *thread_F_NQ_blocks, int thread_N_bank_offset
+	double *thread_F_MQ_blocks, double *thread_F_MP_blocks, int thread_M_bank_offset,
+	double *thread_F_NQ_blocks, double *thread_F_NP_blocks, int thread_N_bank_offset
 )
 {
     int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
@@ -76,8 +76,8 @@ static inline void update_F_opt_buffer(
     
 	double *J_MN = F_MN_blocks + mat_block_ptr[M * nshells + N];
 	double *J_PQ = F_PQ_blocks + mat_block_ptr[P * nshells + Q];
-	double *K_MP = F_MP_blocks + mat_block_ptr[M * nshells + P];
-	double *K_NP = F_NP_blocks + mat_block_ptr[N * nshells + P];
+	double *K_MP = thread_F_MP_blocks + mat_block_ptr[M * nshells + P] - thread_M_bank_offset; 
+	double *K_NP = thread_F_NP_blocks + mat_block_ptr[N * nshells + P] - thread_N_bank_offset;
 	double *K_MQ = thread_F_MQ_blocks + mat_block_ptr[M * nshells + Q] - thread_M_bank_offset;
 	double *K_NQ = thread_F_NQ_blocks + mat_block_ptr[N * nshells + Q] - thread_N_bank_offset;
 	
