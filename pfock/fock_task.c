@@ -298,15 +298,18 @@ void pack_D_mark_JK_with_KetShellPairList(
         {
             pack_D_block(M, P, dimM, dimP, D3[0] + iMP0, ldX3);
             pack_D_block(N, P, dimN, dimP, D3[0] + iNP0, ldX3);
-            F_MP_blocks_to_F4[M * nshells + P] = iMP;
-            F_NP_blocks_to_F6[N * nshells + P] = iNP;
+            //F_MP_blocks_to_F4[M * nshells + P] = iMP;
+            //F_NP_blocks_to_F6[N * nshells + P] = iNP;
+			F_NQ_blocks_to_F3[M * nshells + P] = iMP;
+			F_NQ_blocks_to_F3[N * nshells + P] = iNP;
         }
         
         pack_D_block(P, Q, dimP, dimQ, D2[0] + iPQ,  ldX2);
         pack_D_block(M, Q, dimM, dimQ, D3[0] + iMQ0, ldX3);
         pack_D_block(N, Q, dimN, dimQ, D3[0] + iNQ,  ldX3);
         F_PQ_blocks_to_F2[P * nshells + Q] = iPQ;
-        F_MQ_blocks_to_F5[M * nshells + Q] = iMQ;
+        //F_MQ_blocks_to_F5[M * nshells + Q] = iMQ;
+		F_NQ_blocks_to_F3[M * nshells + Q] = iMQ;
         F_NQ_blocks_to_F3[N * nshells + Q] = iNQ;
         
 		thread_visited_MQpairs[Q] = 1;
@@ -354,6 +357,9 @@ void fock_task(
         
         if (ncpu_f == 1) use_atomic_add = 0;
     }
+	
+	int _iX3M = rowpos[startrow];
+	int _iX3P = colpos[startcol];
 	
     #pragma omp parallel
     {
@@ -436,6 +442,11 @@ void fock_task(
                 int iNP0 = iXN  * ldX3 + iX3P;               
                 int flag3 = (M == P && Q == N) ? 0 : 1;                    
                 int flag2 = (value2 < 0.0) ? 1 : 0;
+				
+				int iMP_F3 = (iX1M * ldX3 + iX2P) + (_iX3M * ldX3 + _iX3P);
+				int iNP_F3 = (iXN  * ldX3 + iX2P) + _iX3P;
+				int iMQ_F3 = (iX1M * ldX3 + iXQ)  + (_iX3M * ldX3);
+				
                 if (fabs(value1 * value2) >= tolscr2) 
                 {
                     mynsq  += 1.0;
@@ -448,7 +459,7 @@ void fock_task(
                         target_shellpair_list, P, Q,
                         dimM, dimN, dimP, dimQ, 
                         flag1, flag2, flag3,
-                        iMN, iPQ, iMP, iNP, iMQ, iNQ,
+                        iMN, iPQ, iMP_F3, iNP_F3, iMQ_F3, iNQ,
                         iMP0, iMQ0, iNP0
                     );
                     assert(add_KetShellPair_ret == 1);
@@ -558,7 +569,7 @@ void fock_task(
 				{
 					int MQ_block_ptr = mat_block_ptr[M * nshells + iQ];
 					double *thread_F_MQ_block_ptr = thread_F_MQ_blocks + MQ_block_ptr - thread_M_bank_offset;
-					double *global_F_MQ_block_ptr = F_MQ_blocks + MQ_block_ptr;
+					double *global_F_MQ_block_ptr = F_NQ_blocks + MQ_block_ptr;
 					atomic_add_vector(global_F_MQ_block_ptr, thread_F_MQ_block_ptr, dimM * dim_iQ);
 				}
 				if (thread_visited_NQpairs[iQ]) 
@@ -573,14 +584,14 @@ void fock_task(
 				{
 					int MP_block_ptr = mat_block_ptr[M * nshells + iQ];
 					double *thread_F_MP_block_ptr = thread_F_MP_blocks + MP_block_ptr - thread_M_bank_offset;
-					double *global_F_MP_block_ptr = F_MP_blocks + MP_block_ptr;
+					double *global_F_MP_block_ptr = F_NQ_blocks + MP_block_ptr;
 					atomic_add_vector(global_F_MP_block_ptr, thread_F_MP_block_ptr, dimM * dim_iP);
 				}
 				if (thread_visited_NPpairs[iQ]) 
 				{
 					int NP_block_ptr = mat_block_ptr[N * nshells + iQ];
 					double *thread_F_NP_block_ptr = thread_F_NP_blocks + NP_block_ptr - thread_N_bank_offset;
-					double *global_F_NP_block_ptr = F_NP_blocks + NP_block_ptr;
+					double *global_F_NP_block_ptr = F_NQ_blocks + NP_block_ptr;
 					atomic_add_vector(global_F_NP_block_ptr, thread_F_NP_block_ptr, dimN * dim_iP);
 				}
 			}
@@ -667,12 +678,13 @@ void reduce_F(int numF, int num_dmat,
         {
             add_Fxx_block_to_Fxx(F_MN_blocks_to_F1, i, F_MN_blocks, F1, maxrowsize);
             add_Fxx_block_to_Fxx(F_PQ_blocks_to_F2, i, F_PQ_blocks, F2, maxcolsize);
-            add_Fxx_block_to_Fxx(F_MP_blocks_to_F4, i, F_MP_blocks, F4, ldX4);
-            add_Fxx_block_to_Fxx(F_NP_blocks_to_F6, i, F_NP_blocks, F6, ldX6);
-            add_Fxx_block_to_Fxx(F_MQ_blocks_to_F5, i, F_MQ_blocks, F5, ldX5);
+            //add_Fxx_block_to_Fxx(F_MP_blocks_to_F4, i, F_MP_blocks, F4, ldX4);
+            //add_Fxx_block_to_Fxx(F_NP_blocks_to_F6, i, F_NP_blocks, F6, ldX6);
+            //add_Fxx_block_to_Fxx(F_MQ_blocks_to_F5, i, F_MQ_blocks, F5, ldX5);
             add_Fxx_block_to_Fxx(F_NQ_blocks_to_F3, i, F_NQ_blocks, F3, ldX3);
         }
 
+		/*
         int iMP = iX3M * ldX3 + iX3P;
         int iMQ = iX3M * ldX3;
         int iNP = iX3P;
@@ -696,5 +708,6 @@ void reduce_F(int numF, int num_dmat,
                 }
             }
         }
+		*/
     }
 }
