@@ -36,7 +36,7 @@ static inline void direct_add_vector(double *dst, double *src, int length)
 }
 
 static inline void update_global_vectors(
-    int write_MN, int write_P, int dimM, int dimN, int dimP, int dimQ,
+    int write_P, int dimM, int dimN, int dimP, int dimQ,
     double *K_MP, double *K_MP_buf, double *K_NP, double *K_NP_buf, double *J_PQ, double *J_PQ_buf,
     double *K_MQ, double *K_MQ_buf, double *K_NQ, double *K_NQ_buf
 )
@@ -56,8 +56,7 @@ static inline void update_global_vectors(
 static inline void update_F_opt_buffer(
     int tid, int num_dmat, double *integrals, 
     int dimM, int dimN, int dimP, int dimQ,
-    int flag1, int flag2, int flag3,
-    int load_MN, int load_P, int write_MN, int write_P,
+    int flag1, int flag2, int flag3, int load_P, int write_P,
     int M, int N, int P, int Q, 
     double *thread_F_M_band_blocks, int thread_M_bank_offset,
     double *thread_F_N_band_blocks, int thread_N_bank_offset
@@ -150,7 +149,7 @@ static inline void update_F_opt_buffer(
     
     // Update to the global array using atomic_add_f64()
     update_global_vectors(
-        write_MN, write_P, dimM, dimN, dimP, dimQ, 
+        write_P, dimM, dimN, dimP, dimQ, 
         K_MP, K_MP_buf, K_NP, K_NP_buf, J_PQ, J_PQ_buf,
         K_MQ, K_MQ_buf, K_NQ, K_NQ_buf
     );

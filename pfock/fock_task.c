@@ -49,7 +49,7 @@ int    *visited_Npairs;      // Flags for marking if (N, i) is updated
     fock_info_list[4],  \
     fock_info_list[5],  \
     fock_info_list[6],  \
-    load_MN, load_P, write_MN, write_P, \
+    load_P, write_P, \
     M, N, P_list[ipair], Q_list[ipair], \
     thread_F_M_band_blocks, thread_M_bank_offset, \
     thread_F_N_band_blocks, thread_N_bank_offset
@@ -62,7 +62,7 @@ void update_F_with_KetShellPairList(
     double *thread_F_M_band_blocks, double *thread_F_N_band_blocks
 )
 {
-    int load_MN, load_P, write_MN, write_P;
+    int load_P, write_P;
     int prev_P = -1;
     int *P_list = target_shellpair_list->P_list;
     int *Q_list = target_shellpair_list->Q_list;
@@ -71,9 +71,6 @@ void update_F_with_KetShellPairList(
     for (int ipair = 0; ipair < npairs; ipair++)
     {
         int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
-
-        if (ipair == 0)          load_MN  = 1; else load_MN  = 0;
-        if (ipair + 1 == npairs) write_MN = 1; else write_MN = 0;
         
         if (prev_P == P_list[ipair]) 
         {
@@ -149,6 +146,9 @@ void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, Basis
     assert(F_MNPQ_blocks != NULL);
     assert(F_PQ_blocks_to_F2   != NULL);
     assert(F_MNPQ_blocks_to_F3 != NULL);
+    double block_mem_MB = (double) nbf2 * 3 * sizeof(double);
+    block_mem_MB += (double) nsp * 4 * sizeof(int);
+    block_mem_MB /= 1048576.0;
     
     nthreads = omp_get_max_threads();
     _maxMomentum(basis, &maxAM);
@@ -161,6 +161,18 @@ void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, Basis
     assert(F_N_band_blocks != NULL);
     assert(visited_Mpairs  != NULL);
     assert(visited_Npairs  != NULL);
+    double thread_buf_mem_MB = (double) nbf * 2 * (double) max_dim * sizeof(double);
+    thread_buf_mem_MB += (double) nshells * 2 * sizeof(int);
+    thread_buf_mem_MB *= (double) nthreads;
+    thread_buf_mem_MB /= 1048576.0;
+    
+    int my_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+    if (my_rank == 0) 
+    {
+        printf("  Blocking matrix = %.2lf MB, ", block_mem_MB);
+        printf("thread-private blocking buffeer = %.2lf MB\n", thread_buf_mem_MB);
+    }
     
     for (int i = 0; i < nshells; i++)
         shell_bf_num[i] = f_startind[i + 1] - f_startind[i];
@@ -430,14 +442,11 @@ void fock_task(
                         double *thread_batch_integrals;
                         int thread_batch_nints;
                         
-                        st = CInt_get_walltime_sec();
                         pack_D_mark_JK_with_KetShellPairList(
                             M, N, npairs, target_shellpair_list,
                             D1, D2, D3, ldX1, ldX2, ldX3,
                             thread_visited_Mpairs, thread_visited_Npairs
                         );
-                        et = CInt_get_walltime_sec();
-                        if (nt == 0) CInt_SIMINT_addupdateFtimer(simint, et - st);
                         
                         CInt_computeShellQuartetBatch_SIMINT(
                             simint, nt,
@@ -478,14 +487,11 @@ void fock_task(
                     double *thread_batch_integrals;
                     int thread_batch_nints;
                     
-                    st = CInt_get_walltime_sec();
                     pack_D_mark_JK_with_KetShellPairList(
                         M, N, npairs, target_shellpair_list,
                         D1, D2, D3, ldX1, ldX2, ldX3,
                         thread_visited_Mpairs, thread_visited_Npairs
                     );
-                    et = CInt_get_walltime_sec();
-                    if (nt == 0) CInt_SIMINT_addupdateFtimer(simint, et - st);
                     
                     CInt_computeShellQuartetBatch_SIMINT(
                         simint, nt,
