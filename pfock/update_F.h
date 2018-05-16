@@ -11,6 +11,17 @@ static inline void atomic_add_f64(volatile double* global_value, double addend)
                                            expected_value, new_value));
 }
 
+static inline void atomic_add_block(double *dst, int ldd, double *src, int lds, int nrows, int ncols)
+{
+    for (int irow = 0; irow < nrows; irow++)
+    {
+        int dst_base = irow * ldd;
+        int src_base = irow * lds;
+        for (int icol = 0; icol < ncols; icol++)
+            atomic_add_f64(&dst[dst_base + icol], src[src_base + icol]);
+    }
+}
+
 static inline void atomic_add_vector(double *dst, double *src, int length)
 {
     for (int i = 0; i < length; i++)
@@ -26,13 +37,10 @@ static inline void direct_add_vector(double *dst, double *src, int length)
 
 static inline void update_global_vectors(
     int write_MN, int write_P, int dimM, int dimN, int dimP, int dimQ,
-    double *J_MN, double *J_MN_buf, double *K_MP, double *K_MP_buf,
-    double *K_NP, double *K_NP_buf, double *J_PQ, double *J_PQ_buf,
+    double *K_MP, double *K_MP_buf, double *K_NP, double *K_NP_buf, double *J_PQ, double *J_PQ_buf,
     double *K_MQ, double *K_MQ_buf, double *K_NQ, double *K_NQ_buf
 )
 {
-    if (write_MN) atomic_add_vector(J_MN, J_MN_buf, dimM * dimN);
-
     if (write_P)
     {
         direct_add_vector(K_MP, K_MP_buf, dimM * dimP);
@@ -74,7 +82,6 @@ static inline void update_F_opt_buffer(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
     
-    double *J_MN = F_MN_blocks + mat_block_ptr[M * nshells + N];
     double *J_PQ = F_PQ_blocks + mat_block_ptr[P * nshells + Q];
     double *K_MP = thread_F_M_band_blocks + mat_block_ptr[M * nshells + P] - thread_M_bank_offset; 
     double *K_NP = thread_F_N_band_blocks + mat_block_ptr[N * nshells + P] - thread_N_bank_offset;
@@ -89,8 +96,7 @@ static inline void update_F_opt_buffer(
     double *D_NQ_buf = D_blocks + mat_block_ptr[N * nshells + Q];
 
     // Reset result buffer
-    if (load_MN) memset(J_MN_buf, 0, sizeof(double) * dimM * dimN);
-    if (load_P)  memset(K_MP_buf, 0, sizeof(double) * dimP * (dimM + dimN));
+    if (load_P) memset(K_MP_buf, 0, sizeof(double) * dimP * (dimM + dimN));
     memset(J_PQ_buf, 0, sizeof(double) * dimQ * (dimM + dimN + dimP));
 
     double vPQ_coef = 2.0 * (flag3 + flag5 + flag6 + flag7);
@@ -145,8 +151,7 @@ static inline void update_F_opt_buffer(
     // Update to the global array using atomic_add_f64()
     update_global_vectors(
         write_MN, write_P, dimM, dimN, dimP, dimQ, 
-        J_MN, J_MN_buf, K_MP, K_MP_buf, 
-        K_NP, K_NP_buf, J_PQ, J_PQ_buf,
+        K_MP, K_MP_buf, K_NP, K_NP_buf, J_PQ, J_PQ_buf,
         K_MQ, K_MQ_buf, K_NQ, K_NQ_buf
     );
 }

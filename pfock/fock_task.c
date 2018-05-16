@@ -24,21 +24,19 @@ int use_atomic_add    = 1;
 int maxAM, max_dim, nthreads;
 
 int nbf = 0, nshells = 0, nsp, nbf2;
-int *mat_block_ptr;          // The offset of the 1st element of a block in the packed buffer
 volatile int *block_packed;  // Flags for marking if a block of D has been packed
-int *shell_bf_num;           // Number of basis functions of each shell
+int    *mat_block_ptr;       // The offset of the 1st element of a block in the packed buffer
+int    *shell_bf_num;        // Number of basis functions of each shell
 double *D_blocks;            // Packed density matrix (D) blocks
-double *F_MN_blocks;         // Packed F_MN (J_MN) blocks
 double *F_PQ_blocks;         // Packed F_PQ (J_PQ) blocks
 double *F_MNPQ_blocks;       // Packed F_{MP, NP, MQ, NQ} (K_{MP, NP, MQ, NQ}) blocks
-int *F_MN_blocks_to_F1;      // Mapping blocks in F_MN_blocks to F1
-int *F_PQ_blocks_to_F2;      // Mapping blocks in F_PQ_blocks to F2
-int *F_MNPQ_blocks_to_F3;    // Mapping blocks in F_MNPQ_blocks to F3
+int    *F_PQ_blocks_to_F2;   // Mapping blocks in F_PQ_blocks to F2
+int    *F_MNPQ_blocks_to_F3; // Mapping blocks in F_MNPQ_blocks to F3
 
-double *F_M_band_blocks;
-double *F_N_band_blocks; 
-int    *visited_Mpairs;
-int    *visited_Npairs;
+double *F_M_band_blocks;     // Thread-private buffer for F_MP and F_MQ blocks with the same M
+double *F_N_band_blocks;     // Thread-private buffer for F_NP and F_NQ blocks with the same N
+int    *visited_Mpairs;      // Flags for marking if (M, i) is updated 
+int    *visited_Npairs;      // Flags for marking if (N, i) is updated 
 
 #include "update_F.h"
 
@@ -139,20 +137,16 @@ void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, Basis
     mat_block_ptr = (int*) malloc(sizeof(int) * nsp);
     block_packed  = (volatile int*) malloc(sizeof(int) * nsp);
     D_blocks      = (double*) malloc(sizeof(double) * nbf2);
-    F_MN_blocks   = (double*) malloc(sizeof(double) * nbf2);
     F_PQ_blocks   = (double*) malloc(sizeof(double) * nbf2);
     F_MNPQ_blocks = (double*) malloc(sizeof(double) * nbf2);
-    F_MN_blocks_to_F1   = (int*) malloc(sizeof(int) * nsp);
     F_PQ_blocks_to_F2   = (int*) malloc(sizeof(int) * nsp);
     F_MNPQ_blocks_to_F3 = (int*) malloc(sizeof(int) * nsp);
     assert(mat_block_ptr != NULL);
     assert(block_packed  != NULL);
     assert(shell_bf_num  != NULL);
     assert(D_blocks      != NULL);
-    assert(F_MN_blocks   != NULL);
     assert(F_PQ_blocks   != NULL);
     assert(F_MNPQ_blocks != NULL);
-    assert(F_MN_blocks_to_F1   != NULL);
     assert(F_PQ_blocks_to_F2   != NULL);
     assert(F_MNPQ_blocks_to_F3 != NULL);
     
@@ -241,7 +235,6 @@ void pack_D_mark_JK_with_KetShellPairList(
     int dimN = target_shellpair_list->fock_quartet_info[1];
     int iMN  = target_shellpair_list->fock_quartet_info[7];
     pack_D_block(M, N, dimM, dimN, D1[0] + iMN, ldX1);
-    F_MN_blocks_to_F1[M * nshells + N] = iMN;
     
     for (int ipair = 0; ipair < npairs; ipair++)
     {
@@ -266,8 +259,6 @@ void pack_D_mark_JK_with_KetShellPairList(
         {
             pack_D_block(M, P, dimM, dimP, D3[0] + iMP0, ldX3);
             pack_D_block(N, P, dimN, dimP, D3[0] + iNP0, ldX3);
-            //F_MP_blocks_to_F4[M * nshells + P] = iMP;
-            //F_NP_blocks_to_F6[N * nshells + P] = iNP;
             F_MNPQ_blocks_to_F3[M * nshells + P] = iMP;
             F_MNPQ_blocks_to_F3[N * nshells + P] = iNP;
             
@@ -279,7 +270,6 @@ void pack_D_mark_JK_with_KetShellPairList(
         pack_D_block(M, Q, dimM, dimQ, D3[0] + iMQ0, ldX3);
         pack_D_block(N, Q, dimN, dimQ, D3[0] + iNQ,  ldX3);
         F_PQ_blocks_to_F2[P * nshells + Q] = iPQ;
-        //F_MQ_blocks_to_F5[M * nshells + Q] = iMQ;
         F_MNPQ_blocks_to_F3[M * nshells + Q] = iMQ;
         F_MNPQ_blocks_to_F3[N * nshells + Q] = iNQ;
         
@@ -301,7 +291,7 @@ void fock_task(
     int startM, int endM, int startP, int endP,
     double **D1, double **D2, double **D3,
     double *F1, double *F2, double *F3,
-    double *F4, double *F5, double *F6,
+    double *F4, double *F5, double *F6,   // Unused
     int ldX1, int ldX2, int ldX3,
     int ldX4, int ldX5, int ldX6,
     int sizeX1, int sizeX2, int sizeX3,
@@ -327,6 +317,7 @@ void fock_task(
         if (ncpu_f == 1) use_atomic_add = 0;
     }
     
+    // For mapping the write position of F4, F5, F6 to F3
     int _iX3M = rowpos[startrow];
     int _iX3P = colpos[startcol];
     
@@ -335,6 +326,7 @@ void fock_task(
         int nt = omp_get_thread_num();
         double mynsq  = 0.0;
         double mynitl = 0.0;
+        double st, et;
         
         double *thread_F_M_band_blocks = F_M_band_blocks + nt * nbf * max_dim;
         double *thread_F_N_band_blocks = F_N_band_blocks + nt * nbf * max_dim;
@@ -376,6 +368,11 @@ void fock_task(
             int iXN  = rowptr[i];
             int iMN  = iX1M * ldX1 + iXN;
             int flag1 = (value1 < 0.0) ? 1 : 0;   
+            
+            //memset(F_MN_blocks + mat_block_ptr[M * nshells + N], 0, sizeof(double) * dimM * dimN);
+            double *thread_MN_buf = update_F_buf + nt * update_F_buf_size;
+            memset(thread_MN_buf, 0, sizeof(double) * dimM * dimN);
+            
             for (int j = startPQ; j < endPQ; j++) 
             {
                 int P = shellrid[j];
@@ -433,12 +430,14 @@ void fock_task(
                         double *thread_batch_integrals;
                         int thread_batch_nints;
                         
-                        // Pack D blocks and mark the original write position of JK blocks
+                        st = CInt_get_walltime_sec();
                         pack_D_mark_JK_with_KetShellPairList(
                             M, N, npairs, target_shellpair_list,
                             D1, D2, D3, ldX1, ldX2, ldX3,
                             thread_visited_Mpairs, thread_visited_Npairs
                         );
+                        et = CInt_get_walltime_sec();
+                        if (nt == 0) CInt_SIMINT_addupdateFtimer(simint, et - st);
                         
                         CInt_computeShellQuartetBatch_SIMINT(
                             simint, nt,
@@ -452,7 +451,6 @@ void fock_task(
                         
                         if (thread_batch_nints > 0)
                         {
-                            double st, et;
                             st = CInt_get_walltime_sec();
                             update_F_with_KetShellPairList(
                                 nt, num_dmat, thread_batch_integrals, thread_batch_nints,
@@ -460,8 +458,7 @@ void fock_task(
                                 thread_F_M_band_blocks, thread_F_N_band_blocks
                             );
                             et = CInt_get_walltime_sec();
-                            if (nt == 0) 
-                                CInt_SIMINT_addupdateFtimer(simint, et - st);
+                            if (nt == 0) CInt_SIMINT_addupdateFtimer(simint, et - st);
                         }
                         
                         // Ket shellpair list is processed, reset it
@@ -481,12 +478,14 @@ void fock_task(
                     double *thread_batch_integrals;
                     int thread_batch_nints;
                     
-                    // Pack D blocks and mark the original write position of JK blocks
+                    st = CInt_get_walltime_sec();
                     pack_D_mark_JK_with_KetShellPairList(
                         M, N, npairs, target_shellpair_list,
                         D1, D2, D3, ldX1, ldX2, ldX3,
                         thread_visited_Mpairs, thread_visited_Npairs
                     );
+                    et = CInt_get_walltime_sec();
+                    if (nt == 0) CInt_SIMINT_addupdateFtimer(simint, et - st);
                     
                     CInt_computeShellQuartetBatch_SIMINT(
                         simint, nt,
@@ -500,7 +499,6 @@ void fock_task(
                     
                     if (thread_batch_nints > 0)
                     {
-                        double st, et;
                         st = CInt_get_walltime_sec();
                         update_F_with_KetShellPairList(
                             nt, num_dmat, thread_batch_integrals, thread_batch_nints, 
@@ -508,8 +506,7 @@ void fock_task(
                             thread_F_M_band_blocks, thread_F_N_band_blocks
                         );
                         et = CInt_get_walltime_sec();
-                        if (nt == 0) 
-                            CInt_SIMINT_addupdateFtimer(simint, et - st);
+                        if (nt == 0) CInt_SIMINT_addupdateFtimer(simint, et - st);
                     }
                     
                     // Ket shellpair list is processed, reset it
@@ -517,6 +514,9 @@ void fock_task(
                 }
             }
             
+            // Update F_MN block to F1 and F_{MP, NP, MQ, NQ} blocks to F_MNPQ_blocks
+            st = CInt_get_walltime_sec();
+            atomic_add_block(F1 + iMN, ldX1, thread_MN_buf, dimN, dimM, dimN);
             int thread_M_bank_offset = mat_block_ptr[M * nshells];
             int thread_N_bank_offset = mat_block_ptr[N * nshells];
             for (int iPQ = 0; iPQ < nshells; iPQ++)
@@ -537,6 +537,8 @@ void fock_task(
                     atomic_add_vector(global_F_MNPQ_block_ptr, thread_F_N_band_block_ptr, dimN * dim_iPQ);
                 }
             }
+            et = CInt_get_walltime_sec();
+            if (nt == 0) CInt_SIMINT_addupdateFtimer(simint, et - st);
             
         }  // for (int i = startMN; i < endMN; i++)
 
@@ -554,9 +556,9 @@ void fock_task(
 }
 
 void reset_F(int numF, int num_dmat, double *F1, double *F2, double *F3,
-             double *F4, double *F5, double *F6,
+             double *F4, double *F5, double *F6,  // Unused
              int sizeX1, int sizeX2, int sizeX3,
-             int sizeX4, int sizeX5, int sizeX6)
+             int sizeX4, int sizeX5, int sizeX6)  // Unused
 {
     #pragma omp parallel
     {
@@ -573,36 +575,33 @@ void reset_F(int numF, int num_dmat, double *F1, double *F2, double *F3,
         #pragma omp for nowait
         for (int i = 0; i < nsp; i++)
         {
-            F_MN_blocks_to_F1[i] = -1;
-            F_PQ_blocks_to_F2[i] = -1;
+            F_PQ_blocks_to_F2[i]   = -1;
             F_MNPQ_blocks_to_F3[i] = -1;
         }
         
         #pragma omp for nowait
         for (int i = 0; i < nbf2; i++)
         {
-            F_MN_blocks[i] = 0.0;
-            F_PQ_blocks[i] = 0.0;
+            F_PQ_blocks[i]   = 0.0;
             F_MNPQ_blocks[i] = 0.0;
         }
     }
 }
 
-void reduce_F(int numF, int num_dmat,
+void reduce_F(int numF, int num_dmat,              // Unused
               double *F1, double *F2, double *F3,
-              double *F4, double *F5, double *F6,
-              int sizeX1, int sizeX2, int sizeX3,
-              int sizeX4, int sizeX5, int sizeX6,
+              double *F4, double *F5, double *F6,  // Unused
+              int sizeX1, int sizeX2, int sizeX3,  // Unused
+              int sizeX4, int sizeX5, int sizeX6,  // Unused
               int maxrowsize, int maxcolsize,
-              int maxrowfuncs, int maxcolfuncs,
-              int iX3M, int iX3P,
+              int maxrowfuncs, int maxcolfuncs,    // Unused
+              int iX3M, int iX3P,                  // Unused
               int ldX3, int ldX4, int ldX5, int ldX6)
 {
     #pragma omp parallel for schedule(dynamic, 10)
     for (int i = 0; i < nsp; i++)
     {
-        add_Fxx_block_to_Fxx(F_MN_blocks_to_F1, i, F_MN_blocks, F1, maxrowsize);
-        add_Fxx_block_to_Fxx(F_PQ_blocks_to_F2, i, F_PQ_blocks, F2, maxcolsize);
+        add_Fxx_block_to_Fxx(F_PQ_blocks_to_F2,   i, F_PQ_blocks,   F2, maxcolsize);
         add_Fxx_block_to_Fxx(F_MNPQ_blocks_to_F3, i, F_MNPQ_blocks, F3, ldX3);
     }
 }
