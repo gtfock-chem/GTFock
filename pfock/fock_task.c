@@ -23,7 +23,7 @@ int use_atomic_add    = 1;
 
 int maxAM, max_dim, nthreads;
 
-int nbf = 0, nshells = 0, nsp, nbf2;
+int nbf = 0, nshells = 0, nsp, nbf2, F_PQ_offset, myrank, maxcolfuncs;
 volatile int *block_packed;  // Flags for marking if a block of D has been packed
 int    *mat_block_ptr;       // The offset of the 1st element of a block in the packed buffer
 int    *shell_bf_num;        // Number of basis functions of each shell
@@ -106,7 +106,7 @@ void update_F_with_KetShellPairList(
     }
 }
 
-void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, BasisSet_t basis)
+void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, BasisSet_t basis, int _maxcolfuncs)
 {
     if (num_dmat != 1)
     {
@@ -129,12 +129,13 @@ void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, Basis
     nshells = _nshells;
     nsp     = nshells * nshells;
     nbf2    = nbf * nbf;
+    maxcolfuncs = _maxcolfuncs;
     
     shell_bf_num  = (int*) malloc(sizeof(int) * nshells);
     mat_block_ptr = (int*) malloc(sizeof(int) * nsp);
     block_packed  = (volatile int*) malloc(sizeof(int) * nsp);
     D_blocks      = (double*) malloc(sizeof(double) * nbf2);
-    F_PQ_blocks   = (double*) malloc(sizeof(double) * nbf2);
+    F_PQ_blocks   = (double*) malloc(sizeof(double) * nbf * maxcolfuncs);
     F_MNPQ_blocks = (double*) malloc(sizeof(double) * nbf2);
     F_PQ_blocks_to_F2   = (int*) malloc(sizeof(int) * nsp);
     F_MNPQ_blocks_to_F3 = (int*) malloc(sizeof(int) * nsp);
@@ -166,9 +167,8 @@ void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, Basis
     thread_buf_mem_MB *= (double) nthreads;
     thread_buf_mem_MB /= 1048576.0;
     
-    int my_rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-    if (my_rank == 0) 
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    if (myrank == 0) 
     {
         printf("  Blocking matrix = %.2lf MB, ", block_mem_MB);
         printf("thread-private blocking buffeer = %.2lf MB\n", thread_buf_mem_MB);
@@ -209,27 +209,6 @@ static inline void pack_D_block(
         double *D_dst = D_blocks + mat_block_ptr[MN_id];
         copy_matrix_block(D_dst, dimN, D_src, ld_Dsrc, dimM, dimN);
         block_packed[MN_id] = 1;
-    }
-}
-
-static inline void add_Fxx_block_to_Fxx(
-    int *Fxx_blocks_to_Fxx, int bid, 
-    double *Fxx_blocks, double *Fxx, int ldFxx
-)
-{
-    if (Fxx_blocks_to_Fxx[bid] == -1) return;
-    
-    int dimM = shell_bf_num[bid / nshells];
-    int dimN = shell_bf_num[bid % nshells];
-    double *Fxx_ptr       = Fxx + Fxx_blocks_to_Fxx[bid];
-    double *Fxx_block_ptr = Fxx_blocks + mat_block_ptr[bid];
-    
-    for (int irow = 0; irow < dimM; irow++)
-    {
-        double *Fxx_row       = Fxx_ptr + irow * ldFxx;
-        double *Fxx_block_row = Fxx_block_ptr + irow * dimN;
-        for (int icol = 0; icol < dimN; icol++)
-            Fxx_row[icol] += Fxx_block_row[icol];
     }
 }
 
@@ -332,6 +311,10 @@ void fock_task(
     // For mapping the write position of F4, F5, F6 to F3
     int _iX3M = rowpos[startrow];
     int _iX3P = colpos[startcol];
+    
+    // startcol is the column start position of shells
+    // This value should remains unchanged when consuming tasks from the same MPI proc
+    F_PQ_offset = mat_block_ptr[startcol * nshells];
     
     #pragma omp parallel
     {
@@ -588,11 +571,36 @@ void reset_F(int numF, int num_dmat, double *F1, double *F2, double *F3,
         #pragma omp for nowait
         for (int i = 0; i < nbf2; i++)
         {
-            F_PQ_blocks[i]   = 0.0;
             F_MNPQ_blocks[i] = 0.0;
         }
+        
+        #pragma omp for nowait
+        for (int i = 0; i < nbf * maxcolfuncs; i++)
+            F_PQ_blocks[i]   = 0.0;
     }
 }
+
+static inline void add_Fxx_block_to_Fxx(
+    int *Fxx_blocks_to_Fxx, int bid, 
+    double *Fxx_blocks, double *Fxx, int ldFxx, int Fxx_block_offset
+)
+{
+    if (Fxx_blocks_to_Fxx[bid] == -1) return;
+    
+    int dimM = shell_bf_num[bid / nshells];
+    int dimN = shell_bf_num[bid % nshells];
+    double *Fxx_ptr       = Fxx + Fxx_blocks_to_Fxx[bid];
+    double *Fxx_block_ptr = Fxx_blocks + mat_block_ptr[bid] - Fxx_block_offset;
+    
+    for (int irow = 0; irow < dimM; irow++)
+    {
+        double *Fxx_row       = Fxx_ptr + irow * ldFxx;
+        double *Fxx_block_row = Fxx_block_ptr + irow * dimN;
+        for (int icol = 0; icol < dimN; icol++)
+            Fxx_row[icol] += Fxx_block_row[icol];
+    }
+}
+
 
 void reduce_F(int numF, int num_dmat,              // Unused
               double *F1, double *F2, double *F3,
@@ -607,7 +615,7 @@ void reduce_F(int numF, int num_dmat,              // Unused
     #pragma omp parallel for schedule(dynamic, 10)
     for (int i = 0; i < nsp; i++)
     {
-        add_Fxx_block_to_Fxx(F_PQ_blocks_to_F2,   i, F_PQ_blocks,   F2, maxcolsize);
-        add_Fxx_block_to_Fxx(F_MNPQ_blocks_to_F3, i, F_MNPQ_blocks, F3, ldX3);
+        add_Fxx_block_to_Fxx(F_PQ_blocks_to_F2,   i, F_PQ_blocks,   F2, maxcolsize, F_PQ_offset);
+        add_Fxx_block_to_Fxx(F_MNPQ_blocks_to_F3, i, F_MNPQ_blocks, F3, ldX3, 0);
     }
 }
