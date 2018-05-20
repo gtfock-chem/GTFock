@@ -47,7 +47,12 @@ static inline void update_global_vectors(
         direct_add_vector(K_NP, K_NP_buf, dimN * dimP);
     }
     
-    atomic_add_vector(J_PQ, J_PQ_buf, dimP * dimQ);
+    if (use_atomic_add) 
+    {
+        atomic_add_vector(J_PQ, J_PQ_buf, dimP * dimQ);
+    } else {
+        direct_add_vector(J_PQ, J_PQ_buf, dimP * dimQ);
+    }
     direct_add_vector(K_MQ, K_MQ_buf, dimM * dimQ);
     direct_add_vector(K_NQ, K_NQ_buf, dimN * dimQ);
 }
@@ -81,7 +86,8 @@ static inline void update_F_opt_buffer(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
     
-    double *J_PQ = F_PQ_blocks + (mat_block_ptr[P * nshells + Q] - F_PQ_offset);
+    double *thread_F_PQ_blocks = F_PQ_blocks + (tid / num_cpu_F) * F_PQ_block_size;
+    double *J_PQ = thread_F_PQ_blocks + (mat_block_ptr[P * nshells + Q] - F_PQ_offset);
     double *K_MP = thread_F_M_band_blocks + mat_block_ptr[M * nshells + P] - thread_M_bank_offset; 
     double *K_NP = thread_F_N_band_blocks + mat_block_ptr[N * nshells + P] - thread_N_bank_offset;
     double *K_MQ = thread_F_M_band_blocks + mat_block_ptr[M * nshells + Q] - thread_M_bank_offset;

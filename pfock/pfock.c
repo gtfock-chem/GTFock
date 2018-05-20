@@ -684,7 +684,7 @@ static PFockStatus_t create_buffers (PFock_t pfock)
             ncpu_f = 1;
         }
     }
-    ncpu_f = nthreads;  // For JK blocking
+    // ncpu_f = nthreads;  // For JK blocking
     
     int sizeX4 = maxrowfuncs * maxcolfuncs;
     int sizeX6 = maxrowsize  * maxcolfuncs;
@@ -1340,7 +1340,10 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     int lo[2];
     int hi[2];
     
-    init_block_buf(pfock->nbf, pfock->nshells, pfock->f_startind, pfock->num_dmat, basis, maxcolfuncs);
+    init_block_buf(
+		pfock->nbf, pfock->nshells, pfock->f_startind, pfock->num_dmat, 
+		basis, maxcolfuncs, pfock->ncpu_f, pfock->numF
+	);
 
     gettimeofday (&tv1, NULL);    
     gettimeofday (&tv3, NULL);

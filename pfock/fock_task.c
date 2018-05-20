@@ -23,7 +23,8 @@ int use_atomic_add    = 1;
 
 int maxAM, max_dim, nthreads;
 
-int nbf = 0, nshells = 0, nsp, nbf2, F_PQ_offset, myrank, maxcolfuncs;
+int nbf = 0, nshells = 0, nsp, nbf2, F_PQ_block_size;
+int F_PQ_offset, myrank, maxcolfuncs, num_cpu_F, num_dup_F;
 volatile int *block_packed;  // Flags for marking if a block of D has been packed
 int    *mat_block_ptr;       // The offset of the 1st element of a block in the packed buffer
 int    *shell_bf_num;        // Number of basis functions of each shell
@@ -106,7 +107,10 @@ void update_F_with_KetShellPairList(
     }
 }
 
-void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, BasisSet_t basis, int _maxcolfuncs)
+void init_block_buf(
+    int _nbf, int _nshells, int *f_startind, int num_dmat, 
+    BasisSet_t basis, int _maxcolfuncs, int ncpu_f, int numF
+)
 {
     if (num_dmat != 1)
     {
@@ -130,12 +134,15 @@ void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, Basis
     nsp     = nshells * nshells;
     nbf2    = nbf * nbf;
     maxcolfuncs = _maxcolfuncs;
-    
+    num_cpu_F   = ncpu_f;
+    num_dup_F   = numF;
+    F_PQ_block_size = nbf * maxcolfuncs;
+
     shell_bf_num  = (int*) malloc(sizeof(int) * nshells);
     mat_block_ptr = (int*) malloc(sizeof(int) * nsp);
     block_packed  = (volatile int*) malloc(sizeof(int) * nsp);
     D_blocks      = (double*) malloc(sizeof(double) * nbf2);
-    F_PQ_blocks   = (double*) malloc(sizeof(double) * nbf * maxcolfuncs);
+    F_PQ_blocks   = (double*) malloc(sizeof(double) * F_PQ_block_size * num_dup_F);
     F_MNPQ_blocks = (double*) malloc(sizeof(double) * nbf2);
     F_PQ_blocks_to_F2   = (int*) malloc(sizeof(int) * nsp);
     F_MNPQ_blocks_to_F3 = (int*) malloc(sizeof(int) * nsp);
@@ -147,7 +154,7 @@ void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, Basis
     assert(F_MNPQ_blocks != NULL);
     assert(F_PQ_blocks_to_F2   != NULL);
     assert(F_MNPQ_blocks_to_F3 != NULL);
-    double block_mem_MB = (double) nbf2 * 3 * sizeof(double);
+    double block_mem_MB = (double) nbf2 * 2 * sizeof(double);
     block_mem_MB += (double) nsp * 4 * sizeof(int);
     block_mem_MB /= 1048576.0;
     
@@ -165,14 +172,23 @@ void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, Basis
     double thread_buf_mem_MB = (double) nbf * 2 * (double) max_dim * sizeof(double);
     thread_buf_mem_MB += (double) nshells * 2 * sizeof(int);
     thread_buf_mem_MB *= (double) nthreads;
+    thread_buf_mem_MB += (double) F_PQ_block_size * num_dup_F * sizeof(double);
     thread_buf_mem_MB /= 1048576.0;
     
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
     if (myrank == 0) 
     {
         printf("  Blocking matrix = %.2lf MB, ", block_mem_MB);
-        printf("thread-private blocking buffeer = %.2lf MB\n", thread_buf_mem_MB);
+        printf("thread-private blocking buffer = %.2lf MB\n", thread_buf_mem_MB);
     }
+    if (num_cpu_F == 1) 
+    {
+        use_atomic_add = 0;
+        if (myrank == 0) printf("  F_PQ_blocks won't use atomic add\n");
+    } else {
+        use_atomic_add = 1;
+        if (myrank == 0) printf("  F_PQ_blocks will use atomic add\n");
+    } 
     
     for (int i = 0; i < nshells; i++)
         shell_bf_num[i] = f_startind[i + 1] - f_startind[i];
@@ -575,7 +591,7 @@ void reset_F(int numF, int num_dmat, double *F1, double *F2, double *F3,
         }
         
         #pragma omp for nowait
-        for (int i = 0; i < nbf * maxcolfuncs; i++)
+        for (int i = 0; i < F_PQ_block_size * num_dup_F; i++)
             F_PQ_blocks[i]   = 0.0;
     }
 }
@@ -590,7 +606,7 @@ static inline void add_Fxx_block_to_Fxx(
     int dimM = shell_bf_num[bid / nshells];
     int dimN = shell_bf_num[bid % nshells];
     double *Fxx_ptr       = Fxx + Fxx_blocks_to_Fxx[bid];
-    double *Fxx_block_ptr = Fxx_blocks + mat_block_ptr[bid] - Fxx_block_offset;
+    double *Fxx_block_ptr = Fxx_blocks + (mat_block_ptr[bid] - Fxx_block_offset);
     
     for (int irow = 0; irow < dimM; irow++)
     {
@@ -601,6 +617,16 @@ static inline void add_Fxx_block_to_Fxx(
     }
 }
 
+static int block_low(int i, int n, int block_size)
+{
+    long long bs = block_size;
+    long long _n = n;
+    long long _i = i;
+    bs *= _i;
+    bs /= _n;
+    int res = bs;
+    return res;
+}
 
 void reduce_F(int numF, int num_dmat,              // Unused
               double *F1, double *F2, double *F3,
@@ -612,10 +638,30 @@ void reduce_F(int numF, int num_dmat,              // Unused
               int iX3M, int iX3P,                  // Unused
               int ldX3, int ldX4, int ldX5, int ldX6)
 {
-    #pragma omp parallel for schedule(dynamic, 10)
-    for (int i = 0; i < nsp; i++)
+    int nthreads = omp_get_max_threads();
+    #pragma omp parallel 
     {
-        add_Fxx_block_to_Fxx(F_PQ_blocks_to_F2,   i, F_PQ_blocks,   F2, maxcolsize, F_PQ_offset);
-        add_Fxx_block_to_Fxx(F_MNPQ_blocks_to_F3, i, F_MNPQ_blocks, F3, ldX3, 0);
+        int spos, epos;
+        int tid = omp_get_thread_num();
+        spos = block_low(tid,     nthreads, F_PQ_block_size);
+        epos = block_low(tid + 1, nthreads, F_PQ_block_size);
+        
+        // Reduce all copies of F_PQ_blocks to the first copy
+        for (int p = 1; p < num_dup_F; p++)
+        {
+            int offset = p * F_PQ_block_size;
+            #pragma simd
+            for (int k = spos; k < epos; k++)
+                F_PQ_blocks[k] += F_PQ_blocks[offset + k];
+        }
+        
+        #pragma omp barrier
+        
+        #pragma omp for schedule(dynamic, 10)
+        for (int i = 0; i < nsp; i++)
+        {
+            add_Fxx_block_to_Fxx(F_PQ_blocks_to_F2,   i, F_PQ_blocks,   F2, maxcolsize, F_PQ_offset);
+            add_Fxx_block_to_Fxx(F_MNPQ_blocks_to_F3, i, F_MNPQ_blocks, F3, ldX3, 0);
+        }
     }
 }
