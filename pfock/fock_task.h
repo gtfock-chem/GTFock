@@ -4,10 +4,7 @@
 
 #include "CInt.h"
 
-void init_block_buf(
-	int _nbf, int _nshells, int *f_startind, int num_dmat, 
-	BasisSet_t basis, int _maxcolfuncs, int ncpu_f, int numF
-);
+void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, BasisSet_t basis, int _maxcolfuncs);
 
 void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                int *shellptr, double *shellvalue,

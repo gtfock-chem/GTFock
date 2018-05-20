@@ -24,7 +24,7 @@ int use_atomic_add    = 1;
 int maxAM, max_dim, nthreads;
 
 int nbf = 0, nshells = 0, nsp, nbf2, F_PQ_block_size;
-int F_PQ_offset, myrank, maxcolfuncs, num_cpu_F, num_dup_F;
+int F_PQ_offset, myrank, maxcolfuncs, num_CPU_F, num_dup_F;
 volatile int *block_packed;  // Flags for marking if a block of D has been packed
 int    *mat_block_ptr;       // The offset of the 1st element of a block in the packed buffer
 int    *shell_bf_num;        // Number of basis functions of each shell
@@ -107,10 +107,7 @@ void update_F_with_KetShellPairList(
     }
 }
 
-void init_block_buf(
-    int _nbf, int _nshells, int *f_startind, int num_dmat, 
-    BasisSet_t basis, int _maxcolfuncs, int ncpu_f, int numF
-)
+void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, BasisSet_t basis, int _maxcolfuncs)
 {
     if (num_dmat != 1)
     {
@@ -129,15 +126,37 @@ void init_block_buf(
         return;
     }
     
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    
     nbf     = _nbf;
     nshells = _nshells;
     nsp     = nshells * nshells;
     nbf2    = nbf * nbf;
     maxcolfuncs = _maxcolfuncs;
-    num_cpu_F   = ncpu_f;
-    num_dup_F   = numF;
+    
+    // Decide how many copies of F_PQ_blocks to use
+    int nthreads = omp_get_max_threads();
+    char *nCPU_str = getenv("nCPU_F");
+    if (nCPU_str == NULL) 
+    {
+        num_CPU_F = 1;
+    } else {
+        num_CPU_F = atoi(nCPU_str);
+        if (num_CPU_F <= 0 || num_CPU_F > nthreads) 
+            num_CPU_F = 1;
+    }
+    num_dup_F = (nthreads + num_CPU_F - 1) / num_CPU_F;
     F_PQ_block_size = nbf * maxcolfuncs;
-
+    if (num_CPU_F == 1) 
+    {
+        use_atomic_add = 0;
+        if (myrank == 0) printf("  F_PQ_blocks won't use atomic add\n");
+    } else {
+        use_atomic_add = 1;
+        if (myrank == 0) printf("  F_PQ_blocks will use atomic add\n");
+    } 
+    
+    // Allocate memory for blocked matrices
     shell_bf_num  = (int*) malloc(sizeof(int) * nshells);
     mat_block_ptr = (int*) malloc(sizeof(int) * nsp);
     block_packed  = (volatile int*) malloc(sizeof(int) * nsp);
@@ -157,8 +176,8 @@ void init_block_buf(
     double block_mem_MB = (double) nbf2 * 2 * sizeof(double);
     block_mem_MB += (double) nsp * 4 * sizeof(int);
     block_mem_MB /= 1048576.0;
-    
-    nthreads = omp_get_max_threads();
+
+    // Allocate memory for thread-local submatrices
     _maxMomentum(basis, &maxAM);
     max_dim = (maxAM + 1) * (maxAM + 2) / 2;
     F_M_band_blocks = (double*) malloc(sizeof(double) * nthreads * max_dim * nbf);
@@ -175,20 +194,13 @@ void init_block_buf(
     thread_buf_mem_MB += (double) F_PQ_block_size * num_dup_F * sizeof(double);
     thread_buf_mem_MB /= 1048576.0;
     
-    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    
     if (myrank == 0) 
     {
         printf("  Blocking matrix = %.2lf MB, ", block_mem_MB);
-        printf("thread-private blocking buffer = %.2lf MB\n", thread_buf_mem_MB);
+        printf("thread-local blocking buffer = %.2lf MB\n", thread_buf_mem_MB);
     }
-    if (num_cpu_F == 1) 
-    {
-        use_atomic_add = 0;
-        if (myrank == 0) printf("  F_PQ_blocks won't use atomic add\n");
-    } else {
-        use_atomic_add = 1;
-        if (myrank == 0) printf("  F_PQ_blocks will use atomic add\n");
-    } 
+    
     
     for (int i = 0; i < nshells; i++)
         shell_bf_num[i] = f_startind[i + 1] - f_startind[i];

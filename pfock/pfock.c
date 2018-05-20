@@ -684,7 +684,12 @@ static PFockStatus_t create_buffers (PFock_t pfock)
             ncpu_f = 1;
         }
     }
-    // ncpu_f = nthreads;  // For JK blocking
+    
+    // We don't need multiple copies of F1, F2, F4, F5, F6 now, so just let 
+    // numF = 1 here. If we set ncpu_f and numF according to the environment 
+    // variable but only allocate using numF = 1, the program will crash.
+    // We will get the environment variable later again.
+    ncpu_f = nthreads; 
     
     int sizeX4 = maxrowfuncs * maxcolfuncs;
     int sizeX6 = maxrowsize  * maxcolfuncs;
@@ -694,7 +699,6 @@ static PFockStatus_t create_buffers (PFock_t pfock)
     pfock->sizeX6 = sizeX6;
     pfock->ncpu_f = ncpu_f;
     int numF = pfock->numF = (nthreads + ncpu_f - 1)/ncpu_f;
-    if (myrank == 0) printf("  %d threads will share a buffer of J, K matrix, %d copies in total\n", ncpu_f, numF);
 
     // allocation
     pfock->F1 = (double *)PFOCK_MALLOC(sizeof(double) * sizeX1 *
@@ -1340,10 +1344,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     int lo[2];
     int hi[2];
     
-    init_block_buf(
-		pfock->nbf, pfock->nshells, pfock->f_startind, pfock->num_dmat, 
-		basis, maxcolfuncs, pfock->ncpu_f, pfock->numF
-	);
+    init_block_buf(pfock->nbf, pfock->nshells, pfock->f_startind, pfock->num_dmat, basis, maxcolfuncs);
 
     gettimeofday (&tv1, NULL);    
     gettimeofday (&tv3, NULL);

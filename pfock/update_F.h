@@ -86,7 +86,7 @@ static inline void update_F_opt_buffer(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
     
-    double *thread_F_PQ_blocks = F_PQ_blocks + (tid / num_cpu_F) * F_PQ_block_size;
+    double *thread_F_PQ_blocks = F_PQ_blocks + (tid / num_CPU_F) * F_PQ_block_size;
     double *J_PQ = thread_F_PQ_blocks + (mat_block_ptr[P * nshells + Q] - F_PQ_offset);
     double *K_MP = thread_F_M_band_blocks + mat_block_ptr[M * nshells + P] - thread_M_bank_offset; 
     double *K_NP = thread_F_N_band_blocks + mat_block_ptr[N * nshells + P] - thread_N_bank_offset;
