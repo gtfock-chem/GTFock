@@ -73,12 +73,8 @@ void update_F_with_KetShellPairList(
     {
         int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
         
-        if (prev_P == P_list[ipair]) 
-        {
-            load_P = 0;
-        } else {
-            load_P = 1;
-        }
+        if (prev_P == P_list[ipair]) load_P = 0;
+        else load_P = 1;
         
         write_P = 0;
         if (ipair + 1 == npairs) write_P = 1;
@@ -86,10 +82,8 @@ void update_F_with_KetShellPairList(
         {
             if (P_list[ipair] != P_list[ipair + 1]) write_P = 1;
         }
-        
         prev_P = P_list[ipair];
-
-        /*
+        
         int is_1111 = fock_info_list[0] * fock_info_list[1] * fock_info_list[2] * fock_info_list[3];
         if (is_1111 == 1)
         {
@@ -102,8 +96,6 @@ void update_F_with_KetShellPairList(
             else if (fock_info_list[3] == 15) update_F_opt_buffer_Q15(UPDATE_F_OPT_BUFFER_ARGS);
             else update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
         }
-        */
-        update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
     }
 }
 
