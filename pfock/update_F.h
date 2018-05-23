@@ -57,16 +57,20 @@ static inline void update_global_vectors(
     direct_add_vector(K_NQ, K_NQ_buf, dimN * dimQ);
 }
 
+#define UPDATE_F_OPT_BUFFER_IN_ARGS \
+    int tid, int num_dmat, double *integrals, \
+    int dimM, int dimN, int dimP, int _dimQ, \
+    int flag1, int flag2, int flag3, int load_P, int write_P, \
+    int M, int N, int P, int Q,  \
+    double *thread_F_M_band_blocks, int thread_M_bank_offset, \
+    double *thread_F_N_band_blocks, int thread_N_bank_offset, \
+    double *thread_F_PQ_blocks
+
 // Use thread-local buffer to reduce atomic add 
-static inline void update_F_opt_buffer(
-    int tid, int num_dmat, double *integrals, 
-    int dimM, int dimN, int dimP, int dimQ,
-    int flag1, int flag2, int flag3, int load_P, int write_P,
-    int M, int N, int P, int Q, 
-    double *thread_F_M_band_blocks, int thread_M_bank_offset,
-    double *thread_F_N_band_blocks, int thread_N_bank_offset
-)
+static inline void update_F_opt_buffer(UPDATE_F_OPT_BUFFER_IN_ARGS)
 {
+    int dimQ = _dimQ;
+
     int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
     int flag5 = (flag1 == 1 && flag3 == 1) ? 1 : 0;
     int flag6 = (flag2 == 1 && flag3 == 1) ? 1 : 0;
@@ -86,7 +90,6 @@ static inline void update_F_opt_buffer(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
     
-    double *thread_F_PQ_blocks = F_PQ_blocks + (tid / num_CPU_F) * F_PQ_block_size;
     double *J_PQ = thread_F_PQ_blocks + (mat_block_ptr[P * nshells + Q] - F_PQ_offset);
     double *K_MP = thread_F_M_band_blocks + mat_block_ptr[M * nshells + P] - thread_M_bank_offset; 
     double *K_NP = thread_F_N_band_blocks + mat_block_ptr[N * nshells + P] - thread_N_bank_offset;
@@ -161,14 +164,7 @@ static inline void update_F_opt_buffer(
     );
 }
 
-static inline void update_F_opt_buffer_Q1(
-    int tid, int num_dmat, double *integrals, 
-    int dimM, int dimN, int dimP, int _dimQ,
-    int flag1, int flag2, int flag3, int load_P, int write_P,
-    int M, int N, int P, int Q, 
-    double *thread_F_M_band_blocks, int thread_M_bank_offset,
-    double *thread_F_N_band_blocks, int thread_N_bank_offset
-)
+static inline void update_F_opt_buffer_Q1(UPDATE_F_OPT_BUFFER_IN_ARGS)
 {
     const int dimQ = 1;
 
@@ -191,7 +187,6 @@ static inline void update_F_opt_buffer_Q1(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
     
-    double *thread_F_PQ_blocks = F_PQ_blocks + (tid / num_CPU_F) * F_PQ_block_size;
     double *J_PQ = thread_F_PQ_blocks + (mat_block_ptr[P * nshells + Q] - F_PQ_offset);
     double *K_MP = thread_F_M_band_blocks + mat_block_ptr[M * nshells + P] - thread_M_bank_offset; 
     double *K_NP = thread_F_N_band_blocks + mat_block_ptr[N * nshells + P] - thread_N_bank_offset;
@@ -256,14 +251,7 @@ static inline void update_F_opt_buffer_Q1(
     );
 }
 
-static inline void update_F_opt_buffer_Q3(
-    int tid, int num_dmat, double *integrals, 
-    int dimM, int dimN, int dimP, int _dimQ,
-    int flag1, int flag2, int flag3, int load_P, int write_P,
-    int M, int N, int P, int Q, 
-    double *thread_F_M_band_blocks, int thread_M_bank_offset,
-    double *thread_F_N_band_blocks, int thread_N_bank_offset
-)
+static inline void update_F_opt_buffer_Q3(UPDATE_F_OPT_BUFFER_IN_ARGS)
 {
     const int dimQ = 3;
     
@@ -286,7 +274,6 @@ static inline void update_F_opt_buffer_Q3(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
     
-    double *thread_F_PQ_blocks = F_PQ_blocks + (tid / num_CPU_F) * F_PQ_block_size;
     double *J_PQ = thread_F_PQ_blocks + (mat_block_ptr[P * nshells + Q] - F_PQ_offset);
     double *K_MP = thread_F_M_band_blocks + mat_block_ptr[M * nshells + P] - thread_M_bank_offset; 
     double *K_NP = thread_F_N_band_blocks + mat_block_ptr[N * nshells + P] - thread_N_bank_offset;
@@ -359,14 +346,7 @@ static inline void update_F_opt_buffer_Q3(
     );
 }
 
-static inline void update_F_opt_buffer_Q6(
-    int tid, int num_dmat, double *integrals, 
-    int dimM, int dimN, int dimP, int _dimQ,
-    int flag1, int flag2, int flag3, int load_P, int write_P,
-    int M, int N, int P, int Q, 
-    double *thread_F_M_band_blocks, int thread_M_bank_offset,
-    double *thread_F_N_band_blocks, int thread_N_bank_offset
-)
+static inline void update_F_opt_buffer_Q6(UPDATE_F_OPT_BUFFER_IN_ARGS)
 {
     const int dimQ = 6;
     
@@ -389,7 +369,6 @@ static inline void update_F_opt_buffer_Q6(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
     
-    double *thread_F_PQ_blocks = F_PQ_blocks + (tid / num_CPU_F) * F_PQ_block_size;
     double *J_PQ = thread_F_PQ_blocks + (mat_block_ptr[P * nshells + Q] - F_PQ_offset);
     double *K_MP = thread_F_M_band_blocks + mat_block_ptr[M * nshells + P] - thread_M_bank_offset; 
     double *K_NP = thread_F_N_band_blocks + mat_block_ptr[N * nshells + P] - thread_N_bank_offset;
@@ -462,14 +441,7 @@ static inline void update_F_opt_buffer_Q6(
     );
 }
 
-static inline void update_F_opt_buffer_Q10(
-    int tid, int num_dmat, double *integrals, 
-    int dimM, int dimN, int dimP, int _dimQ,
-    int flag1, int flag2, int flag3, int load_P, int write_P,
-    int M, int N, int P, int Q, 
-    double *thread_F_M_band_blocks, int thread_M_bank_offset,
-    double *thread_F_N_band_blocks, int thread_N_bank_offset
-)
+static inline void update_F_opt_buffer_Q10(UPDATE_F_OPT_BUFFER_IN_ARGS)
 {
     const int dimQ = 10;
     
@@ -492,7 +464,6 @@ static inline void update_F_opt_buffer_Q10(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
 
-    double *thread_F_PQ_blocks = F_PQ_blocks + (tid / num_CPU_F) * F_PQ_block_size;
     double *J_PQ = thread_F_PQ_blocks + (mat_block_ptr[P * nshells + Q] - F_PQ_offset);
     double *K_MP = thread_F_M_band_blocks + mat_block_ptr[M * nshells + P] - thread_M_bank_offset; 
     double *K_NP = thread_F_N_band_blocks + mat_block_ptr[N * nshells + P] - thread_N_bank_offset;
@@ -565,14 +536,7 @@ static inline void update_F_opt_buffer_Q10(
     );
 }
 
-static inline void update_F_opt_buffer_Q15(
-    int tid, int num_dmat, double *integrals, 
-    int dimM, int dimN, int dimP, int _dimQ,
-    int flag1, int flag2, int flag3, int load_P, int write_P,
-    int M, int N, int P, int Q, 
-    double *thread_F_M_band_blocks, int thread_M_bank_offset,
-    double *thread_F_N_band_blocks, int thread_N_bank_offset
-)
+static inline void update_F_opt_buffer_Q15(UPDATE_F_OPT_BUFFER_IN_ARGS)
 {
     const int dimQ = 15;
     
@@ -595,7 +559,6 @@ static inline void update_F_opt_buffer_Q15(
     double *K_NQ_buf = write_buf;  write_buf += dimN * dimQ;
     double *K_MQ_buf = write_buf;  write_buf += dimM * dimQ;
 
-    double *thread_F_PQ_blocks = F_PQ_blocks + (tid / num_CPU_F) * F_PQ_block_size;
     double *J_PQ = thread_F_PQ_blocks + (mat_block_ptr[P * nshells + Q] - F_PQ_offset);
     double *K_MP = thread_F_M_band_blocks + mat_block_ptr[M * nshells + P] - thread_M_bank_offset; 
     double *K_NP = thread_F_N_band_blocks + mat_block_ptr[N * nshells + P] - thread_N_bank_offset;
@@ -668,21 +631,13 @@ static inline void update_F_opt_buffer_Q15(
     );
 }
 
-static inline void update_F_1111(
-    int tid, int num_dmat, double *integrals, 
-    int dimM, int dimN, int dimP, int dimQ,
-    int flag1, int flag2, int flag3, int load_P, int write_P,
-    int M, int N, int P, int Q, 
-    double *thread_F_M_band_blocks, int thread_M_bank_offset,
-    double *thread_F_N_band_blocks, int thread_N_bank_offset
-)
+static inline void update_F_1111(UPDATE_F_OPT_BUFFER_IN_ARGS)
 {
     int flag4 = (flag1 == 1 && flag2 == 1) ? 1 : 0;
     int flag5 = (flag1 == 1 && flag3 == 1) ? 1 : 0;
     int flag6 = (flag2 == 1 && flag3 == 1) ? 1 : 0;
     int flag7 = (flag4 == 1 && flag3 == 1) ? 1 : 0;
     
-    double *thread_F_PQ_blocks = F_PQ_blocks + (tid / num_CPU_F) * F_PQ_block_size;
     double *J_PQ = thread_F_PQ_blocks + (mat_block_ptr[P * nshells + Q] - F_PQ_offset);
     double *K_MP = thread_F_M_band_blocks + mat_block_ptr[M * nshells + P] - thread_M_bank_offset; 
     double *K_NP = thread_F_N_band_blocks + mat_block_ptr[N * nshells + P] - thread_N_bank_offset;
@@ -696,7 +651,7 @@ static inline void update_F_1111(
     double *D_MQ_buf = D_blocks + mat_block_ptr[M * nshells + Q];
     double *D_NQ_buf = D_blocks + mat_block_ptr[N * nshells + Q];
 
-     double *thread_buf = update_F_buf + tid * update_F_buf_size;
+    double *thread_buf = update_F_buf + tid * update_F_buf_size;
     double I = integrals[0];
 
     double vMN = 2.0 * (1 + flag1 + flag2 + flag4) * D_PQ_buf[0] * I;

@@ -53,7 +53,8 @@ int    *visited_Npairs;      // Flags for marking if (N, i) is updated
     load_P, write_P, \
     M, N, P_list[ipair], Q_list[ipair], \
     thread_F_M_band_blocks, thread_M_bank_offset, \
-    thread_F_N_band_blocks, thread_N_bank_offset
+    thread_F_N_band_blocks, thread_N_bank_offset, \
+    thread_F_PQ_blocks
 
 #include "thread_quartet_buf.h"
 
@@ -69,6 +70,7 @@ void update_F_with_KetShellPairList(
     int *Q_list = target_shellpair_list->Q_list;
     int thread_M_bank_offset = mat_block_ptr[M * nshells];
     int thread_N_bank_offset = mat_block_ptr[N * nshells];
+    double *thread_F_PQ_blocks = F_PQ_blocks + (tid / num_CPU_F) * F_PQ_block_size;
     for (int ipair = 0; ipair < npairs; ipair++)
     {
         int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
@@ -376,13 +378,15 @@ void fock_task(
             memset(thread_visited_Npairs, 0, sizeof(int) * nshells);
             
             double value1 = shellvalue[i];            
-            int dimM = f_startind[M + 1] - f_startind[M];
-            int dimN = f_startind[N + 1] - f_startind[N];
+            //int dimM = f_startind[M + 1] - f_startind[M];
+            //int dimN = f_startind[N + 1] - f_startind[N];
+            int dimM = shell_bf_num[M];
+            int dimN = shell_bf_num[N];
             int iX1M = f_startind[M] - f_startind[startrow];
             int iX3M = rowpos[M]; 
             int iXN  = rowptr[i];
             int iMN  = iX1M * ldX1 + iXN;
-            int flag1 = (value1 < 0.0) ? 1 : 0;   
+            int flag1 = (value1 < 0.0) ? 1 : 0;
             
             //memset(F_MN_blocks + mat_block_ptr[M * nshells + N], 0, sizeof(double) * dimM * dimN);
             double *thread_MN_buf = update_F_buf + nt * update_F_buf_size;
@@ -400,8 +404,10 @@ void fock_task(
                     (N < Q && (N + Q) % 2 == 0)))
                     continue;
                 double value2 = shellvalue[j];
-                int dimP = f_startind[P + 1] - f_startind[P];
-                int dimQ = f_startind[Q + 1] - f_startind[Q];
+                //int dimP = f_startind[P + 1] - f_startind[P];
+                //int dimQ = f_startind[Q + 1] - f_startind[Q];
+                int dimP = shell_bf_num[P];
+                int dimQ = shell_bf_num[Q];
                 int iX2P = f_startind[P] - f_startind[startcol];
                 int iX3P = colpos[P];
                 int iXQ  = colptr[j];               
