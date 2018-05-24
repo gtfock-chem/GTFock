@@ -17,13 +17,14 @@
 // Using global variables is a bad habit, but it is convenient.
 // Consider fix this problem later.
 
+//#define DUP_F_PQ_BUF
+
 double *update_F_buf  = NULL;
 int update_F_buf_size = 0;
-int use_atomic_add    = 1;
 
 int maxAM, max_dim, nthreads;
 
-int nbf = 0, nshells = 0, nsp, nbf2, F_PQ_block_size;
+int nbf, nshells, nsp, nbf2, F_PQ_block_size;
 int F_PQ_offset, myrank, maxcolfuncs, num_CPU_F, num_dup_F;
 volatile int *block_packed;  // Flags for marking if a block of D has been packed
 int    *mat_block_ptr;       // The offset of the 1st element of a block in the packed buffer
@@ -70,7 +71,11 @@ void update_F_with_KetShellPairList(
     int *Q_list = target_shellpair_list->Q_list;
     int thread_M_bank_offset = mat_block_ptr[M * nshells];
     int thread_N_bank_offset = mat_block_ptr[N * nshells];
+    #ifdef DUP_F_PQ_BUF
     double *thread_F_PQ_blocks = F_PQ_blocks + (tid / num_CPU_F) * F_PQ_block_size;
+    #else
+    double *thread_F_PQ_blocks = F_PQ_blocks;
+    #endif
     for (int ipair = 0; ipair < npairs; ipair++)
     {
         int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
@@ -127,30 +132,24 @@ void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, Basis
     nsp     = nshells * nshells;
     nbf2    = nbf * nbf;
     maxcolfuncs = _maxcolfuncs;
+    nthreads = omp_get_max_threads();
     
     // Decide how many copies of F_PQ_blocks to use
-    int nthreads = omp_get_max_threads();
-    char *nCPU_str = getenv("nCPU_F");
-    if (nCPU_str == NULL) 
+    #ifdef DUP_F_PQ_BUF
+    num_CPU_F = 1;
+    num_dup_F = nthreads;
+    #else
+    num_CPU_F = nthreads;
+    num_dup_F = 1;
+    #endif
+    if (myrank == 0)
     {
-        num_CPU_F = 1;
-    } else {
-        num_CPU_F = atoi(nCPU_str);
-        if (num_CPU_F <= 0 || num_CPU_F > nthreads) 
-            num_CPU_F = 1;
+        if (num_CPU_F == 1) printf("  F_PQ_blocks won't use atomic add\n");
+        else printf("  F_PQ_blocks will use atomic add\n");
     }
-    num_dup_F = (nthreads + num_CPU_F - 1) / num_CPU_F;
-    F_PQ_block_size = nbf * maxcolfuncs;
-    if (num_CPU_F == 1) 
-    {
-        use_atomic_add = 0;
-        if (myrank == 0) printf("  F_PQ_blocks won't use atomic add\n");
-    } else {
-        use_atomic_add = 1;
-        if (myrank == 0) printf("  F_PQ_blocks will use atomic add\n");
-    } 
     
     // Allocate memory for blocked matrices
+    F_PQ_block_size = nbf * maxcolfuncs;
     shell_bf_num  = (int*) malloc(sizeof(int) * nshells);
     mat_block_ptr = (int*) malloc(sizeof(int) * nsp);
     block_packed  = (volatile int*) malloc(sizeof(int) * nsp);
@@ -188,6 +187,10 @@ void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, Basis
     thread_buf_mem_MB += (double) F_PQ_block_size * num_dup_F * sizeof(double);
     thread_buf_mem_MB /= 1048576.0;
     
+    int max_buf_entry_size = max_dim * max_dim;
+    update_F_buf_size = 6 * max_buf_entry_size;
+    update_F_buf = _mm_malloc(sizeof(double) * nthreads * update_F_buf_size, 64);
+    assert(update_F_buf != NULL);
     
     if (myrank == 0) 
     {
@@ -318,18 +321,6 @@ void fock_task(
     int startPQ = shellptr[startP];
     int endPQ = shellptr[endP + 1];
     
-    if (update_F_buf_size == 0)
-    {
-        // max_buf_entry_size should be >= the product of any two items in {dimM, dimN, dimP, dimQ}
-        int max_buf_entry_size = max_dim * max_dim;
-        update_F_buf_size  = 6 * max_buf_entry_size;
-        int nthreads = omp_get_max_threads();
-        update_F_buf = _mm_malloc(sizeof(double) * nthreads * update_F_buf_size, 64);
-        assert(update_F_buf != NULL);
-        
-        if (ncpu_f == 1) use_atomic_add = 0;
-    }
-    
     // For mapping the write position of F4, F5, F6 to F3
     int _iX3M = rowpos[startrow];
     int _iX3P = colpos[startcol];
@@ -392,7 +383,7 @@ void fock_task(
             double *thread_MN_buf = update_F_buf + nt * update_F_buf_size;
             memset(thread_MN_buf, 0, sizeof(double) * dimM * dimN);
             
-            for (int j = startPQ; j < endPQ; j++) 
+            for (int j = startPQ; j < endPQ; j++)
             {
                 int P = shellrid[j];
                 int Q = shellid[j];
@@ -531,7 +522,7 @@ void fock_task(
             
             // Update F_MN block to F1 and F_{MP, NP, MQ, NQ} blocks to F_MNPQ_blocks
             st = CInt_get_walltime_sec();
-            atomic_add_block(F1 + iMN, ldX1, thread_MN_buf, dimN, dimM, dimN);
+            direct_add_block(F1 + iMN, ldX1, thread_MN_buf, dimN, dimM, dimN);
             int thread_M_bank_offset = mat_block_ptr[M * nshells];
             int thread_N_bank_offset = mat_block_ptr[N * nshells];
             for (int iPQ = 0; iPQ < nshells; iPQ++)
