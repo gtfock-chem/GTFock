@@ -4,6 +4,7 @@
 
 #include "CInt.h"
 
+void init_block_buf(int _nbf, int _nshells, int *f_startind, int num_dmat, BasisSet_t basis, int _maxcolfuncs);
 
 void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                int *shellptr, double *shellvalue,
@@ -18,7 +19,8 @@ void fock_task(BasisSet_t basis, SIMINT_t simint, int ncpu_f, int num_dmat,
                int ldX4, int ldX5, int ldX6,
                int sizeX1, int sizeX2, int sizeX3,
                int sizeX4, int sizeX5, int sizeX6,
-               double *nitl, double *nsq);
+               double *nitl, double *nsq, 
+               int _nbf, int _nshells, int repack_D);
 
 void reset_F(int numF, int num_dmat, double *F1, double *F2, double *F3,
              double *F4, double *F5, double *F6,
