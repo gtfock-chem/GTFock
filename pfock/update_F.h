@@ -151,10 +151,10 @@ static inline void update_F_opt_buffer(UPDATE_F_OPT_BUFFER_IN_ARGS)
                 }
                 K_MP_buf[imp] += k_MP * vMP_coef;
                 K_NP_buf[inp] += k_NP * vNP_coef;
-            } // for (int iM = 0; iM < dimM; iM++) 
+            } // for (int iP = 0; iP < dimP; iP++) 
             J_MN_buf[imn] += j_MN * vMN_coef;
-        } // for (int iQ = 0; iQ < dimQ; iQ++) 
-    } // for (int iN = 0; iN < dimN; iN++)
+        } // for (int iN = 0; iN < dimN; iN++) 
+    } // for (int iM = 0; iM < dimM; iM++) 
     
     // Update to the global array using atomic_add_f64()
     update_global_vectors(
@@ -236,12 +236,12 @@ static inline void update_F_opt_buffer_Q1(UPDATE_F_OPT_BUFFER_IN_ARGS)
                 J_PQ_buf[iP * dimQ] += vPQ * I;
                 K_MP_buf[imp_base + iP] -= I * D_NQ_buf[iN] * vMP_coef;
                 K_NP_buf[inp_base + iP] -= I * D_MQ_buf[iM] * vNP_coef;
-            } // for (int iM = 0; iM < dimM; iM++) 
+            } // for (int iP = 0; iP < dimP; iP++) 
             J_MN_buf[iM * dimN + iN] += j_MN * vMN_coef;
             K_MQ_buf[iM * dimQ] += k_MQ;
             K_NQ_buf[iN * dimQ] += k_NQ;
-        } // for (int iQ = 0; iQ < dimQ; iQ++) 
-    } // for (int iN = 0; iN < dimN; iN++)
+        } // for (int iN = 0; iN < dimN; iN++) 
+    } // for (int iM = 0; iM < dimM; iM++) 
     
     // Update to the global array using atomic_add_f64()
     update_global_vectors(
@@ -330,13 +330,13 @@ static inline void update_F_opt_buffer_Q3(UPDATE_F_OPT_BUFFER_IN_ARGS)
                     J_PQ_buf[ipq_base + iQ] += vPQ * I;
                     K_MQ_buf[imq_base + iQ] -= vMQ * I;
                     K_NQ_buf[inq_base + iQ] -= vNQ * I;
-                }
+                } 
                 K_MP_buf[imp] += k_MP * vMP_coef;
                 K_NP_buf[inp] += k_NP * vNP_coef;
-            } // for (int iM = 0; iM < dimM; iM++) 
+            } // for (int iP = 0; iP < dimP; iP++) 
             J_MN_buf[imn] += j_MN * vMN_coef;
-        } // for (int iQ = 0; iQ < dimQ; iQ++) 
-    } // for (int iN = 0; iN < dimN; iN++)
+        } // for (int iN = 0; iN < dimN; iN++)
+    } // for (int iM = 0; iM < dimM; iM++) 
     
     // Update to the global array using atomic_add_f64()
     update_global_vectors(
@@ -428,10 +428,10 @@ static inline void update_F_opt_buffer_Q6(UPDATE_F_OPT_BUFFER_IN_ARGS)
                 }
                 K_MP_buf[imp] += k_MP * vMP_coef;
                 K_NP_buf[inp] += k_NP * vNP_coef;
-            } // for (int iM = 0; iM < dimM; iM++) 
+            } // for (int iP = 0; iP < dimP; iP++) 
             J_MN_buf[imn] += j_MN * vMN_coef;
-        } // for (int iQ = 0; iQ < dimQ; iQ++) 
-    } // for (int iN = 0; iN < dimN; iN++)
+        } // for (int iM = 0; iM < dimM; iM++) 
+    } // for (int iM = 0; iM < dimM; iM++)
     
     // Update to the global array using atomic_add_f64()
     update_global_vectors(
@@ -523,10 +523,10 @@ static inline void update_F_opt_buffer_Q10(UPDATE_F_OPT_BUFFER_IN_ARGS)
                 }
                 K_MP_buf[imp] += k_MP * vMP_coef;
                 K_NP_buf[inp] += k_NP * vNP_coef;
-            } // for (int iM = 0; iM < dimM; iM++) 
+            } // for (int iP = 0; iP < dimP; iP++) 
             J_MN_buf[imn] += j_MN * vMN_coef;
-        } // for (int iQ = 0; iQ < dimQ; iQ++) 
-    } // for (int iN = 0; iN < dimN; iN++)
+        } // for (int iN = 0; iN < dimN; iN++)
+    } // for (int iM = 0; iM < dimM; iM++) 
     
     // Update to the global array using atomic_add_f64()
     update_global_vectors(
@@ -618,10 +618,10 @@ static inline void update_F_opt_buffer_Q15(UPDATE_F_OPT_BUFFER_IN_ARGS)
                 }
                 K_MP_buf[imp] += k_MP * vMP_coef;
                 K_NP_buf[inp] += k_NP * vNP_coef;
-            } // for (int iM = 0; iM < dimM; iM++) 
+            } // for (int iP = 0; iP < dimP; iP++) 
             J_MN_buf[imn] += j_MN * vMN_coef;
-        } // for (int iQ = 0; iQ < dimQ; iQ++) 
-    } // for (int iN = 0; iN < dimN; iN++)
+        } // for (int iN = 0; iN < dimN; iN++)
+    } // for (int iM = 0; iM < dimM; iM++) 
 
     // Update to the global array using atomic_add_f64()
     update_global_vectors(

@@ -66,7 +66,7 @@ void update_F_with_KetShellPairList(
 )
 {
     int load_P, write_P;
-    int prev_P = -1;
+    int same_P_s = 0, same_P_e = 0;
     int *P_list = target_shellpair_list->P_list;
     int *Q_list = target_shellpair_list->Q_list;
     int thread_M_bank_offset = mat_block_ptr[M * nshells];
@@ -76,33 +76,40 @@ void update_F_with_KetShellPairList(
     #else
     double *thread_F_PQ_blocks = F_PQ_blocks;
     #endif
-    for (int ipair = 0; ipair < npairs; ipair++)
+    
+    int *fock_info_list = target_shellpair_list->fock_quartet_info;
+    int is_1111 = fock_info_list[0] * fock_info_list[1] * fock_info_list[2] * fock_info_list[3];
+    
+    int curr_P = P_list[0];
+    while (same_P_e < npairs)
     {
-        int *fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
-        
-        if (prev_P == P_list[ipair]) load_P = 0;
-        else load_P = 1;
-        
-        write_P = 0;
-        if (ipair + 1 == npairs) write_P = 1;
-        if (ipair < npairs - 1)
+        for ( ; same_P_e < npairs; same_P_e++)
+            if (curr_P != P_list[same_P_e]) break;
+		
+        for (int ipair = same_P_s; ipair < same_P_e; ipair++)
         {
-            if (P_list[ipair] != P_list[ipair + 1]) write_P = 1;
+            if (ipair == same_P_s) load_P = 1; 
+            else load_P = 0;
+            
+            if (ipair == same_P_e - 1) write_P = 1;
+            else write_P = 0;
+            
+            fock_info_list = target_shellpair_list->fock_quartet_info + ipair * 16;
+            if (is_1111 == 1)
+            {
+                update_F_1111(UPDATE_F_OPT_BUFFER_ARGS);
+            } else {
+                if (fock_info_list[3] == 1) update_F_opt_buffer_Q1(UPDATE_F_OPT_BUFFER_ARGS);
+                else if (fock_info_list[3] == 3)  update_F_opt_buffer_Q3(UPDATE_F_OPT_BUFFER_ARGS);
+                else if (fock_info_list[3] == 6)  update_F_opt_buffer_Q6(UPDATE_F_OPT_BUFFER_ARGS);
+                else if (fock_info_list[3] == 10) update_F_opt_buffer_Q10(UPDATE_F_OPT_BUFFER_ARGS);
+                else if (fock_info_list[3] == 15) update_F_opt_buffer_Q15(UPDATE_F_OPT_BUFFER_ARGS);
+                else update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
+            }
         }
-        prev_P = P_list[ipair];
         
-        int is_1111 = fock_info_list[0] * fock_info_list[1] * fock_info_list[2] * fock_info_list[3];
-        if (is_1111 == 1)
-        {
-            update_F_1111(UPDATE_F_OPT_BUFFER_ARGS);
-        } else {
-            if (fock_info_list[3] == 1) update_F_opt_buffer_Q1(UPDATE_F_OPT_BUFFER_ARGS);
-            else if (fock_info_list[3] == 3)  update_F_opt_buffer_Q3(UPDATE_F_OPT_BUFFER_ARGS);
-            else if (fock_info_list[3] == 6)  update_F_opt_buffer_Q6(UPDATE_F_OPT_BUFFER_ARGS);
-            else if (fock_info_list[3] == 10) update_F_opt_buffer_Q10(UPDATE_F_OPT_BUFFER_ARGS);
-            else if (fock_info_list[3] == 15) update_F_opt_buffer_Q15(UPDATE_F_OPT_BUFFER_ARGS);
-            else update_F_opt_buffer(UPDATE_F_OPT_BUFFER_ARGS);
-        }
+        curr_P   = P_list[same_P_e];
+        same_P_s = same_P_e;
     }
 }
 
