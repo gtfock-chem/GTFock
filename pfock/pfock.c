@@ -670,6 +670,15 @@ static PFockStatus_t create_buffers (PFock_t pfock)
             return PFOCK_STATUS_ALLOC_FAILED;
         }
     }
+    size_t nbf2 = pfock->nbf * pfock->nbf;
+    pfock->D_mat = (double*) PFOCK_MALLOC(sizeof(double) * nbf2);
+    pfock->mem_cpu += 1.0 * sizeof(double) * nbf2;
+    if (pfock->D_mat == NULL) 
+    {
+        PFOCK_PRINTF(1, "memory allocation failed\n");
+        return PFOCK_STATUS_ALLOC_FAILED;
+    }
+    if (myrank == 0) printf("D1, D2, D3 size = %d, Dmat size = %d\n", sizeX1 + sizeX2 + sizeX3, nbf2);
 
     
     // F buf
@@ -762,11 +771,13 @@ static void destroy_buffers (PFock_t pfock)
     PFOCK_FREE(pfock->rowsize);
     PFOCK_FREE(pfock->colsize);
 
-    for (int i = 0; i < pfock->max_numdmat2; i++) {
+    for (int i = 0; i < pfock->max_numdmat2; i++) 
+    {
         PFOCK_FREE(pfock->D1[i]);
         PFOCK_FREE(pfock->D2[i]);
         PFOCK_FREE(pfock->D3[i]);
     }
+    PFOCK_FREE(pfock->D_mat);
     PFOCK_FREE(pfock->D1);
     PFOCK_FREE(pfock->D2);
     PFOCK_FREE(pfock->D3);
@@ -1346,9 +1357,12 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     
     init_block_buf(pfock->nbf, pfock->nshells, pfock->f_startind, pfock->num_dmat, basis, maxcolfuncs);
 
+    double *D_mat = pfock->D_mat;
+    
     gettimeofday (&tv1, NULL);    
     gettimeofday (&tv3, NULL);
-    for (int i = 0; i < pfock->num_dmat2; i++) {
+    for (int i = 0; i < pfock->num_dmat2; i++) 
+    {
         GA_Fill(pfock->ga_F[i], &dzero);
     #ifndef __SCF__
         GA_Fill(pfock->ga_K[i], &dzero);
@@ -1362,7 +1376,8 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     lo[0] = myrank;
     hi[0] = myrank;
     lo[1] = 0;
-    for (int i = 0; i < pfock->num_dmat2; i++) {
+    for (int i = 0; i < pfock->num_dmat2; i++) 
+    {
         int ldD;
         hi[1] = sizeX1 - 1;
         NGA_Access(pfock->ga_D1[i], lo, hi, &D1[i], &ldD);
@@ -1406,7 +1421,8 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                   pfock->tolscr2,
                   my_sshellrow, my_sshellcol,
                   startM, endM, startP, endP,
-                  D1, D2, D3, F1, F2, F3, F4, F5, F6,
+                  //D1, D2, D3, F1, F2, F3, F4, F5, F6, 
+                  D_mat, F1, F2, F3,
                   ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
                   sizeX1, sizeX2, sizeX3,
                   sizeX4, sizeX5, sizeX6,
@@ -1494,6 +1510,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
             gettimeofday (&tv3, NULL);
             if (0 == stealed) 
             {
+                /*
                 if (vrow != prevrow && vrow != myrow) {
                     D1_task = VD1;
                     lo[0] = vpid;
@@ -1546,6 +1563,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                     pfock->ngacalls += 1;
                     pfock->volumega += sizeX3 * sizeof(double);
                 }
+                */
             #ifdef GA_NB    
                 // wait for last NbAcc F
                 NGA_NbWait(&nbhdlF1);
@@ -1556,6 +1574,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                 reset_F(pfock->numF, pfock->num_dmat2, F1, F2, F3, F4, F5, F6,
                         sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6);
             #ifdef GA_NB    
+                /*
                 // wait for NbGet
                 if (vrow != prevrow && vrow != myrow) {
                     NGA_NbWait(&nbhdlD1);
@@ -1564,6 +1583,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                     NGA_NbWait(&nbhdlD2);
                 }
                 NGA_NbWait(&nbhdlD3);
+                */
             #endif    
                 pfock->stealfrom++;
             }
@@ -1587,7 +1607,8 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                       pfock->rowptr, pfock->colptr,
                       pfock->tolscr2,
                       vsshellrow, vsshellcol, startM, endM, startP, endP,
-                      D1_task, D2_task, VD3, F1, F2, F3, F4, F5, F6,
+                      //D1_task, D2_task, VD3, F1, F2, F3, F4, F5, F6,
+                      D_mat, F1, F2, F3, 
                       ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
                       sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
                       &(pfock->uitl), &(pfock->usq), 
