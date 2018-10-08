@@ -55,7 +55,7 @@ static void ReduceTo2D(
 
 // src has nrows * ncols, dst has ncols * nrows
 #define TRANS_BS 32
-static void myTranspose(double *src, double *dst, int nrows, int ncols)
+void myTranspose(double *src, double *dst, int nrows, int ncols)
 {
     int nrb = (nrows + TRANS_BS - 1) / TRANS_BS;
     int ncb = (ncols + TRANS_BS - 1) / TRANS_BS;
@@ -123,6 +123,49 @@ static void dup_comms(MPI_Comm comm_row, MPI_Comm comm_col, MPI_Comm comm_grd, M
     }
 }
 
+static void Symmtrize_D2_Bcast(int myrow, int mycol, int mygrd, double *S, MPI_Comm comm_3D)
+{
+    if (myrow >= mygrd)
+    {
+        MPI_Request req;
+        int coords[3] = {mygrd, mygrd, myrow}, dst;
+        MPI_Cart_rank(comm_3D, coords, &dst);
+        for (int i = 0; i < N_DUP; i++)
+        {
+            // Wait the i-th block reduction to be finished
+            MPI_Wait(&reqs[i], &status[i]);
+            
+            // Strict lower triangle processes send the reduced i-th block 
+            // to its symmetric position
+            if (myrow > mygrd) MPI_Isend(S + spos[i], blklen[i], MPI_DOUBLE, dst, 0, comm_3Ds[i], &req);
+            
+            // Broadcast the reduced block
+            MPI_Ibcast(S + spos[i], blklen[i], MPI_DOUBLE, mycol, comm_cols[i], &reqs[i]);
+        }
+    }
+    
+    if (myrow < mygrd)
+    {
+        int coords[3] = {mygrd, mygrd, myrow}, src;
+        MPI_Cart_rank(comm_3D, coords, &src);
+        
+        // Strict upper triangle processes receive i-th reduced block
+        // from its symmetric position
+        for (int i = 0; i < N_DUP; i++)
+            MPI_Irecv(S + spos[i], blklen[i], MPI_DOUBLE, src, 0, comm_3Ds[i], &reqs[i]);
+        
+        // Broadcast the reduced block
+        for (int i = 0; i < N_DUP; i++)
+        {
+            // Wait the i-th block to be received
+            MPI_Wait(&reqs[i], &status[i]);
+            
+            // Broadcast the reduced block
+            MPI_Ibcast(S + spos[i], blklen[i], MPI_DOUBLE, mycol, comm_cols[i], &reqs[i]);
+        }
+    }
+}
+
 static void ReduceToGrd0(
     int myrow, int mycol, int mygrd, int nrows, int ncols, 
     double *S, double *S_buf, MPI_Comm comm_3D
@@ -137,8 +180,16 @@ static void ReduceToGrd0(
             MPI_Request req;
             int coords[3] = {myrow, mygrd, 0}, dst;
             MPI_Cart_rank(comm_3D, coords, &dst);
-            for (int i = 0; i < N_DUP; i++)
-                MPI_Isend(S + spos[i], blklen[i], MPI_DOUBLE, dst, 0, comm_3Ds[i], &req);
+            if (myrow < mygrd)
+            {
+                // Upper triangle blocks are received from lower triangle, need to be transposed
+                myTranspose(S, S_buf, ncols, nrows);
+                for (int i = 0; i < N_DUP; i++)
+                    MPI_Isend(S_buf + spos[i], blklen[i], MPI_DOUBLE, dst, 0, comm_3Ds[i], &req);
+            } else {
+                for (int i = 0; i < N_DUP; i++)
+                    MPI_Isend(S     + spos[i], blklen[i], MPI_DOUBLE, dst, 0, comm_3Ds[i], &req);
+            }
         }
         
         if (mygrd == 0)
@@ -320,24 +371,42 @@ int pdgemm3D(int myrow, int mycol, int mygrd,
 
     // 2.2. Reduce S_i into a column i on row i
     //MPI_Reduce(&S_i[0], S, nrows0 * ncols0, MPI_DOUBLE, MPI_SUM, mygrd, comm_row);
-    for (int i = 0; i < N_DUP; i++)
-        MPI_Ireduce(&S_i[spos[i]], S + spos[i], blklen[i], MPI_DOUBLE, MPI_SUM, myrow, comm_rows[i], &reqs[i]);
+    if (myrow >= mygrd)
+    {
+        for (int i = 0; i < N_DUP; i++)
+            MPI_Ireduce(&S_i[spos[i]], S + spos[i], blklen[i], MPI_DOUBLE, MPI_SUM, myrow, comm_rows[i], &reqs[i]);
+    }
+    //MPI_Waitall(N_DUP, &reqs[0], &status[0]);
     
     // 3.1. Copy S to S_i, ready to broadcast
     //S_i = S;  // Need not to copy, won't affect ReduceToGrd0
     
     // 3.2. Broadcast S_i
-    for (int i = 0; i < N_DUP; i++)
+    if (myrow == mycol)
     {
-        MPI_Wait(&reqs[i], &status[i]);
-        MPI_Ibcast(S + spos[i], blklen[i], MPI_DOUBLE, mycol, comm_cols[i], &reqs[i]);
+        // Strict lower triangle part send reduced S to strict upper triangle part
+        // myrow==mycol plane broadcast the S as root
+        Symmtrize_D2_Bcast(myrow, mycol, mygrd, S, comm_3D);
+    } else {
+        // Receive the broadcast S
+        for (int i = 0; i < N_DUP; i++)
+        {
+            MPI_Wait(&reqs[i], &status[i]);
+            MPI_Ibcast(S + spos[i], blklen[i], MPI_DOUBLE, mycol, comm_cols[i], &reqs[i]);
+        }
     }
     MPI_Waitall(N_DUP, &reqs[0], &status[0]);
     
     // 3.3 C_i=A*S_i
     st = get_wtime_sec();
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ncols0, ncols0,
-                ncols0, 1.0, A, ncols0, S, ncols0, 0.0, C_i, ncols0);
+    if (mycol >= mygrd)
+    {
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ncols0, ncols0,
+                    ncols0, 1.0, A, ncols0, S, ncols0, 0.0, C_i, ncols0);
+    } else {
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, ncols0, ncols0,
+                    ncols0, 1.0, A, ncols0, S, nrows0, 0.0, C_i, ncols0);
+    }
     et = get_wtime_sec();
     _dgemm_time += et - st;
 
