@@ -10,18 +10,12 @@
 
 #include "pdgemm.h"
 
-
-#define P(mat,i,j,lda) ((mat)+(i)*(lda)+(j))
-static void copyMat (int m, int n, double *From, int ldfrom, double *To,
-                     int ldto)
+static void copyMat(int m, int n, double *From, int ldfrom, double *To, int ldto)
 {
-#pragma omp parallel for
-#pragma simd
-    for (int c = 0; c < n; c++)
-        for (int r = 0; r < m; r++)
-            *P (To, r, c, ldto) = *P (From, r, c, ldfrom);
+    #pragma omp parallel for
+    for (int r = 0; r < m; r++)
+		for (int c = 0; c < n; c++) To[r * ldto + c] = From[r * ldfrom + c];
 }
-
 
 void ReduceTo2D (int myrow, int mycol, int mygrd,
                  int nrows, int ncols, double *S, int ghost, MPI_Comm comm_3D)
@@ -72,11 +66,7 @@ int pdgemm3D(int myrow, int mycol, int mygrd,
     double *S = tmpbuf->S;
     double *C = tmpbuf->C;
 
-    #pragma omp parallel for
-    #pragma simd
-    for (int i = 0; i < nrows0 * ncols0; i++) {
-        A[i] = 0;
-    }    
+	memset(A, 0, sizeof(double) * nrows0 * ncols0);
     copyMat(nrows, ncols, D_, ncols, A, ncols0);
 
     {
@@ -242,17 +232,16 @@ void allocate_tmpbuf (int nrows, int ncols, int *nr, int *nc,
                       tmpbuf_t * tmpbuf)
 {
     int ncols0 = nc[0], nrows0 = nr[0];
-    assert (ncols0 >= ncols);
-    assert (nrows0 >= nrows);
-    tmpbuf->A = (double *) _mm_malloc (sizeof (double) * nrows0 * ncols0, 64);
-    tmpbuf->S = (double *) _mm_malloc (sizeof (double) * nrows0 * ncols0, 64);
-    tmpbuf->C = (double *) _mm_malloc (sizeof (double) * nrows0 * ncols0, 64);
-    tmpbuf->A_i =
-        (double *) _mm_malloc (sizeof (double) * nrows0 * ncols0, 64);
-    tmpbuf->S_i =
-        (double *) _mm_malloc (sizeof (double) * nrows0 * ncols0, 64);
-    tmpbuf->C_i =
-        (double *) _mm_malloc (sizeof (double) * nrows0 * ncols0, 64);
+    assert (ncols0 >= ncols && nrows0 >= nrows);
+
+    int block_size = nrows0 * ncols0;
+    tmpbuf->A   = (double *) _mm_malloc(sizeof(double) * block_size * 6, 64);
+    tmpbuf->S   = tmpbuf->A   + block_size;
+    tmpbuf->C   = tmpbuf->S   + block_size;
+    tmpbuf->A_i = tmpbuf->C   + block_size;
+    tmpbuf->S_i = tmpbuf->A_i + block_size;
+    tmpbuf->C_i = tmpbuf->S_i + block_size;
+	
 
     #pragma omp parallel for schedule(static)
     #pragma simd
@@ -268,12 +257,7 @@ void allocate_tmpbuf (int nrows, int ncols, int *nr, int *nc,
 }
 
 
-void dealloc_tmpbuf (tmpbuf_t * tmpbuf)
+void dealloc_tmpbuf(tmpbuf_t *tmpbuf)
 {
-    _mm_free (tmpbuf->A);
-    _mm_free (tmpbuf->S);
-    _mm_free (tmpbuf->C);
-    _mm_free (tmpbuf->A_i);
-    _mm_free (tmpbuf->S_i);
-    _mm_free (tmpbuf->C_i);
+    _mm_free(tmpbuf->A);
 }
