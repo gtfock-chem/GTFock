@@ -53,6 +53,36 @@ static void ReduceTo2D(
     }
 }
 
+// src has nrows * ncols, dst has ncols * nrows
+#define TRANS_BS 32
+static void myTranspose(double *src, double *dst, int nrows, int ncols)
+{
+    int nrb = (nrows + TRANS_BS - 1) / TRANS_BS;
+    int ncb = (ncols + TRANS_BS - 1) / TRANS_BS;
+    
+    #pragma omp parallel for
+    for (int ib = 0; ib < nrb * ncb; ib++)
+    {
+        int irow0 = (ib / ncb) * TRANS_BS;
+        int icol0 = (ib % ncb) * TRANS_BS;
+        int irow1 = irow0 + TRANS_BS;
+        int icol1 = icol0 + TRANS_BS;
+        if (irow1 > nrows) irow1 = nrows;
+        if (icol1 > ncols) icol1 = ncols;
+        
+        for (int icol = icol0; icol < icol1; icol++)
+        {
+            #pragma simd
+            for (int irow = irow0; irow < irow1; irow++)
+            {
+                int src_idx  = irow * ncols + icol;
+                int dst_idx  = icol * nrows + irow;
+                dst[dst_idx] = src[src_idx];
+            }
+        }
+    }
+}
+
 #define N_DUP    4
 #define N_DUP_05 2
 MPI_Comm    comm_rows[N_DUP], comm_cols[N_DUP], comm_grds[N_DUP], comm_3Ds[N_DUP];
@@ -128,14 +158,31 @@ static void ReduceToGrd0(
     }
 }
 
-static void ReduceToGrd0_2(
-    int myrow, int mycol, int mygrd, 
-    int nrows, int ncols, double *S
+static void ReduceTo2D_symm(
+    int myrow, int mycol, int mygrd, int nrows, int ncols, 
+    double *S, double *S_buf, MPI_Comm comm_3D, MPI_Comm comm_grd
 )
 {
-    if (mygrd)
+    // Source processes, to send
+    if (mycol == mygrd && myrow >= mygrd)
     {
-        if (mycol == mygrd)
+        if (mycol == 0 && myrow == 0)
+            MPI_Waitall(N_DUP, &reqs[0], &status[0]);
+        
+        // (i, 0, 0) --> (0, i, 0) where i > 0
+        if (mycol == 0 && myrow > 0)
+        {
+            int coords[3] = {0, myrow, 0}, dst;
+            MPI_Cart_rank(comm_3D, coords, &dst);
+            for (int i = 0; i < N_DUP; i++)
+            {
+                MPI_Wait(&reqs[i], &status[i]);
+                MPI_Isend(S + spos[i], blklen[i], MPI_DOUBLE, dst, 0, comm_3Ds[i], &reqs[i]);
+            }
+        }
+        
+        // (i, i, i) --> (i, i, 0) where i > 0
+        if (myrow == mycol && myrow > 0)
         {
             for (int i = 0; i < N_DUP; i++)
             {
@@ -143,16 +190,61 @@ static void ReduceToGrd0_2(
                 MPI_Isend(S + spos[i], blklen[i], MPI_DOUBLE, 0, 0, comm_grds[i], &reqs[i]);
             }
         }
+        
+        // (i, j, j) --> (i, j, 0) && (j, i, 0) where i > j & j > 0
+        if (myrow > mycol && mycol > 0)
+        {
+            int coords[3] = {mycol, myrow, 0}, dst;
+            MPI_Cart_rank(comm_3D, coords, &dst);
+            for (int i = 0; i < N_DUP; i++)
+            {
+                MPI_Wait(&reqs[i], &status[i]);
+                MPI_Isend(S + spos[i], blklen[i], MPI_DOUBLE, 0,   0, comm_grds[i], &reqs[i]);
+                MPI_Isend(S + spos[i], blklen[i], MPI_DOUBLE, dst, 0, comm_3Ds[i],  &reqs[i]);
+            }
+        }
     }
-    else
+    
+    // Destination processes, to receive
+    if (mygrd == 0 && mycol > 0)
     {
-        if (mycol)
+        // (0, j, 0) <-- (j, 0, 0) where j > 0
+        if (myrow == 0)
+        {
+            int coords[3] = {mycol, 0, 0}, src;
+            MPI_Cart_rank(comm_3D, coords, &src);
+            for (int i = 0; i < N_DUP; i++)
+            {
+                MPI_Wait(&reqs[i], &status[i]);
+                MPI_Irecv(S_buf + spos[i], blklen[i], MPI_DOUBLE, src, 0, comm_3Ds[i], &reqs[i]);
+            }
+            MPI_Waitall(N_DUP, &reqs[0], &status[0]);
+            myTranspose(S_buf, S, ncols, nrows);
+        }
+        
+        // (i, j, 0) <-- (i, j, j) where i >= j && j > 0
+        if (myrow >= mycol)
         {
             for (int i = 0; i < N_DUP; i++)
-                MPI_Irecv(S + spos[i], blklen[i], MPI_DOUBLE, mycol, 0, comm_grds[i], &reqs0[i]);
-            MPI_Waitall(N_DUP, &reqs0[0], &status[0]);
-        } else {
+            {
+                MPI_Wait(&reqs[i], &status[i]);
+                MPI_Irecv(S + spos[i], blklen[i], MPI_DOUBLE, mycol, 0, comm_grds[i], &reqs[i]);
+            }
             MPI_Waitall(N_DUP, &reqs[0], &status[0]);
+        }
+        
+        // (i, j, 0) <-- (j, i, i) where j > i, i > 0
+        if (mycol > myrow && myrow > 0)
+        {
+            int coords[3] = {mycol, myrow, myrow}, src;
+            MPI_Cart_rank(comm_3D, coords, &src);
+            for (int i = 0; i < N_DUP; i++)
+            {
+                MPI_Wait(&reqs[i], &status[i]);
+                MPI_Irecv(S_buf + spos[i], blklen[i], MPI_DOUBLE, src, 0, comm_3Ds[i], &reqs[i]);
+            }
+            MPI_Waitall(N_DUP, &reqs[0], &status[0]);
+            myTranspose(S_buf, S, ncols, nrows);
         }
     }
 }
@@ -182,7 +274,7 @@ int pdgemm3D(int myrow, int mycol, int mygrd,
     double *C_i = tmpbuf->C_i;
     double st, et, _dgemm_time = 0.0;
 
-	#pragma omp parallel for 
+    #pragma omp parallel for 
     for (int r = 0; r < nrows0; r++)
     {
         if (r < nrows)
@@ -227,9 +319,9 @@ int pdgemm3D(int myrow, int mycol, int mygrd,
     _dgemm_time += et - st;
 
     // 2.2. Reduce S_i into a column i on row i
+    //MPI_Reduce(&S_i[0], S, nrows0 * ncols0, MPI_DOUBLE, MPI_SUM, mygrd, comm_row);
     for (int i = 0; i < N_DUP; i++)
-        MPI_Ireduce(S_i + spos[i], S + spos[i], blklen[i], MPI_DOUBLE, MPI_SUM, myrow, comm_rows[i], &reqs[i]);
-    //MPI_Waitall(N_DUP, &reqs[0], &status[0]);
+        MPI_Ireduce(&S_i[spos[i]], S + spos[i], blklen[i], MPI_DOUBLE, MPI_SUM, myrow, comm_rows[i], &reqs[i]);
     
     // 3.1. Copy S to S_i, ready to broadcast
     //S_i = S;  // Need not to copy, won't affect ReduceToGrd0
@@ -250,15 +342,19 @@ int pdgemm3D(int myrow, int mycol, int mygrd,
     _dgemm_time += et - st;
 
     // 3.4. Reduce C_i into a column on plane i
-    for (int i = 0; i < N_DUP; i++)
-        MPI_Ireduce(C_i + spos[i], C + spos[i], blklen[i], MPI_DOUBLE, MPI_SUM, mygrd, comm_rows[i], &reqs[i]);
+    //MPI_Reduce(&C_i[0], C, nrows0 * ncols0, MPI_DOUBLE, MPI_SUM, mygrd, comm_row);
+    if (myrow >= mygrd)
+    {
+        for (int i = 0; i < N_DUP; i++)
+            MPI_Ireduce(&C_i[spos[i]], C + spos[i], blklen[i], MPI_DOUBLE, MPI_SUM, mygrd, comm_rows[i], &reqs[i]);
+    }
     
     // 4.1. Reduce S to plane 0
     ReduceToGrd0(myrow, mycol, mygrd, nrows0, ncols0, S, S_i, comm_3D);
     if (mygrd == 0 && myrow == mycol && myrow > 0) S = S_i;
 
     // 4.2. Reduce C to plane 0
-    ReduceToGrd0_2(myrow, mycol, mygrd, nrows0, ncols0, C);
+    ReduceTo2D_symm(myrow, mycol, mygrd, nrows0, ncols0, C, C_i, comm_3D, comm_grd);
 
     // 4.3. Copy results to D2 and D3
     if (mygrd == 0)
