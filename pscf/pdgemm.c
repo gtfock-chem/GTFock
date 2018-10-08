@@ -360,14 +360,21 @@ int pdgemm3D(int myrow, int mycol, int mygrd,
         // Wait the broadcast of A to complete
         MPI_Waitall(N_DUP, &reqs[0], &status[0]);
     }
-    MPI_Waitall(N_DUP, &reqs0[0], &status[0]);
+    //MPI_Waitall(N_DUP, &reqs0[0], &status[0]);
     
     // 2.1 Do local dgemm
-    st = get_wtime_sec();
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, ncols0, ncols0,
-                ncols0, 1.0, A, ncols0, A_i, ncols0, 0.0, S_i, ncols0);
-    et = get_wtime_sec();
-    _dgemm_time += et - st;
+    for (int i = 0; i < N_DUP; i++)
+    {
+        MPI_Wait(&reqs0[i], &status[i]);
+        double *B_ptr = A_i + spos[i];
+        double *C_ptr = S_i + row_spos[i];
+        int n = row_blklen[i];
+        st = get_wtime_sec();
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, ncols0, n,
+                    ncols0, 1.0, A, ncols0, B_ptr, ncols0, 0.0, C_ptr, ncols0);
+        et = get_wtime_sec();
+        _dgemm_time += et - st;
+    }
 
     // 2.2. Reduce S_i into a column i on row i
     //MPI_Reduce(&S_i[0], S, nrows0 * ncols0, MPI_DOUBLE, MPI_SUM, mygrd, comm_row);
