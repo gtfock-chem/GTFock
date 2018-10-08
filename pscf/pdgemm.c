@@ -402,20 +402,38 @@ int pdgemm3D(int myrow, int mycol, int mygrd,
             MPI_Ibcast(S + spos[i], blklen[i], MPI_DOUBLE, mycol, comm_cols[i], &reqs[i]);
         }
     }
-    MPI_Waitall(N_DUP, &reqs[0], &status[0]);
+    //MPI_Waitall(N_DUP, &reqs[0], &status[0]);
     
     // 3.3 C_i=A*S_i
-    st = get_wtime_sec();
     if (mycol >= mygrd)
     {
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ncols0, ncols0,
-                    ncols0, 1.0, A, ncols0, S, ncols0, 0.0, C_i, ncols0);
+        for (int i = 0; i < N_DUP; i++)
+        {
+            MPI_Wait(&reqs[i], &status[i]);
+            double *A_ptr = A + row_spos[i];
+            double *B_ptr = S + spos[i];
+            double beta = (i == 0) ? 0.0 : 1.0;
+            int k = row_blklen[i];
+            st = get_wtime_sec();
+            cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, ncols0, ncols0,
+                        k, 1.0, A_ptr, ncols0, B_ptr, ncols0, beta, C_i, ncols0);
+            et = get_wtime_sec();
+            _dgemm_time += et - st;
+        }
     } else {
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, ncols0, ncols0,
-                    ncols0, 1.0, A, ncols0, S, nrows0, 0.0, C_i, ncols0);
+        for (int i = 0; i < N_DUP; i++)
+        {
+            MPI_Wait(&reqs[i], &status[i]);
+            double *B_ptr = S + spos[i];
+            double *C_ptr = C_i + row_spos[i];
+            int n = row_blklen[i];
+            st = get_wtime_sec();
+            cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, ncols0, n,
+                        ncols0, 1.0, A, ncols0, B_ptr, nrows0, 0.0, C_ptr, ncols0);
+            et = get_wtime_sec();
+            _dgemm_time += et - st;
+        }
     }
-    et = get_wtime_sec();
-    _dgemm_time += et - st;
 
     // 3.4. Reduce C_i into a column on plane i
     //MPI_Reduce(&C_i[0], C, nrows0 * ncols0, MPI_DOUBLE, MPI_SUM, mygrd, comm_row);
