@@ -14,9 +14,11 @@
 #include "taskq.h"
 #include "fock_buf.h"
 
-
 void load_local_bufD(PFock_t pfock)
 {
+    int lo[2];
+    int hi[2];
+    /*
     int *loadrow = pfock->loadrow;
     int *loadcol = pfock->loadcol;
     int sizerow = pfock->sizeloadrow;
@@ -24,8 +26,6 @@ void load_local_bufD(PFock_t pfock)
 
     int myrank;
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-    int lo[2];
-    int hi[2];
     int ldD;    
     lo[0] = myrank;
     hi[0] = myrank;
@@ -105,8 +105,23 @@ void load_local_bufD(PFock_t pfock)
         hi[1] = pfock->sizeX3 - 1;
         NGA_Release_update(pfock->ga_D3[i], lo, hi);
     }
+    */
+    
+    // Load full density matrix, num_dmat2 should be 1
+    int nbf = pfock->nbf;
+    lo[0] = 0;
+    lo[1] = 0;
+    hi[0] = nbf - 1;
+    hi[1] = nbf - 1;
+    double *D_mat = pfock->D_mat;
+    #ifdef GA_NB
+    ga_nbhdl_t nbnb;
+    NGA_NbGet(pfock->ga_D[0], lo, hi, D_mat, &nbf, &nbnb);
+    NGA_NbWait (&nbnb);
+    #else
+    NGA_Get(pfock->ga_D[0], lo, hi, D_mat, &nbf);
+    #endif
 }
-
 
 void store_local_bufF(PFock_t pfock)
 {

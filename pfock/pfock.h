@@ -103,6 +103,8 @@ struct PFock {
     int sizeloadrow;
     int *loadcol;
     int sizeloadcol;
+    
+    double *D_mat;
 
     // global arrays
     int *ga_F;

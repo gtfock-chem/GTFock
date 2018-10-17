@@ -85,7 +85,7 @@ void update_F_with_KetShellPairList(
     {
         for ( ; same_P_e < npairs; same_P_e++)
             if (curr_P != P_list[same_P_e]) break;
-		
+        
         for (int ipair = same_P_s; ipair < same_P_e; ipair++)
         {
             if (ipair == same_P_s) load_P = 1; 
@@ -246,7 +246,8 @@ static inline void pack_D_block(
 
 void pack_D_mark_JK_with_KetShellPairList(
     int M, int N, int npairs, KetShellPairList_s *target_shellpair_list,
-    double **D1, double **D2, double **D3, int ldX1, int ldX2, int ldX3,
+    // double **D1, double **D2, double **D3, int ldX1, int ldX2, int ldX3,
+    double *D_mat, int *f_startind, int nbf, 
     int *thread_visited_Mpairs, int *thread_visited_Npairs
 )
 {
@@ -256,8 +257,12 @@ void pack_D_mark_JK_with_KetShellPairList(
     
     int dimM = target_shellpair_list->fock_quartet_info[0];
     int dimN = target_shellpair_list->fock_quartet_info[1];
-    int iMN  = target_shellpair_list->fock_quartet_info[7];
-    pack_D_block(M, N, dimM, dimN, D1[0] + iMN, ldX1);
+    //int iMN  = target_shellpair_list->fock_quartet_info[7];
+    
+    int f_idx_M = f_startind[M];
+    int f_idx_N = f_startind[N];
+    int D_MN_offset = f_idx_M * nbf + f_idx_N;
+    pack_D_block(M, N, dimM, dimN, D_mat + D_MN_offset, nbf);
     
     for (int ipair = 0; ipair < npairs; ipair++)
     {
@@ -274,14 +279,22 @@ void pack_D_mark_JK_with_KetShellPairList(
         int iNP  = fock_info_list[10];
         int iMQ  = fock_info_list[11];
         int iNQ  = fock_info_list[12];
-        int iMP0 = fock_info_list[13];
-        int iMQ0 = fock_info_list[14];
-        int iNP0 = fock_info_list[15];
+        //int iMP0 = fock_info_list[13];
+        //int iMQ0 = fock_info_list[14];
+        //int iNP0 = fock_info_list[15];
+        
+        int f_idx_P = f_startind[P];
+        int f_idx_Q = f_startind[Q];
+        int D_PQ_offset = f_idx_P * nbf + f_idx_Q;
+        int D_MP_offset = f_idx_M * nbf + f_idx_P;
+        int D_NP_offset = f_idx_N * nbf + f_idx_P;
+        int D_MQ_offset = f_idx_M * nbf + f_idx_Q;
+        int D_NQ_offset = f_idx_N * nbf + f_idx_Q;
         
         if (prev_P != P_list[ipair]) 
         {
-            pack_D_block(M, P, dimM, dimP, D3[0] + iMP0, ldX3);
-            pack_D_block(N, P, dimN, dimP, D3[0] + iNP0, ldX3);
+            pack_D_block(M, P, dimM, dimP, D_mat + D_MP_offset, nbf);
+            pack_D_block(N, P, dimN, dimP, D_mat + D_NP_offset, nbf);
             F_MNPQ_blocks_to_F3[M * nshells + P] = iMP;
             F_MNPQ_blocks_to_F3[N * nshells + P] = iNP;
             
@@ -289,9 +302,9 @@ void pack_D_mark_JK_with_KetShellPairList(
             thread_visited_Npairs[P] = 1;
         }
         
-        pack_D_block(P, Q, dimP, dimQ, D2[0] + iPQ,  ldX2);
-        pack_D_block(M, Q, dimM, dimQ, D3[0] + iMQ0, ldX3);
-        pack_D_block(N, Q, dimN, dimQ, D3[0] + iNQ,  ldX3);
+        pack_D_block(P, Q, dimP, dimQ, D_mat + D_PQ_offset, nbf);
+        pack_D_block(M, Q, dimM, dimQ, D_mat + D_MQ_offset, nbf);
+        pack_D_block(N, Q, dimN, dimQ, D_mat + D_NQ_offset, nbf);
         F_PQ_blocks_to_F2[P * nshells + Q] = iPQ;
         F_MNPQ_blocks_to_F3[M * nshells + Q] = iMQ;
         F_MNPQ_blocks_to_F3[N * nshells + Q] = iNQ;
@@ -312,9 +325,10 @@ void fock_task(
     int *rowpos, int *colpos, int *rowptr, int *colptr,
     double tolscr2, int startrow, int startcol,
     int startM, int endM, int startP, int endP,
-    double **D1, double **D2, double **D3,
+    double *D_mat, 
+    // double **D1, double **D2, double **D3, // Unused
     double *F1, double *F2, double *F3,
-    double *F4, double *F5, double *F6,   // Unused
+    // double *F4, double *F5, double *F6,    // Unused
     int ldX1, int ldX2, int ldX3,
     int ldX4, int ldX5, int ldX6,
     int sizeX1, int sizeX2, int sizeX3,
@@ -451,7 +465,8 @@ void fock_task(
                         
                         pack_D_mark_JK_with_KetShellPairList(
                             M, N, npairs, target_shellpair_list,
-                            D1, D2, D3, ldX1, ldX2, ldX3,
+                            //D1, D2, D3, ldX1, ldX2, ldX3, 
+                            D_mat, f_startind, _nbf, 
                             thread_visited_Mpairs, thread_visited_Npairs
                         );
                         
@@ -496,7 +511,8 @@ void fock_task(
                     
                     pack_D_mark_JK_with_KetShellPairList(
                         M, N, npairs, target_shellpair_list,
-                        D1, D2, D3, ldX1, ldX2, ldX3,
+                        //D1, D2, D3, ldX1, ldX2, ldX3, 
+                        D_mat, f_startind, _nbf, 
                         thread_visited_Mpairs, thread_visited_Npairs
                     );
                     
