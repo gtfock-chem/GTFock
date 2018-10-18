@@ -678,7 +678,7 @@ static PFockStatus_t create_buffers (PFock_t pfock)
         PFOCK_PRINTF(1, "memory allocation failed\n");
         return PFOCK_STATUS_ALLOC_FAILED;
     }
-    if (myrank == 0) printf("D1, D2, D3 size = %d, Dmat size = %d\n", sizeX1 + sizeX2 + sizeX3, nbf2);
+    if (myrank == 0) printf("D1, D2, D3 size = %d, Dmat size = %lu\n", sizeX1 + sizeX2 + sizeX3, nbf2);
 
     
     // F buf
@@ -1329,23 +1329,15 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     int sizeX1 = pfock->sizeX1;
     int sizeX2 = pfock->sizeX2;
     int sizeX3 = pfock->sizeX3;
-    int sizeX4 = pfock->sizeX4;    
-    int sizeX5 = pfock->sizeX5;
-    int sizeX6 = pfock->sizeX6;
     double *D1[pfock->num_dmat2];
     double *D2[pfock->num_dmat2];
     double *D3[pfock->num_dmat2];
     double *F1 = pfock->F1;
     double *F2 = pfock->F2;
     double *F3 = pfock->F3;
-    double *F4 = pfock->F4;
-    double *F5 = pfock->F5;
-    double *F6 = pfock->F6;
     int maxrowsize = pfock->maxrowsize;
     int maxcolfuncs = pfock->maxcolfuncs;
     int maxcolsize = pfock->maxcolsize;
-    int ldX1 = maxrowsize;
-    int ldX2 = maxcolsize;
     int ldX3 = maxcolsize;
     int ldX4 = maxcolfuncs;
     int ldX5 = maxcolsize;
@@ -1355,9 +1347,8 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     int lo[2];
     int hi[2];
     
-    init_block_buf(pfock->nbf, pfock->nshells, pfock->f_startind, pfock->num_dmat, basis, maxcolfuncs);
+    init_block_buf(basis, pfock);
 
-    double *D_mat = pfock->D_mat;
     
     gettimeofday (&tv1, NULL);    
     gettimeofday (&tv3, NULL);
@@ -1393,8 +1384,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     pfock->volumega += (sizeX1 + sizeX2 + sizeX3) * sizeof(double);
     
     gettimeofday (&tv3, NULL);   
-    reset_F(pfock->numF, pfock->num_dmat2, F1, F2, F3, F4, F5, F6,
-            sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6);
+    reset_F(pfock->numF, pfock->num_dmat2, F1, F2, F3, sizeX1, sizeX2, sizeX3);
     gettimeofday (&tv4, NULL);
     pfock->timeinit += (tv4.tv_sec - tv3.tv_sec) +
         (tv4.tv_usec - tv3.tv_usec) / 1000.0 / 1000.0;
@@ -1405,29 +1395,11 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     int repack_D = 1;
     while ((task = taskq_next (pfock, myrow, mycol, 1)) < pfock->ntasks) 
     {
-        int rowid = task/pfock->nblks_col;
-        int colid = task%pfock->nblks_col;
-        int startM = pfock->blkrowptr_sh[pfock->sblk_row + rowid];
-        int endM = pfock->blkrowptr_sh[pfock->sblk_row + rowid + 1] - 1;
-        int startP = pfock->blkcolptr_sh[pfock->sblk_col + colid];
-        int endP = pfock->blkcolptr_sh[pfock->sblk_col + colid + 1] - 1;
         gettimeofday (&tv3, NULL);       
-        fock_task(basis, pfock->simint, pfock->ncpu_f, pfock->num_dmat2,
-                  pfock->shellptr, pfock->shellvalue,
-                  pfock->shellid, pfock->shellrid,
-                  pfock->f_startind,
-                  pfock->rowpos, pfock->colpos,
-                  pfock->rowptr, pfock->colptr,
-                  pfock->tolscr2,
-                  my_sshellrow, my_sshellcol,
-                  startM, endM, startP, endP,
-                  //D1, D2, D3, F1, F2, F3, F4, F5, F6, 
-                  D_mat, F1, F2, F3,
-                  ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
-                  sizeX1, sizeX2, sizeX3,
-                  sizeX4, sizeX5, sizeX6,
-                  &(pfock->uitl), &(pfock->usq), 
-                  pfock->nbf, pfock->nshells, repack_D);
+        fock_task(
+            pfock->nblks_col, pfock->sblk_row, pfock->sblk_col,
+            task, my_sshellrow, my_sshellcol, repack_D
+        );
         gettimeofday (&tv4, NULL);
         repack_D = 0;
         pfock->timecomp += (tv4.tv_sec - tv3.tv_sec) +
@@ -1436,14 +1408,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
 
     gettimeofday (&tv3, NULL);        
     // reduction on CPU
-    reduce_F(pfock->numF, pfock->num_dmat2, F1, F2, F3, F4, F5, F6,
-             sizeX1, sizeX2, sizeX3,
-             sizeX4, sizeX5, sizeX6,
-             maxrowsize, maxcolsize,
-             pfock->nfuncs_row, pfock->nfuncs_col,
-             pfock->rowpos[my_sshellrow],
-             pfock->colpos[my_sshellcol],
-             ldX3, ldX4, ldX5, ldX6);   
+    reduce_F(F1, F2, F3, maxrowsize, maxcolsize, ldX3, ldX4, ldX5, ldX6);
     lo[0] = myrank;
     hi[0] = myrank;
     lo[1] = 0;    
@@ -1478,16 +1443,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     pfock->steals = 0;
     pfock->stealfrom = 0;
 #ifdef __DYNAMIC__
-#ifdef GA_NB
-    ga_nbhdl_t nbhdlD1;
-    ga_nbhdl_t nbhdlD2;
-    ga_nbhdl_t nbhdlD3;
-#endif
-    double **D1_task;
-    double **D2_task;
-    double **VD1 = pfock->D1;
-    double **VD2 = pfock->D2;
-    double **VD3 = pfock->D3;
+
     int prevrow = myrow;
     int prevcol = mycol;   
     /* steal tasks */
@@ -1498,9 +1454,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
         int vcol = vpid%pfock->npcol;
         int vsblk_row = pfock->rowptr_blk[vrow];
         int vsblk_col = pfock->colptr_blk[vcol];
-        int vnblks_col = pfock->colptr_blk[vcol + 1] - vsblk_col;       
-        int vnfuncs_row = pfock->rowptr_f[vrow + 1] - pfock->rowptr_f[vrow];
-        int vnfuncs_col = pfock->colptr_f[vcol + 1] - pfock->colptr_f[vcol];
+        int vnblks_col = pfock->colptr_blk[vcol + 1] - vsblk_col;
         int vsshellrow = pfock->rowptr_sh[vrow];   
         int vsshellcol = pfock->colptr_sh[vcol];
         int stealed = 0;
@@ -1510,60 +1464,6 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
             gettimeofday (&tv3, NULL);
             if (0 == stealed) 
             {
-                /*
-                if (vrow != prevrow && vrow != myrow) {
-                    D1_task = VD1;
-                    lo[0] = vpid;
-                    hi[0] = vpid;
-                    lo[1] = 0;
-                    hi[1] = sizeX1 - 1;
-                    for (int i = 0; i < pfock->num_dmat2; i++) {
-                    #ifdef GA_NB    
-                        NGA_NbGet(pfock->ga_D1[i], lo, hi,
-                                  VD1[i], &sizeX1, &nbhdlD1);
-                    #else
-                        NGA_Get(pfock->ga_D1[i], lo, hi,  VD1[i], &sizeX1);
-                    #endif
-                        pfock->ngacalls += 1;
-                        pfock->volumega += sizeX1 * sizeof(double);
-                    }                 
-                } else if (vrow == myrow) {
-                    D1_task = D1;
-                }  
-                if (vcol != prevcol && vcol != mycol) {
-                    D2_task =  VD2;
-                    lo[0] = vpid;
-                    hi[0] = vpid;
-                    lo[1] = 0;
-                    hi[1] = sizeX2 - 1;
-                    for (int i = 0; i < pfock->num_dmat2; i++) {
-                    #ifdef GA_NB
-                        NGA_NbGet(pfock->ga_D2[i], lo, hi,
-                                  VD2[i], &sizeX2, &nbhdlD2);
-                    #else
-                        NGA_Get(pfock->ga_D2[i], lo, hi, VD2[i], &sizeX2);               
-                    #endif
-                        pfock->ngacalls += 1;
-                        pfock->volumega += sizeX2 * sizeof(double);
-                    }                  
-                } else if (vcol == mycol) {
-                    D2_task = D2;
-                }
-                lo[0] = vpid;
-                hi[0] = vpid;
-                lo[1] = 0;
-                hi[1] = sizeX3 - 1;
-                for (int i = 0; i < pfock->num_dmat2; i++) {
-                #ifdef GA_NB
-                    NGA_NbGet(pfock->ga_D3[i], lo, hi, 
-                              VD3[i], &sizeX3, &nbhdlD3);
-                #else
-                    NGA_Get(pfock->ga_D3[i], lo, hi,  VD3[i], &sizeX3);
-                #endif
-                    pfock->ngacalls += 1;
-                    pfock->volumega += sizeX3 * sizeof(double);
-                }
-                */
             #ifdef GA_NB    
                 // wait for last NbAcc F
                 NGA_NbWait(&nbhdlF1);
@@ -1571,48 +1471,19 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                 NGA_NbWait(&nbhdlF3);
             #endif    
                 // init F bufs
-                reset_F(pfock->numF, pfock->num_dmat2, F1, F2, F3, F4, F5, F6,
-                        sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6);
-            #ifdef GA_NB    
-                /*
-                // wait for NbGet
-                if (vrow != prevrow && vrow != myrow) {
-                    NGA_NbWait(&nbhdlD1);
-                }
-                if (vcol != prevcol && vcol != mycol) {
-                    NGA_NbWait(&nbhdlD2);
-                }
-                NGA_NbWait(&nbhdlD3);
-                */
-            #endif    
+                reset_F(pfock->numF, pfock->num_dmat2, F1, F2, F3, sizeX1, sizeX2, sizeX3);
+  
                 pfock->stealfrom++;
             }
             gettimeofday (&tv4, NULL);
             pfock->timeinit += (tv4.tv_sec - tv3.tv_sec) +
                    (tv4.tv_usec - tv3.tv_usec) / 1000.0 / 1000.0;
-            int rowid = task/vnblks_col;
-            int colid = task%vnblks_col;
-            // compute task
-            int startM = pfock->blkrowptr_sh[vsblk_row + rowid];
-            int endM = pfock->blkrowptr_sh[vsblk_row + rowid + 1] - 1;
-            int startP = pfock->blkcolptr_sh[vsblk_col + colid];
-            int endP = pfock->blkcolptr_sh[vsblk_col + colid + 1] - 1;
 
             gettimeofday (&tv3, NULL);
-            fock_task(basis, pfock->simint, pfock->ncpu_f, pfock->num_dmat2,
-                      pfock->shellptr, pfock->shellvalue,
-                      pfock->shellid, pfock->shellrid,
-                      pfock->f_startind,
-                      pfock->rowpos, pfock->colpos,
-                      pfock->rowptr, pfock->colptr,
-                      pfock->tolscr2,
-                      vsshellrow, vsshellcol, startM, endM, startP, endP,
-                      //D1_task, D2_task, VD3, F1, F2, F3, F4, F5, F6,
-                      D_mat, F1, F2, F3, 
-                      ldX1, ldX2, ldX3, ldX4, ldX5, ldX6,
-                      sizeX1, sizeX2, sizeX3, sizeX4, sizeX5, sizeX6,
-                      &(pfock->uitl), &(pfock->usq), 
-                      pfock->nbf, pfock->nshells, 1 - stealed);
+            fock_task(
+                vnblks_col, vsblk_row, vsblk_col,
+                task, vsshellrow, vsshellcol, 1 - stealed
+            );
             gettimeofday (&tv4, NULL);
             pfock->timecomp += (tv4.tv_sec - tv3.tv_sec) +
                         (tv4.tv_usec - tv3.tv_usec) / 1000.0 / 1000.0;
@@ -1623,14 +1494,8 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
         if (1 == stealed) 
         {
             // reduction
-            reduce_F(pfock->numF, pfock->num_dmat2, F1, F2, F3, F4, F5, F6,
-                     sizeX1, sizeX2, sizeX3,
-                     sizeX4, sizeX5, sizeX6,
-                     maxrowsize, maxcolsize,
-                     vnfuncs_row, vnfuncs_col,
-                     pfock->rowpos[vsshellrow],
-                     pfock->colpos[vsshellcol],
-                     ldX3, ldX4, ldX5, ldX6);
+            reduce_F(F1, F2, F3, maxrowsize, maxcolsize, ldX3, ldX4, ldX5, ldX6);
+			
             lo[1] = 0;
             hi[1] = sizeX1 - 1;
             if (vrow != myrow) {
