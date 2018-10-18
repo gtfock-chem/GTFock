@@ -66,6 +66,9 @@ typedef struct _purif_t
     __declspec (align (64)) double b_mat[LDBMAT * LDBMAT]; // only on rank 0
     int bmax_id;
     double bmax; // only on rank 0
+	
+    double *h;
+    double *_h;
 
     // statistics
     double timedgemm;
