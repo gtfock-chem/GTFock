@@ -27,8 +27,8 @@ static void config_purif (purif_t * purif, int purif_offload)
     int nb;
     int nprow;
     int npcol;
-    MPI_Comm comm_col;
     MPI_Comm comm_row;
+    MPI_Comm comm_col;
     int *nr;
     int *nc;
     int startrow;
@@ -44,8 +44,8 @@ static void config_purif (purif_t * purif, int purif_offload)
     nprow = purif->nprow_purif;
     npcol = purif->npcol_purif;
     purif->nb_purif = nb = MIN (nbf / nprow, nbf / npcol);
-    comm_col = purif->comm_purif_col;
     comm_row = purif->comm_purif_row;
+    comm_col = purif->comm_purif_col;
 
     int coords[3];
     int myrank;
@@ -69,7 +69,7 @@ static void config_purif (purif_t * purif, int purif_offload)
     nc = purif->nc_purif;
 
     // get nr and sr
-    MPI_Allgather (&nrows, 1, MPI_INT, nr, 1, MPI_INT, comm_col);
+    MPI_Allgather (&nrows, 1, MPI_INT, nr, 1, MPI_INT, comm_row);
     startrow = 0;
     for (int i = 0; i < myrow; i++)
     {
@@ -79,7 +79,7 @@ static void config_purif (purif_t * purif, int purif_offload)
     purif->srow_purif = startrow;
 
     // get nc and sc
-    MPI_Allgather (&ncols, 1, MPI_INT, nc, 1, MPI_INT, comm_row);
+    MPI_Allgather (&ncols, 1, MPI_INT, nc, 1, MPI_INT, comm_col);
     startcol = 0;
     for (int i = 0; i < mycol; i++)
     {
@@ -212,9 +212,9 @@ purif_t *create_purif(BasisSet_t basis, int nprow_purif,
             purif->runpurif = 1;
         }
         int belongsR[3] = { 0, 1, 0 };
-        MPI_Cart_sub (purif->comm_purif, belongsR, &(purif->comm_purif_row));
+        MPI_Cart_sub (purif->comm_purif, belongsR, &(purif->comm_purif_col));
         int belongsC[3] = { 1, 0, 0 };
-        MPI_Cart_sub (purif->comm_purif, belongsC, &(purif->comm_purif_col));
+        MPI_Cart_sub (purif->comm_purif, belongsC, &(purif->comm_purif_row));
         int belongsG[3] = { 0, 0, 1 };
         MPI_Cart_sub (purif->comm_purif, belongsG, &(purif->comm_purif_grd));
         MPI_Comm_split (purif->comm_purif, mygrd, myrow * npcol_purif + mycol,
@@ -236,8 +236,8 @@ void destroy_purif (purif_t * purif)
         dealloc_tmpbuf (&(purif->tmpbuf));
         
         MPI_Comm_free (&(purif->comm_purif));
-        MPI_Comm_free (&(purif->comm_purif_row));
         MPI_Comm_free (&(purif->comm_purif_col));
+        MPI_Comm_free (&(purif->comm_purif_row));
         free (purif->nr_purif);
         free (purif->nc_purif);
         _mm_free (purif->H_block);
@@ -278,8 +278,8 @@ int compute_purification(purif_t * purif, double *F_block, double *D_block)
         int lentr = purif->tr_len_purif;
         int *nr = purif->nr_purif;
         int *nc = purif->nc_purif;
-        MPI_Comm comm_row = purif->comm_purif_row;
         MPI_Comm comm_col = purif->comm_purif_col;
+        MPI_Comm comm_row = purif->comm_purif_row;
         MPI_Comm comm_grd = purif->comm_purif_grd;
         MPI_Comm comm_purif = purif->comm_purif_plane;
         MPI_Comm comm0 = purif->comm_purif;
@@ -320,7 +320,7 @@ int compute_purification(purif_t * purif, double *F_block, double *D_block)
                 _h[i] = _h[i + ncols] - _h[i];
                 _h[i + ncols] = tmp;
             }
-            MPI_Reduce(_h, h, 2 * ncols, MPI_DOUBLE, MPI_SUM, 0, comm_col);
+            MPI_Reduce(_h, h, 2 * ncols, MPI_DOUBLE, MPI_SUM, 0, comm_row);
 
             double _hmax;
             double _hmin;
@@ -333,8 +333,8 @@ int compute_purification(purif_t * purif, double *F_block, double *D_block)
                     _hmin = h[i] > _hmin ? _hmin : h[i];
                     _hmax = h[i + ncols] < _hmax ? _hmax : h[i + ncols];
                 }
-                MPI_Reduce(&_hmin, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm_row);
-                MPI_Reduce(&_hmax, &hmax, 1, MPI_DOUBLE, MPI_MAX, 0, comm_row);
+                MPI_Reduce(&_hmin, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm_col);
+                MPI_Reduce(&_hmax, &hmax, 1, MPI_DOUBLE, MPI_MAX, 0, comm_col);
             }
             MPI_Bcast(&hmin, 1, MPI_DOUBLE, 0, comm_purif);
             MPI_Bcast(&hmax, 1, MPI_DOUBLE, 0, comm_purif);
@@ -504,8 +504,8 @@ void compute_diis (PFock_t pfock, purif_t * purif,
     int *nr = purif->nr_purif;
     int *nc = purif->nc_purif;
     int myrank;
-    MPI_Comm comm_row = purif->comm_purif_row;
     MPI_Comm comm_col = purif->comm_purif_col;
+    MPI_Comm comm_row = purif->comm_purif_row;
     MPI_Comm comm_grd = purif->comm_purif_grd;
     MPI_Comm comm_purif = purif->comm_purif_plane;
     MPI_Comm comm0 = purif->comm_purif;

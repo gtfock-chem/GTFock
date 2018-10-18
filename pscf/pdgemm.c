@@ -139,7 +139,7 @@ static void Symmtrize_D2_Bcast(int myrow, int mycol, int mygrd, double *S, MPI_C
             if (myrow > mygrd) MPI_Isend(S + spos[i], blklen[i], MPI_DOUBLE, dst, 0, comm_3Ds[i], &req);
             
             // Broadcast the reduced block
-            MPI_Ibcast(S + spos[i], blklen[i], MPI_DOUBLE, mycol, comm_cols[i], &reqs[i]);
+            MPI_Ibcast(S + spos[i], blklen[i], MPI_DOUBLE, mycol, comm_rows[i], &reqs[i]);
         }
     }
     
@@ -160,7 +160,7 @@ static void Symmtrize_D2_Bcast(int myrow, int mycol, int mygrd, double *S, MPI_C
             MPI_Wait(&reqs[i], &status[i]);
             
             // Broadcast the reduced block
-            MPI_Ibcast(S + spos[i], blklen[i], MPI_DOUBLE, mycol, comm_cols[i], &reqs[i]);
+            MPI_Ibcast(S + spos[i], blklen[i], MPI_DOUBLE, mycol, comm_rows[i], &reqs[i]);
         }
     }
 }
@@ -350,12 +350,12 @@ int pdgemm3D(int myrow, int mycol, int mygrd,
         {
             // When the i-th block of A is broadcast, Ibcast it as A_i immediately
             MPI_Wait(&reqs[i], &status[i]);  
-            MPI_Ibcast(A_i + spos[i], blklen[i], MPI_DOUBLE, mygrd, comm_cols[i], &reqs0[i]);
+            MPI_Ibcast(A_i + spos[i], blklen[i], MPI_DOUBLE, mygrd, comm_rows[i], &reqs0[i]);
         }
     } else {
         // Start the Ibcast of B without waiting
         for (int i = 0; i < N_DUP; i++)
-            MPI_Ibcast(A_i + spos[i], blklen[i], MPI_DOUBLE, mygrd, comm_cols[i], &reqs0[i]);
+            MPI_Ibcast(A_i + spos[i], blklen[i], MPI_DOUBLE, mygrd, comm_rows[i], &reqs0[i]);
         // Wait the broadcast of A to complete
         MPI_Waitall(N_DUP, &reqs[0], &status[0]);
     }
@@ -373,7 +373,7 @@ int pdgemm3D(int myrow, int mycol, int mygrd,
     if (myrow >= mygrd)
     {
         for (int i = 0; i < N_DUP; i++)
-            MPI_Ireduce(&S_i[spos[i]], S + spos[i], blklen[i], MPI_DOUBLE, MPI_SUM, myrow, comm_rows[i], &reqs[i]);
+            MPI_Ireduce(&S_i[spos[i]], S + spos[i], blklen[i], MPI_DOUBLE, MPI_SUM, myrow, comm_cols[i], &reqs[i]);
     }
     //MPI_Waitall(N_DUP, &reqs[0], &status[0]);
     
@@ -391,7 +391,7 @@ int pdgemm3D(int myrow, int mycol, int mygrd,
         for (int i = 0; i < N_DUP; i++)
         {
             MPI_Wait(&reqs[i], &status[i]);
-            MPI_Ibcast(S + spos[i], blklen[i], MPI_DOUBLE, mycol, comm_cols[i], &reqs[i]);
+            MPI_Ibcast(S + spos[i], blklen[i], MPI_DOUBLE, mycol, comm_rows[i], &reqs[i]);
         }
     }
     MPI_Waitall(N_DUP, &reqs[0], &status[0]);
@@ -414,7 +414,7 @@ int pdgemm3D(int myrow, int mycol, int mygrd,
     if (myrow >= mygrd)
     {
         for (int i = 0; i < N_DUP; i++)
-            MPI_Ireduce(&C_i[spos[i]], C + spos[i], blklen[i], MPI_DOUBLE, MPI_SUM, mygrd, comm_rows[i], &reqs[i]);
+            MPI_Ireduce(&C_i[spos[i]], C + spos[i], blklen[i], MPI_DOUBLE, MPI_SUM, mygrd, comm_cols[i], &reqs[i]);
     }
     
     // 4.1. Reduce S to plane 0
@@ -485,7 +485,7 @@ void pdgemm3D_2(int myrow, int mycol, int mygrd,
     }
     // 1.3. Spread / Bcast the row block of B_block on each grid 
     copyMat(nrows0, ncols0, &B_block[0], ncols0, &B_block_copy[0], ncols0);
-    MPI_Bcast(&B_block_copy[0], nrows0 * ncols0, MPI_DOUBLE, mygrd, comm_col);
+    MPI_Bcast(&B_block_copy[0], nrows0 * ncols0, MPI_DOUBLE, mygrd, comm_row);
 
     // 2.1. Do local dgemm
     st = get_wtime_sec();
@@ -496,7 +496,7 @@ void pdgemm3D_2(int myrow, int mycol, int mygrd,
     if (dgemm_time != NULL) *dgemm_time += et - st;
 
     // 2.2. Reduce C_i into a column i on plane i
-    MPI_Reduce(&C_i[0], C_block, nrows0 * ncols0, MPI_DOUBLE, MPI_SUM, mygrd, comm_row);
+    MPI_Reduce(&C_i[0], C_block, nrows0 * ncols0, MPI_DOUBLE, MPI_SUM, mygrd, comm_col);
 
     // 2.3. Reduce C to plane 0
     ReduceTo2D(myrow, mycol, mygrd, nrows0, ncols0, C_block, 0, comm_3D);
