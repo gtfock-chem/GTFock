@@ -19,26 +19,11 @@
 #define MIN(a, b)    ((a) < (b) ? (a) : (b))
 #define MAX(a, b)    ((a) > (b) ? (a) : (b))
 
-static void config_purif (purif_t * purif, int purif_offload)
+static void config_purif(purif_t * purif, int purif_offload)
 {
-    int nbf;
-    int nrows;
-    int ncols;
-    int nb;
-    int nprow;
-    int npcol;
-    MPI_Comm comm_row;
-    MPI_Comm comm_col;
-    int *nr;
-    int *nc;
-    int startrow;
-    int endrow;
-    int startcol;
-    int endcol;
-    int start;
-    int meshsize;
-    double memsize;
-    int izero = 0;
+    int nbf, nrows, ncols, nb, nprow, npcol;
+    int *nr, *nc, startrow, endrow, startcol, endcol;
+    MPI_Comm comm_row, comm_col;
 
     nbf = purif->nbf;
     nprow = purif->nprow_purif;
@@ -49,14 +34,15 @@ static void config_purif (purif_t * purif, int purif_offload)
 
     int coords[3];
     int myrank;
-    MPI_Comm_rank (MPI_COMM_WORLD, &myrank);
-    MPI_Cart_coords (purif->comm_purif, myrank, 3, coords);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    MPI_Cart_coords(purif->comm_purif, myrank, 3, coords);
     int myrow = coords[0];
     int mycol = coords[1];
     int mygrd = coords[2];
 
-    nrows = numroc_ (&nbf, &nb, &myrow, &izero, &nprow);
-    ncols = numroc_ (&nbf, &nb, &mycol, &izero, &npcol);
+    int izero = 0;
+    nrows = numroc_(&nbf, &nb, &myrow, &izero, &nprow);
+    ncols = numroc_(&nbf, &nb, &mycol, &izero, &npcol);
     purif->nrows_purif = nrows;
     purif->ncols_purif = ncols;
 
@@ -69,58 +55,50 @@ static void config_purif (purif_t * purif, int purif_offload)
     nc = purif->nc_purif;
 
     // get nr and sr
-    MPI_Allgather (&nrows, 1, MPI_INT, nr, 1, MPI_INT, comm_row);
+    MPI_Allgather(&nrows, 1, MPI_INT, nr, 1, MPI_INT, comm_row);
     startrow = 0;
-    for (int i = 0; i < myrow; i++)
-    {
-        startrow += nr[i];
-    }
+    for (int i = 0; i < myrow; i++) startrow += nr[i];
     endrow = startrow + nrows - 1;
     purif->srow_purif = startrow;
 
     // get nc and sc
-    MPI_Allgather (&ncols, 1, MPI_INT, nc, 1, MPI_INT, comm_col);
+    MPI_Allgather(&ncols, 1, MPI_INT, nc, 1, MPI_INT, comm_col);
     startcol = 0;
-    for (int i = 0; i < mycol; i++)
-    {
-        startcol += nc[i];
-    }
+    for (int i = 0; i < mycol; i++) startcol += nc[i];
     endcol = startcol + ncols - 1;
     purif->scol_purif = startcol;
 
     // for matrix trace
-    start = MAX (startcol, startrow);
-    purif->tr_len_purif = MIN (endcol, endrow) - start + 1;
+    int start = MAX(startcol, startrow);
+    purif->tr_len_purif  = MIN(endcol, endrow) - start + 1;
     purif->tr_scol_purif = start - startcol;
     purif->tr_srow_purif = start - startrow;
     purif->istr_purif = (purif->tr_len_purif > 0);
 
     // create local arrays
-    // purif->ldx = (ncols + ALIGNSIZE - 1)/ALIGNSIZE * ALIGNSIZE;
     purif->ldx = ncols;
-    meshsize = nrows * ncols;
+    int meshsize = nrows * ncols;
+    size_t mesh_memsize = meshsize * sizeof(double);
     purif->meshsize = meshsize;
-    purif->X_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
-    assert (purif->X_block != NULL);
-    purif->S_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
-    assert (purif->S_block != NULL);
-    purif->H_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
-    assert (purif->H_block != NULL);
-    purif->F_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
-    assert (purif->F_block != NULL);
-    purif->D_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
-    assert (purif->D_block != NULL);
-    purif->D2_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
+    purif->X_block  = (double *) _mm_malloc(mesh_memsize, 64);
+    purif->S_block  = (double *) _mm_malloc(mesh_memsize, 64);
+    purif->H_block  = (double *) _mm_malloc(mesh_memsize, 64);
+    purif->F_block  = (double *) _mm_malloc(mesh_memsize, 64);
+    purif->D_block  = (double *) _mm_malloc(mesh_memsize, 64);
+    purif->D2_block = (double *) _mm_malloc(mesh_memsize, 64);
+    purif->D3_block = (double *) _mm_malloc(mesh_memsize, 64);
+    assert (purif->X_block  != NULL);
+    assert (purif->S_block  != NULL);
+    assert (purif->H_block  != NULL);
+    assert (purif->F_block  != NULL);
+    assert (purif->D_block  != NULL);
     assert (purif->D2_block != NULL);
-    purif->D3_block = (double *) _mm_malloc (meshsize * sizeof (double), 64);
     assert (purif->D3_block != NULL);
     // working space for purification
-    purif->diis_vecs =
-        (double *) _mm_malloc (MAX_DIIS * meshsize * sizeof (double), 64);
+    purif->diis_vecs = (double *) _mm_malloc (MAX_DIIS * mesh_memsize, 64);
+    purif->F_vecs    = (double *) _mm_malloc (MAX_DIIS * mesh_memsize, 64);
     assert (purif->diis_vecs != NULL);
-    purif->F_vecs =
-        (double *) _mm_malloc (MAX_DIIS * meshsize * sizeof (double), 64);
-    assert (purif->diis_vecs != NULL);
+    assert (purif->F_vecs != NULL);
     purif->len_diis = 0;
     purif->bmax = DBL_MIN;
     purif->bmax_id = -1;
@@ -128,38 +106,32 @@ static void config_purif (purif_t * purif, int purif_offload)
     for (int i = 0; i < LDBMAT; i++)
     {
         for (int j = 0; j < LDBMAT; j++)
-        {
-            purif->b_mat[i * LDBMAT + j] = (i != j) ? -1.0 : 0.0;
-        }
+            purif->b_mat[i * LDBMAT + j] = -1.0;
+        purif->b_mat[i * LDBMAT + i] = 0.0;
     }
 
     #pragma omp parallel for schedule(static)
     #pragma simd
     for(int i=0; i < nrows * ncols; i++)
     {
-        purif->D_block[i] = 0.0;
+        purif->D_block[i]  = 0.0;
         purif->D2_block[i] = 0.0;
         purif->D3_block[i] = 0.0;
     }
-    allocate_tmpbuf (nrows, ncols, nr, nc, &(purif->tmpbuf));
-    memsize = (2.0 * MAX_DIIS + 14.0) * meshsize * sizeof (double);
+    allocate_tmpbuf(nrows, ncols, nr, nc, &(purif->tmpbuf));
+    size_t memsize = (2.0 * MAX_DIIS + 14.0) * meshsize * sizeof (double);
+    
     if (myrow == 0 && mycol == 0 && mygrd == 0)
-    {
-        printf ("  CPU uses %.3f MB\n", memsize / 1024.0 / 1024.0);
-    }
+        printf("  CPU uses %.3f MB\n", memsize / 1024.0 / 1024.0);
 }
 
 
-purif_t *create_purif(BasisSet_t basis, int nprow_purif,
-                      int npcol_purif, int npgrd_purif)
+purif_t *create_purif(BasisSet_t basis, int nprow_purif, int npcol_purif, int npgrd_purif)
 {
     int myrank;
-
-    MPI_Comm_rank (MPI_COMM_WORLD, &myrank);
-    if (myrank == 0)
-    {
-        printf ("Initializing purification ...\n");
-    }
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    
+    if (myrank == 0) printf ("Initializing purification ...\n");
 
     // create purif
     purif_t *purif = (purif_t *) malloc (sizeof (purif_t));
@@ -169,88 +141,69 @@ purif_t *create_purif(BasisSet_t basis, int nprow_purif,
     purif->nprow_purif = nprow_purif;
     purif->npcol_purif = npcol_purif;
     purif->npgrd_purif = npgrd_purif;
-    purif->np_purif = nprow_purif * npcol_purif * npgrd_purif;
+    purif->np_purif    = nprow_purif * npcol_purif * npgrd_purif;
 
     // set node types
-    purif->runpurif = 0;
-    if (myrank < purif->np_purif)
-    {
-        purif->rundgemm = 1;
-    }
-    else
-    {
-        purif->rundgemm = 0;
-    }
+    purif->rundgemm = (myrank < purif->np_purif) ? 1 : 0;
 
     // initialize communicators
     int flag_purif = (myrank < purif->np_purif);
     MPI_Comm comm0;
-    MPI_Comm_split (MPI_COMM_WORLD, flag_purif, myrank, &comm0);
+    MPI_Comm_split(MPI_COMM_WORLD, flag_purif, myrank, &comm0);
 
     if (purif->rundgemm == 1)
     {
-        int ndims = 3;
-        int dim_size[3];
-        int periods[3];
+        int ndims = 3, reorder = 1;
+        int dim_size[3] = {nprow_purif, npcol_purif, npgrd_purif};
+        int periods[3]  = {0, 0, 0};
         int coords[3];
-        dim_size[0] = nprow_purif;
-        dim_size[1] = npcol_purif;
-        dim_size[2] = npgrd_purif;
-        periods[0] = 0;
-        periods[1] = 0;
-        periods[2] = 0;
-        int reorder = 1;
-        MPI_Cart_create (comm0, ndims, dim_size, periods, reorder,
-                         &(purif->comm_purif));
-        MPI_Cart_coords (purif->comm_purif, myrank, ndims, coords);
+        MPI_Cart_create(comm0, ndims, dim_size, periods, reorder, &(purif->comm_purif));
+        MPI_Cart_coords(purif->comm_purif, myrank, ndims, coords);
         int myrow = coords[0];
         int mycol = coords[1];
         int mygrd = coords[2];
 
-        if (mygrd == 0)
-        {
-            purif->runpurif = 1;
-        }
-        int belongsR[3] = { 0, 1, 0 };
-        MPI_Cart_sub (purif->comm_purif, belongsR, &(purif->comm_purif_col));
-        int belongsC[3] = { 1, 0, 0 };
-        MPI_Cart_sub (purif->comm_purif, belongsC, &(purif->comm_purif_row));
-        int belongsG[3] = { 0, 0, 1 };
-        MPI_Cart_sub (purif->comm_purif, belongsG, &(purif->comm_purif_grd));
-        MPI_Comm_split (purif->comm_purif, mygrd, myrow * npcol_purif + mycol,
-                        &(purif->comm_purif_plane));
-        config_purif (purif, 0);
+        purif->runpurif = (mygrd == 0) ? 1 : 0;
+
+        int belongsR[3] = {1, 0, 0};
+        int belongsC[3] = {0, 1, 0};
+        int belongsG[3] = {0, 0, 1};
+        int plane_rank  = myrow * npcol_purif + mycol;
+        MPI_Cart_sub(purif->comm_purif, belongsR, &(purif->comm_purif_row));
+        MPI_Cart_sub(purif->comm_purif, belongsC, &(purif->comm_purif_col));
+        MPI_Cart_sub(purif->comm_purif, belongsG, &(purif->comm_purif_grd));
+        MPI_Comm_split(purif->comm_purif, mygrd, plane_rank, &(purif->comm_purif_plane));
+        config_purif(purif, 0);
     }
-    if (myrank == 0)
-    {
-        printf ("  Done\n");
-    }
+    
+    if (myrank == 0) printf ("  Done\n");
+    
     return purif;
 }
 
 
-void destroy_purif (purif_t * purif)
+void destroy_purif(purif_t * purif)
 {
     if (purif->rundgemm == 1)
     {
-        dealloc_tmpbuf (&(purif->tmpbuf));
+        dealloc_tmpbuf(&(purif->tmpbuf));
         
-        MPI_Comm_free (&(purif->comm_purif));
-        MPI_Comm_free (&(purif->comm_purif_col));
-        MPI_Comm_free (&(purif->comm_purif_row));
-        free (purif->nr_purif);
-        free (purif->nc_purif);
-        _mm_free (purif->H_block);
-        _mm_free (purif->X_block);
-        _mm_free (purif->S_block);
-        _mm_free (purif->F_block);
-        _mm_free (purif->D_block);
-        _mm_free (purif->D3_block);
-        _mm_free (purif->D2_block);
-        _mm_free (purif->F_vecs);
-        _mm_free (purif->diis_vecs);
+        MPI_Comm_free(&(purif->comm_purif));
+        MPI_Comm_free(&(purif->comm_purif_col));
+        MPI_Comm_free(&(purif->comm_purif_row));
+        free(purif->nr_purif);
+        free(purif->nc_purif);
+        _mm_free(purif->H_block);
+        _mm_free(purif->X_block);
+        _mm_free(purif->S_block);
+        _mm_free(purif->F_block);
+        _mm_free(purif->D_block);
+        _mm_free(purif->D3_block);
+        _mm_free(purif->D2_block);
+        _mm_free(purif->F_vecs);
+        _mm_free(purif->diis_vecs);
     }
-    free (purif);
+    free(purif);
 }
 
 
@@ -488,8 +441,7 @@ int compute_purification(purif_t * purif, double *F_block, double *D_block)
 }
 
 
-void compute_diis (PFock_t pfock, purif_t * purif,
-                   double *D_block, double *F_block, int iter)
+void compute_diis(PFock_t pfock, purif_t * purif, double *D_block, double *F_block, int iter)
 {
     int nrows = purif->nrows_purif;
     int ncols = purif->ncols_purif;
@@ -790,8 +742,7 @@ static void peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
 }
 
 
-void compute_eigensolve(int ga_tmp, purif_t * purif,
-                        double *F_block, int nprow, int npcol)
+void compute_eigensolve(int ga_tmp, purif_t * purif, double *F_block, int nprow, int npcol)
 {
     // edmond
     int myga  = GA_Duplicate(ga_tmp, "edmond mat");
