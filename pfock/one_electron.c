@@ -31,7 +31,7 @@ void compute_S(PFock_t pfock, BasisSet_t basis,
                int startshellcol, int endshellcol,
                int ldS, double *S)
 {
-    int nthreads = omp_get_max_threads();
+//  int nthreads = omp_get_max_threads();
 //  OED_t *oed = (OED_t *)malloc(sizeof(OED_t) * nthreads);
 //  assert(oed != NULL);
 //  for (int i = 0; i < nthreads; i++) {
@@ -77,7 +77,7 @@ void compute_H(PFock_t pfock, BasisSet_t basis,
                int startshellcol, int endshellcol,
                int ldH, double *H)
 {
-    int nthreads = omp_get_max_threads();
+//  int nthreads = omp_get_max_threads();
 //  OED_t *oed = (OED_t *)malloc(sizeof(OED_t) * nthreads);
 //  assert(oed != NULL);
 //  for (int i = 0; i < nthreads; i++) {
