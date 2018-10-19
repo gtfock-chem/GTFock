@@ -6,6 +6,8 @@
 #include "CInt.h"
 
 #include "Buzz_Matrix.h"
+#include "Buzz_Task_Queue.h"
+#include "utils.h"
 
 /** 
  * @struct  PFock
@@ -154,6 +156,7 @@ struct PFock {
     int *ga_F2;
     int *ga_F3;
     
+    Buzz_Task_Queue_t task_queue;
     
     Buzz_Matrix_t bm_Dmat;   // Global density matrix
     Buzz_Matrix_t bm_Fmat;   // Global Coulomb matrix & Fock matrix
