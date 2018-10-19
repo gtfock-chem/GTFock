@@ -107,13 +107,18 @@ static double compute_energy(purif_t * purif, double *F_block, double *D_block)
     int ncols = purif->ncols_purif;
     int ldx = purif->ldx;
 
-    if (1 == purif->runpurif) {
+    if (1 == purif->runpurif) 
+    {
         #pragma omp parallel for reduction(+: etmp)
-        for (int i = 0; i < nrows; i++) {
-            for (int j = 0; j < ncols; j++) {
-                F_block[i * ldx + j] += H_block[i * ldx + j];
-                etmp += D_block[i * ldx + j] *
-                    (H_block[i * ldx + j] + F_block[i * ldx + j]);
+        for (int i = 0; i < nrows; i++) 
+        {
+            int ldx_i = i * ldx;
+            #pragma simd
+            for (int j = 0; j < ncols; j++) 
+            {
+                F_block[ldx_i + j] += H_block[ldx_i + j];
+                etmp += D_block[ldx_i + j] *
+                    (H_block[ldx_i + j] + F_block[ldx_i + j]);
             }
         }
     }
@@ -151,11 +156,15 @@ static void fock_build(PFock_t pfock, BasisSet_t basis,
     // get Fock matrix
     if (1 == ispurif) 
     {
-        PFock_getMat(pfock, PFOCK_MAT_TYPE_F, USE_D_ID,
-                     rowstart, rowend, colstart, colend,
-                     stride, F_block);
+        PFock_Buzz_getFockMat(
+            pfock, rowstart, rowend, 
+            colstart, colend, stride, F_block
+        );
     }
-    Buzz_Sync(pfock->bm_Dmat);
+    Buzz_Sync(pfock->bm_Fmat);
+    #ifndef __SCF__
+    Buzz_Sync(pfock->bm_Kmat);
+    #endif
 }
 
 

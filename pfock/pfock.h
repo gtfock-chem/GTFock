@@ -162,6 +162,9 @@ struct PFock {
     Buzz_Matrix_t bm_F2;     // Each process's buffer for its J_{PQ}
     Buzz_Matrix_t bm_F3;     // Each process's buffer for its K_{MP, NP, MQ, NQ}
     
+    int getFockMatBufSize;
+    double *getFockMatBuf;
+	
     // statistics
     double mem_cpu;
     double *mpi_timepass;
@@ -441,6 +444,14 @@ PFockStatus_t PFock_getLocalMatPtr(PFock_t pfock,
 PFockStatus_t PFock_getMatGAHandle(PFock_t pfock,
                                    PFockMatType_t type, int index,
                                    int *ga);
+/**
+ */
+void PFock_Buzz_getFockMat(
+	PFock_t pfock,
+	int rowstart, int rowend,
+	int colstart, int colend,
+	int stride,   double *mat
+);
 
 /**
  * @brief  Computes all J and K matrices
@@ -453,8 +464,7 @@ PFockStatus_t PFock_getMatGAHandle(PFock_t pfock,
  *
  * @return    the function return status
  */
-PFockStatus_t PFock_computeFock(BasisSet_t basis,
-                                PFock_t pfock);
+PFockStatus_t PFock_computeFock(BasisSet_t basis, PFock_t pfock);
 
 /**
  * @brief  Creates a Core Hamilton matrix
