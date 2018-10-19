@@ -19,8 +19,9 @@ INC = -I./                  \
       -I${SCALAPACK_INCDIR} \
       -I${BLAS_INCDIR}      \
       -I${ERD_INCDIR}       \
-      -I${GA_INCDIR}        \
       -I${BUZZ_INCDIR}
+#      -I${GA_INCDIR}        \
+
 
 all: ${LIBPFOCK}
 	mkdir -p ../install

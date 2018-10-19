@@ -5,6 +5,7 @@
 #include "CInt.h"
 #include "pfock.h"
 
+#include "Buzz_Matrix.h"
 
 void compute_S(PFock_t pfock, BasisSet_t basis,
                int startshellrow, int endshellrow,
@@ -16,7 +17,9 @@ void compute_H(PFock_t pfock, BasisSet_t basis,
                int startshellcol, int endshellcol,
                int ldH, double *H);
 
-void my_peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval);
+//void my_peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval);
+
+void my_peig(Buzz_Matrix_t bm_A, Buzz_Matrix_t bm_B, int n, int nprow, int npcol, double *eval);
 
 extern int indxg2p_(int *indxglob, int *nb, int *iproc, int *isrcproc,
                     int *nprocs);

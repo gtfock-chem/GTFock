@@ -10,7 +10,7 @@
 #include <mkl.h>
 #include <mkl_trans.h>
 #include <sys/time.h>
-#include <ga.h>
+//#include <ga.h>
 
 #include "pdgemm.h"
 #include "purif.h"
@@ -592,7 +592,7 @@ void compute_diis(PFock_t pfock, purif_t * purif, double *D_block, double *F_blo
 }
 
 
-#if 1
+#if 0
 static void peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
 {
     int myrank;

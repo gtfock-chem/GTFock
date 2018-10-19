@@ -105,13 +105,6 @@ struct PFock {
     int sizeloadcol;
     
     double *D_mat;
-
-    // global arrays
-    int *ga_D;
-    int ga_H;
-    int ga_S;
-    int ga_X;
-
     double *FT_block;
 
     // buf D and F
@@ -141,6 +134,11 @@ struct PFock {
     Buzz_Task_Queue_t task_queue;
 
     // Buzz Matrices 
+    Buzz_Matrix_t bm_Hmat;   // Global core Hamilton matrix
+    Buzz_Matrix_t bm_Xmat;   // Global basis transformation matrix
+    Buzz_Matrix_t bm_Smat;   // Global overlap matrix
+    Buzz_Matrix_t bm_tmp1;   // Global Temp matrix 1
+    Buzz_Matrix_t bm_tmp2;   // Global Temp matrix 1
     Buzz_Matrix_t bm_Dmat;   // Global density matrix
     Buzz_Matrix_t bm_Fmat;   // Global Coulomb matrix & Fock matrix
     Buzz_Matrix_t bm_Kmat;   // Global exchange matrix
@@ -255,15 +253,6 @@ PFockStatus_t PFock_create(BasisSet_t basis, int nprow, int npcol, int ntasks,
  * @return    the function return status
  */
 PFockStatus_t PFock_destroy(PFock_t pfock);
-
-/**
- * @brief  Sync all the global array operations.
- *
- * @param[in] pfock  the pointer to the PFock_t compute engine
- *
- * @return    the function return status 
- */
-PFockStatus_t PFock_sync(PFock_t pfock);
 
 /**
  * @brief  Get a block from global Fock (Coulomb, exchange) matrix.

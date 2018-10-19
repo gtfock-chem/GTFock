@@ -6,8 +6,8 @@
 #include <math.h>
 #include <omp.h>
 #include <unistd.h>
-#include <ga.h>
-#include <macdecls.h>
+//#include <ga.h>
+//#include <macdecls.h>
 #include <sys/time.h>
 
 #include "config.h"

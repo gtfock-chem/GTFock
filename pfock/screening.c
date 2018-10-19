@@ -3,7 +3,7 @@
 #include <math.h>
 #include <omp.h>
 #include <string.h>
-#include <ga.h>
+//#include <ga.h>
 #include <mpi.h>
 
 #include "CInt.h"

@@ -73,7 +73,6 @@ static void initial_guess(PFock_t pfock, BasisSet_t basis, int ispurif,
         Buzz_putBlock(pfock->bm_Dmat, 0, nbf, 0, nbf, pfock->D_mat, nbf);
     }
     Buzz_Sync(pfock->bm_Dmat);
-    PFock_sync(pfock);
     
     MPI_Bcast(&R, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
@@ -187,38 +186,44 @@ static void init_oedmat(BasisSet_t basis, PFock_t pfock,
 
     // compute S and X
     if (myrank == 0) {
-        printf("  computing H\n");
+        printf("  Computing S and X\n");
     }
     t1 = MPI_Wtime();
     PFock_createOvlMat(pfock, basis);
-    if (purif->runpurif == 1) {
+    if (purif->runpurif == 1) 
+    {
         PFock_getOvlMat(pfock, srow_purif, erow_purif, scol_purif, ecol_purif,
                         ldx, purif->S_block);
         PFock_getOvlMat2(pfock, srow_purif, erow_purif, scol_purif, ecol_purif,
                          ldx, purif->X_block);
     }
+    Buzz_Sync(pfock->bm_Xmat);
+    Buzz_Sync(pfock->bm_Smat);
     PFock_destroyOvlMat(pfock);
     t2 = MPI_Wtime();
-    if (myrank == 0) {
+    if (myrank == 0) 
+    {
         printf("  takes %.3f secs\n", t2 - t1);
-        printf("  Done\n");
+        printf("  Computing S and X done\n");
     }
     
     // Compute H
-    if (myrank == 0) {
-        printf("  computing H\n");
-    }
+    if (myrank == 0) printf("  Computing Hcore\n");
+    
     t1 = MPI_Wtime();
     PFock_createCoreHMat(pfock, basis);
-    if (purif->runpurif == 1) {
+    if (purif->runpurif == 1) 
+    {
         PFock_getCoreHMat(pfock, srow_purif, erow_purif,
                           scol_purif, ecol_purif, ldx, purif->H_block);
     }
+    Buzz_Sync(pfock->bm_Hmat);
     PFock_destroyCoreHMat(pfock);
     t2 = MPI_Wtime();
-    if (myrank == 0) {
+    if (myrank == 0) 
+    {
         printf("  takes %.3f secs\n", t2 - t1);
-        printf("  Done\n");
+        printf("  Computing Hcore done\n");
     }
 }
 
@@ -426,22 +431,19 @@ int main (int argc, char **argv)
         }
         
     #ifdef __SCF_OUT__
-        if (myrank == 0) {
+        if (myrank == 0) 
+        {
             //double outbuf[nfunctions];
-            double *outbuf = (double*) malloc(sizeof(double) * nfunctions);
+            double *outbuf = (double*) malloc(sizeof(double) * nfunctions * nfunctions);
+            PFock_Buzz_getFockMat(pfock, 0, nfunctions, 0, nfunctions, nfunctions, outbuf);
+            
             assert(outbuf != NULL);
             char fname[1024];
             sprintf(fname, "XFX_%d_%d.dat", nfunctions, iter);
             FILE *fp = fopen(fname, "w+");
             assert(fp != NULL);
-            for (int i = 0; i < nfunctions; i++) {
-                PFock_getMat(pfock, PFOCK_MAT_TYPE_F, USE_D_ID,
-                             i, i, USE_D_ID, nfunctions - 1,
-                             nfunctions, outbuf);
-                for (int j = 0; j < nfunctions; j++) {
-                    fprintf(fp, "%.10e\n", outbuf[j]);
-                }
-            }
+            for (int i = 0; i < nfunctions * nfunctions; i++)
+                fprintf(fp, "%.10e\n", outbuf[i]);
             fclose(fp);
             free(outbuf);
         }
