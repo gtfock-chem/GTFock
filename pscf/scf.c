@@ -365,28 +365,24 @@ int main (int argc, char **argv)
     double diis_flops;
 
     // set initial guess
-    if (myrank == 0) {
-        printf("  initialing D ...\n");
-    }
-    PFock_setNumDenMat(NUM_D, pfock);
+    if (myrank == 0) printf("  initialing D ...\n");
+    pfock->num_dmat  = NUM_D;
+    pfock->num_dmat2 = NUM_D * (pfock->nosymm + 1);
     initial_guess(pfock, basis, purif->runpurif,
                   rowstart, rowend, colstart, colend,
                   purif->D_block, purif->ldx);
 
     // compute nuc energy
     double ene_nuc = CInt_getNucEnergy(basis);
-    if (myrank == 0) {
-        printf("  nuc energy = %.10f\n", ene_nuc);
-
-    }
+    if (myrank == 0) printf("  nuc energy = %.10f\n", ene_nuc);
 
     MPI_Barrier(MPI_COMM_WORLD);
     // main loop
     double t1, t2, t3, t4;
-    for (int iter = 0; iter < niters; iter++) {
-        if (myrank == 0) {
-            printf("  iter %d\n", iter);
-        }
+    for (int iter = 0; iter < niters; iter++) 
+    {
+        if (myrank == 0) printf("  iter %d\n", iter);
+        
         t3 = MPI_Wtime();
 
         // fock matrix construction

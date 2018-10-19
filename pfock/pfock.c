@@ -902,24 +902,6 @@ PFockStatus_t PFock_destroy(PFock_t pfock)
     return PFOCK_STATUS_SUCCESS;
 }
 
-PFockStatus_t PFock_setNumDenMat(int numdmat, PFock_t pfock)
-{
-    if (pfock->committed == 1) {
-        PFOCK_PRINTF(1, "Can't change number of matrices"
-                      " after PFock_commitDenMats() is called.\n");
-        return PFOCK_STATUS_EXECUTION_FAILED;
-    }
-    if (numdmat <= 0 || numdmat > pfock->max_numdmat) {
-        PFOCK_PRINTF(1, "Invalid number of density matrices\n");
-        return PFOCK_STATUS_INVALID_VALUE;
-    }
-    int numdmat2 = numdmat * (pfock->nosymm + 1);
-    pfock->num_dmat = numdmat;
-    pfock->num_dmat2 = numdmat2;
-    
-    return PFOCK_STATUS_EXECUTION_FAILED;
-}
-
 PFockStatus_t PFock_sync(PFock_t pfock)
 {
     GA_Sync();

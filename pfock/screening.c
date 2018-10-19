@@ -13,6 +13,8 @@
 
 #include "cint_basisset.h"
 
+#include "Buzz_Matrix.h"
+
 /* Note on 4-index permutation to rearrange output from integral library:
 
 If original code accesses an integral as:
@@ -74,41 +76,25 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank); 
 
     // create shell pairs values    
-    //ERD_t erd;
     SIMINT_t simint;
     int nthreads = omp_get_max_threads();
-    //CInt_createERD(basis, &erd, nthreads);  
     CInt_createSIMINT(basis, &simint, nthreads);  
-    int nshells = pfock->nshells;
     
     // create global arrays for screening 
     int nprow = pfock->nprow;
     int npcol = pfock->npcol;
-    int dims[2];
-    int block[2];
-    int map[nprow + npcol];
-    for (int i = 0; i < nprow; i++) {
-        map[i] = pfock->rowptr_sh[i];
-    }   
-    for (int i = 0; i < npcol; i++) {
-        map[i + nprow] = pfock->colptr_sh[i];
-    }
-    dims[0] = nshells;
-    dims[1] = nshells;
-    block[0] = nprow;
-    block[1] = npcol;             
-    pfock->ga_screening =
-        NGA_Create_irreg(C_DBL, 2, dims, "array Screening", block, map);
-    if (0 == pfock->ga_screening) {
-        return -1;
-    }
+    int nshells = pfock->nshells;
+    Buzz_createBuzzMatrix(
+        &pfock->bm_scrval, MPI_COMM_WORLD, MPI_DOUBLE, 8,
+        myrank, nshells, nshells, nprow, npcol,
+        pfock->rowptr_sh, pfock->colptr_sh
+    );
 
     // compute the max shell value
-    double *sq_values = (double *)PFOCK_MALLOC(sizeof(double) * 
-        pfock->nshells_row * pfock->nshells_col);
-    if (NULL == sq_values) {
-        return -1;
-    }
+    int num_sq_values = pfock->nshells_row * pfock->nshells_col;
+    double *sq_values = (double *)PFOCK_MALLOC(sizeof(double) * num_sq_values);
+    if (NULL == sq_values) return -1;
+    
     int startM = pfock->sshell_row;
     int startN = pfock->sshell_col;
     int endM = pfock->eshell_row;
@@ -118,79 +104,81 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     {
         int tid = omp_get_thread_num();
         #pragma omp for reduction(max:maxtmp)
-        for (int M = startM; M <= endM; M++) {
+        for (int M = startM; M <= endM; M++) 
+        {
             int dimM = CInt_getShellDim(basis, M);
-            for (int N = startN; N <= endN; N++) {
+            for (int N = startN; N <= endN; N++) 
+            {
                 int dimN = CInt_getShellDim(basis, N);
                 int nints;
                 double *integrals;
-                CInt_computeShellQuartet_SIMINT(simint, tid, M, N, M, N,
-                                         &integrals, &nints);            
+                CInt_computeShellQuartet_SIMINT(simint, tid, M, N, M, N, &integrals, &nints);            
                 double maxvalue = 0.0;
-                if (nints != 0) {
-                    for (int iM = 0; iM < dimM; iM++) {
-                        for (int iN = 0; iN < dimN; iN++) {
+                if (nints != 0) 
+                {
+                    for (int iM = 0; iM < dimM; iM++) 
+                    {
+                        for (int iN = 0; iN < dimN; iN++) 
+                        {
                             int index = 
                                 iN * (dimM*dimN*dimM+dimM) + iM * (dimN*dimM+1);//Simint
                               //iM * (dimN*dimM*dimN+dimN) + iN * (dimM*dimN+1);//OptERD
-                            if (maxvalue < fabs(integrals[index])) {
-                                maxvalue = fabs(integrals[index]);                    
-                            }
+                            if (maxvalue < fabs(integrals[index]))
+                                maxvalue = fabs(integrals[index]); 
                         }
                     }
                 }
-                sq_values[(M - startM) * (endN - startN + 1)  + (N - startN)] 
-                    = maxvalue;
-                if (maxvalue > maxtmp) {
-                    maxtmp = maxvalue;
-                }
+                sq_values[(M - startM) * (endN - startN + 1)  + (N - startN)] = maxvalue;
+                if (maxvalue > maxtmp) maxtmp = maxvalue;
             }
         }
     }
-    int lo[2];
-    int hi[2];
-    lo[0] = startM;
-    hi[0] = endM;
-    lo[1] = startN;
-    hi[1] = endN;
+    int lo[2] = {startM, startN};
+    int hi[2] = {endM, endN};
     int ld = endN - startN + 1;
-    NGA_Put(pfock->ga_screening, lo, hi, sq_values, &ld);
+    Buzz_startBatchUpdate(pfock->bm_scrval);
+    Buzz_addPutBlockRequest(
+        pfock->bm_scrval, 
+        lo[0], hi[0] - lo[0] + 1,
+        lo[1], hi[1] - lo[1] + 1,
+        sq_values, ld
+    );
+    Buzz_execBatchUpdate(pfock->bm_scrval);
+    Buzz_stopBatchUpdate(pfock->bm_scrval);
+    Buzz_Sync(pfock->bm_scrval);
+    
     // max value
-    MPI_Allreduce(&maxtmp, &(pfock->maxvalue), 1,
-                  MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-    //CInt_destroyERD(erd);
-    //CInt_destroySIMINT(simint, 0);
+    MPI_Allreduce(&maxtmp, &(pfock->maxvalue), 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
     PFOCK_FREE(sq_values);
 
     // init shellptr
-    sq_values = (double *)PFOCK_MALLOC(sizeof(double) * nshells);
-    if (NULL == sq_values) {
-        return -1;
-    }
+    sq_values = (double *)PFOCK_MALLOC(sizeof(double) * nshells * nshells);
+    if (NULL == sq_values) return -1;
+    
     int nnz = 0;
     double eta = pfock->tolscr2 / pfock->maxvalue;
     pfock->shellptr = (int *)PFOCK_MALLOC(sizeof(int) * (nshells + 1));
     pfock->mem_cpu += 1.0 * sizeof(int) * (nshells + 1);
-    if (NULL == pfock->shellptr) {
-        return -1;
-    }
+    if (NULL == pfock->shellptr) return -1;
     memset(pfock->shellptr, 0, sizeof(int) * (nshells + 1));
-    for (int M = 0; M < nshells; M++) {
+    
+    Buzz_startBatchGet(pfock->bm_scrval);
+    Buzz_addGetBlockRequest(pfock->bm_scrval, 0, nshells, 0, nshells, sq_values, nshells);
+    Buzz_execBatchGet(pfock->bm_scrval);
+    Buzz_stopBatchGet(pfock->bm_scrval);
+    Buzz_Sync(pfock->bm_scrval);
+    
+    for (int M = 0; M < nshells; M++) 
+    {
         pfock->shellptr[M] = nnz;
-        lo[0] = M;
-        hi[0] = M;
-        lo[1] = 0;
-        hi[1] = nshells - 1;
-        ld = nshells;
-        NGA_Get(pfock->ga_screening, lo, hi, sq_values, &ld);
-        for (int N = 0; N < nshells; N++) {
-            double maxvalue = sq_values[N];
-            if (maxvalue > eta) {
-                if (M > N && (M + N) % 2 == 1 || M < N && (M + N) % 2 == 0) {
-                    continue;
-                } else {
-                    nnz++;
-                }
+        double *sq_values_M = sq_values + M * nshells;
+        for (int N = 0; N < nshells; N++) 
+        {
+            double maxvalue = sq_values_M[N];
+            if (maxvalue > eta) 
+            {
+                if (M > N && (M + N) % 2 == 1 || M < N && (M + N) % 2 == 0)  continue;
+                else nnz++;
             }
         }
         pfock->shellptr[M + 1] = nnz;
@@ -230,15 +218,10 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
         // Swap (AB) to (BA) if AM(B) > AM(A)
         for (int A = 0; A < nshells; A++) 
         {
-            lo[0] = A;
-            hi[0] = A;
-            lo[1] = 0;
-            hi[1] = nshells - 1;
-            ld = nshells;
-            NGA_Get(pfock->ga_screening, lo, hi, sq_values, &ld);
+            double *sq_values_A = sq_values + A * nshells;
             for (int B = 0; B < nshells; B++) 
             {
-                maxvalue = sq_values[B];
+                maxvalue = sq_values_A[B];
                 if (maxvalue > eta) 
                 {
                     if (A > B && (A + B) % 2 == 1 || A < B && (A + B) % 2 == 0) continue;
@@ -270,15 +253,10 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
         for (int A = 0; A < nshells; A++) 
         {
             pfock->shellptr[A] = nnz;
-            lo[0] = A;
-            hi[0] = A;
-            lo[1] = 0;
-            hi[1] = nshells - 1;
-            ld = nshells;
-            NGA_Get(pfock->ga_screening, lo, hi, sq_values, &ld);
+            double *sq_values_A = sq_values + A * nshells;
             for (int B = 0; B < nshells; B++) 
             {
-                maxvalue = sq_values[B];
+                maxvalue = sq_values_A[B];
                 if (maxvalue > eta) 
                 {
                     if (A > B && (A + B) % 2 == 1 || A < B && (A + B) % 2 == 0) continue;
@@ -313,9 +291,9 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
         }
     }
     
-    CInt_destroySIMINT(simint, 0);
     PFOCK_FREE(sq_values);
-    GA_Destroy(pfock->ga_screening);
+    CInt_destroySIMINT(simint, 0);
+    Buzz_destroyBuzzMatrix(pfock->bm_scrval);
     
     return 0;
 }
