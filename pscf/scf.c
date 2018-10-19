@@ -43,8 +43,6 @@ static void initial_guess(PFock_t pfock, BasisSet_t basis, int ispurif,
 {
     int myrank;
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-
-    PFock_fillDenMat(0.0, USE_D_ID, pfock);
     
     double dzero = 0.0;
     Buzz_fillBuzzMatrix(pfock->bm_Dmat, &dzero);
@@ -148,7 +146,6 @@ static void fock_build(PFock_t pfock, BasisSet_t basis,
         Buzz_stopBatchUpdate(pfock->bm_Dmat);
     }
     Buzz_Sync(pfock->bm_Dmat);
-    PFock_commitDenMats(pfock);
 
     // compute Fock matrix
     PFock_computeFock(basis, pfock);
