@@ -10,6 +10,7 @@
 #include <mkl.h>
 #include <mkl_trans.h>
 #include <sys/time.h>
+#include <ga.h>
 
 #include "pdgemm.h"
 #include "purif.h"
@@ -430,7 +431,7 @@ int compute_purification(purif_t * purif, double *F_block, double *D_block)
         et2 = get_wtime_sec();
         purif->timepdgemm += et2 - st2;
 
-        double et1 = get_wtime_sec();
+        et1 = get_wtime_sec();
         purif->timepass += et1 - st1;
     }
     MPI_Barrier(MPI_COMM_WORLD);

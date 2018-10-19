@@ -14,113 +14,16 @@
 #include "taskq.h"
 #include "fock_buf.h"
 
-void load_local_bufD(PFock_t pfock)
-{
-    int lo[2];
-    int hi[2];
-    /*
-    int *loadrow = pfock->loadrow;
-    int *loadcol = pfock->loadcol;
-    int sizerow = pfock->sizeloadrow;
-    int sizecol = pfock->sizeloadcol;
+#include "Buzz_Matrix.h"
 
-    int myrank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-    int ldD;    
-    lo[0] = myrank;
-    hi[0] = myrank;
-    lo[1] = 0;
-    for (int i = 0; i < pfock->num_dmat2; i++) {
-    #ifdef GA_NB
-        ga_nbhdl_t nbnb;
-    #endif
-        // load local buffers
-        double *D1;
-        double *D2;
-        double *D3;
-        hi[1] = pfock->sizeX1 - 1;
-        NGA_Access(pfock->ga_D1[i], lo, hi, &D1, &ldD);
-        hi[1] = pfock->sizeX2 - 1;
-        NGA_Access(pfock->ga_D2[i], lo, hi, &D2, &ldD);
-        hi[1] = pfock->sizeX3 - 1;
-        NGA_Access(pfock->ga_D3[i], lo, hi, &D3, &ldD);
-        int ldD1 = pfock->ldX1;
-        int ldD2 = pfock->ldX2;
-        int ldD3 = pfock->ldX3;     
-        // update D1
-        lo[0] = pfock->sfunc_row;
-        hi[0] = pfock->efunc_row;
-        for (int A = 0; A < sizerow; A++) {
-            lo[1] = loadrow[PLEN * A + P_LO];
-            hi[1] = loadrow[PLEN * A + P_HI];
-            int posrow = loadrow[PLEN * A + P_W];
-        #ifdef GA_NB
-            NGA_NbGet(pfock->ga_D[i], lo, hi, &(D1[posrow]), &ldD1, &nbnb);
-        #else
-            NGA_Get(pfock->ga_D[i], lo, hi, &(D1[posrow]), &ldD1);
-        #endif
-        }
-        // update D2
-        lo[0] = pfock->sfunc_col;
-        hi[0] = pfock->efunc_col;
-        for (int B = 0; B < sizecol; B++) {
-            lo[1] = loadcol[PLEN * B + P_LO];
-            hi[1] = loadcol[PLEN * B + P_HI];
-            int poscol = loadcol[PLEN * B + P_W];
-        #ifdef GA_NB    
-            NGA_NbGet(pfock->ga_D[i], lo, hi, &(D2[poscol]), &ldD2, &nbnb);
-        #else
-            NGA_Get(pfock->ga_D[i], lo, hi, &(D2[poscol]), &ldD2);
-        #endif
-        }
-        // update D3
-        for (int A = 0; A < sizerow; A++) {
-            lo[0] = loadrow[PLEN * A + P_LO];
-            hi[0] = loadrow[PLEN * A + P_HI];
-            int posrow = loadrow[PLEN * A + P_W];
-            for (int B = 0; B < sizecol; B++) {
-                lo[1] = loadcol[PLEN * B + P_LO];
-                hi[1] = loadcol[PLEN * B + P_HI];
-                int poscol = loadcol[PLEN * B + P_W];
-            #ifdef GA_NB
-                NGA_NbGet(pfock->ga_D[i], lo, hi,
-                          &(D3[posrow * ldD3 + poscol]), &ldD3, &nbnb);
-            #else
-                NGA_Get(pfock->ga_D[i], lo, hi,
-                        &(D3[posrow * ldD3 + poscol]), &ldD3);        
-            #endif
-            }
-        }
-    #ifdef GA_NB
-        NGA_NbWait (&nbnb);
-    #endif
-        // release update
-        lo[0] = myrank;
-        hi[0] = myrank;
-        lo[1] = 0;
-        hi[1] = pfock->sizeX1 - 1;
-        NGA_Release_update(pfock->ga_D1[i], lo, hi);
-        hi[1] = pfock->sizeX2 - 1;
-        NGA_Release_update(pfock->ga_D2[i], lo, hi);
-        hi[1] = pfock->sizeX3 - 1;
-        NGA_Release_update(pfock->ga_D3[i], lo, hi);
-    }
-    */
-    
-    // Load full density matrix, num_dmat2 should be 1
-    int nbf = pfock->nbf;
-    lo[0] = 0;
-    lo[1] = 0;
-    hi[0] = nbf - 1;
-    hi[1] = nbf - 1;
-    double *D_mat = pfock->D_mat;
-    #ifdef GA_NB
-    ga_nbhdl_t nbnb;
-    NGA_NbGet(pfock->ga_D[0], lo, hi, D_mat, &nbf, &nbnb);
-    NGA_NbWait (&nbnb);
-    #else
-    NGA_Get(pfock->ga_D[0], lo, hi, D_mat, &nbf);
-    #endif
+// Load full density matrix, num_dmat2 should be 1
+void load_full_DenMat(PFock_t pfock)
+{
+    Buzz_startBatchGet(pfock->bm_Dmat);
+    Buzz_addGetBlockRequest(pfock->bm_Dmat, 0, pfock->nbf, 0, pfock->nbf, pfock->D_mat, pfock->nbf);
+    Buzz_execBatchGet(pfock->bm_Dmat);
+    Buzz_stopBatchGet(pfock->bm_Dmat);
+    Buzz_Sync(pfock->bm_Dmat);
 }
 
 void store_local_bufF(PFock_t pfock)
@@ -231,8 +134,7 @@ void store_local_bufF(PFock_t pfock)
 }
 
 
-void compute_FD_ptr(PFock_t pfock, int startM, int endM,
-                    int *ptrrow, int *rowsize)
+void compute_FD_ptr(PFock_t pfock, int startM, int endM, int *ptrrow, int *rowsize)
 {
     for (int A = 0; A < pfock->nshells; A++) {
         ptrrow[A] = -1;
@@ -273,8 +175,7 @@ void compute_FD_ptr(PFock_t pfock, int startM, int endM,
 }
 
 
-void init_FD_load(PFock_t pfock, int *ptrrow,
-                  int **loadrow, int *loadsize)
+void init_FD_load(PFock_t pfock, int *ptrrow, int **loadrow, int *loadsize)
 {    
     int loadcount = 0;
     for (int A = 0; A < pfock->nshells; A++) {

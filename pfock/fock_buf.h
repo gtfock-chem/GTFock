@@ -12,15 +12,13 @@
 #define P_W      2
 
 
-void load_local_bufD(PFock_t pfock);
+void load_full_DenMat(PFock_t pfock);
 
 void store_local_bufF(PFock_t pfock);
 
-void compute_FD_ptr(PFock_t pfock, int startM, int endM,
-                    int *ptrrow, int *rowsize);
+void compute_FD_ptr(PFock_t pfock, int startM, int endM, int *ptrrow, int *rowsize);
 
-void init_FD_load(PFock_t pfock, int *ptrrow,
-                  int **loadrow, int *loadsize);
+void init_FD_load(PFock_t pfock, int *ptrrow, int **loadrow, int *loadsize);
 
 
 #endif /* #define __FOCK_BUF_H__ */

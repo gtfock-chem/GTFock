@@ -18,6 +18,8 @@
 #include "screening.h"
 #include "one_electron.h"
 
+#include "Buzz_Matrix.h"
+#include "utils.h"
 
 static PFockStatus_t init_fock(PFock_t pfock)
 {
@@ -373,6 +375,15 @@ static PFockStatus_t create_GA (PFock_t pfock)
         return PFOCK_STATUS_ALLOC_FAILED;
     }
     
+    int my_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+    Buzz_createBuzzMatrix(
+        &pfock->bm_Dmat, MPI_COMM_WORLD, MPI_DOUBLE, 8,
+        my_rank, pfock->nbf, pfock->nbf, 
+        pfock->nprow, pfock->npcol,
+        pfock->rowptr_f, pfock->colptr_f
+    );
+    
     for (int i = 0; i < pfock->max_numdmat2; i++) {
         if (i != 0) {                
             sprintf(str, "D_%d", i);
@@ -419,6 +430,7 @@ static void destroy_GA(PFock_t pfock)
     PFOCK_FREE(pfock->ga_F);
     PFOCK_FREE(pfock->ga_K);
     
+    Buzz_destroyBuzzMatrix(pfock->bm_Dmat);
 }
 
 
@@ -1363,7 +1375,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
         GA_Fill(pfock->ga_F3[i], &dzero);
     }
     // local my D
-    load_local_bufD(pfock);
+    load_full_DenMat(pfock);
     lo[0] = myrank;
     hi[0] = myrank;
     lo[1] = 0;
@@ -1495,7 +1507,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
         {
             // reduction
             reduce_F(F1, F2, F3, maxrowsize, maxcolsize, ldX3, ldX4, ldX5, ldX6);
-			
+            
             lo[1] = 0;
             hi[1] = sizeX1 - 1;
             if (vrow != myrow) {

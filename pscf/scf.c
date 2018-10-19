@@ -14,6 +14,9 @@
 #include "CInt.h"
 #include "purif.h"
 
+#include "Buzz_Matrix.h"
+#include "utils.h"
+
 // Notice: for these four parameters, optimizations in pfock are tested 
 // with current values, I'm not sure if we can change these values
 // huangh223, 2018-05-01
@@ -43,38 +46,54 @@ static void initial_guess(PFock_t pfock, BasisSet_t basis, int ispurif,
 
     PFock_fillDenMat(0.0, USE_D_ID, pfock);
     
+    double dzero = 0.0;
+    Buzz_fillBuzzMatrix(pfock->bm_Dmat, &dzero);
+    
+    int nbf = pfock->nbf;
+    
     // load initial guess, only process 0
     double R = 1.0;
-    if (myrank == 0) {
+    if (myrank == 0) 
+    {
         int num_atoms = CInt_getNumAtoms(basis);
         int N_neutral = CInt_getNneutral(basis); 
         int Q = CInt_getTotalCharge(basis);
-        if (Q != 0 && N_neutral != 0) {
-            R = (N_neutral - Q)/(double)N_neutral;
-        }
-        for (int i = 0; i < num_atoms; i++) {
+        if (Q != 0 && N_neutral != 0) 
+            R = (N_neutral - Q) / (double)N_neutral;
+        
+        memset(pfock->D_mat, 0, sizeof(double) * nbf * nbf);
+        
+        for (int i = 0; i < num_atoms; i++) 
+        {
             double *guess;
-            int spos;
-            int epos;
+            int spos, epos, ld;
             CInt_getInitialGuess(basis, i, &guess, &spos, &epos);
-            int ld = epos - spos + 1;
-            PFock_putDenMat(spos, epos, spos, epos, ld,
-                            guess, USE_D_ID, pfock);
+            ld = epos - spos + 1;
+            double *Dmat_ptr = pfock->D_mat + spos * nbf + spos;
+            copy_double_matrix_block(Dmat_ptr, nbf, guess, ld, ld, ld);
         }
+        Buzz_putBlock(pfock->bm_Dmat, 0, nbf, 0, nbf, pfock->D_mat, nbf);
     }
+    Buzz_Sync(pfock->bm_Dmat);
     PFock_sync(pfock);
+    
     MPI_Bcast(&R, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    if (1 == ispurif) {
-        PFock_getMat(pfock, PFOCK_MAT_TYPE_D, USE_D_ID,
-                     rowstart, rowend, colstart, colend,
-                     ldD, D_block);
-        for (int x = rowstart; x <= rowend; x++) {
-            for (int y = colstart; y <= colend; y++) {
-                D_block[(x - rowstart) * ldD + (y - colstart)] *= R/2.0;
-            }
-        }
+    if (1 == ispurif) 
+    {
+        Buzz_getBlock(
+            pfock->bm_Dmat, 
+            rowstart, rowend - rowstart + 1,
+            colstart, colend - colstart + 1,
+            D_block,  ldD, 1
+        );
+        R *= 0.5;
+        for (int x = rowstart; x <= rowend; x++) 
+            #pragma simd
+            for (int y = colstart; y <= colend; y++) 
+                D_block[(x - rowstart) * ldD + (y - colstart)] *= R;
     }
+    Buzz_Sync(pfock->bm_Dmat);
 }
 
 
@@ -111,21 +130,32 @@ static void fock_build(PFock_t pfock, BasisSet_t basis,
                        double *D_block, double *F_block)
 {
     // put density matrix
-    if (1 == ispurif) {
-        PFock_putDenMat(rowstart, rowend, colstart, colend,
-                        stride, D_block, USE_D_ID, pfock);
+    if (1 == ispurif) 
+    {
+        Buzz_startBatchUpdate(pfock->bm_Dmat);
+        Buzz_addPutBlockRequest(
+            pfock->bm_Dmat, 
+            rowstart, rowend - rowstart + 1,
+            colstart, colend - colstart + 1,
+            D_block,  stride
+        );
+        Buzz_execBatchUpdate(pfock->bm_Dmat);
+        Buzz_stopBatchUpdate(pfock->bm_Dmat);
     }
+    Buzz_Sync(pfock->bm_Dmat);
     PFock_commitDenMats(pfock);
 
     // compute Fock matrix
     PFock_computeFock(basis, pfock);
     
     // get Fock matrix
-    if (1 == ispurif) {
+    if (1 == ispurif) 
+    {
         PFock_getMat(pfock, PFOCK_MAT_TYPE_F, USE_D_ID,
                      rowstart, rowend, colstart, colend,
                      stride, F_block);
     }
+    Buzz_Sync(pfock->bm_Dmat);
 }
 
 
