@@ -383,6 +383,18 @@ static PFockStatus_t create_GA (PFock_t pfock)
         pfock->nprow, pfock->npcol,
         pfock->rowptr_f, pfock->colptr_f
     );
+    Buzz_createBuzzMatrix(
+        &pfock->bm_Fmat, MPI_COMM_WORLD, MPI_DOUBLE, 8,
+        my_rank, pfock->nbf, pfock->nbf, 
+        pfock->nprow, pfock->npcol,
+        pfock->rowptr_f, pfock->colptr_f
+    );
+    Buzz_createBuzzMatrix(
+        &pfock->bm_Kmat, MPI_COMM_WORLD, MPI_DOUBLE, 8,
+        my_rank, pfock->nbf, pfock->nbf, 
+        pfock->nprow, pfock->npcol,
+        pfock->rowptr_f, pfock->colptr_f
+    );
     
     for (int i = 0; i < pfock->max_numdmat2; i++) {
         if (i != 0) {                
@@ -431,6 +443,8 @@ static void destroy_GA(PFock_t pfock)
     PFOCK_FREE(pfock->ga_K);
     
     Buzz_destroyBuzzMatrix(pfock->bm_Dmat);
+    Buzz_destroyBuzzMatrix(pfock->bm_Fmat);
+    Buzz_destroyBuzzMatrix(pfock->bm_Kmat);
 }
 
 
@@ -554,6 +568,35 @@ static PFockStatus_t create_FD_GArrays (PFock_t pfock)
     }
     
     PFOCK_FREE(map);
+    
+    // Create each process's F1, F2, F3 buffer matrix
+    int my_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+    map = (int*) malloc(sizeof(int) * (3 + pfock->nprocs));
+    for (int i = 0; i <= pfock->nprocs; i++) map[i] = i;
+    map[pfock->nprocs + 1] = 0;
+    map[pfock->nprocs + 2] = sizeD1;
+    Buzz_createBuzzMatrix(
+        &pfock->bm_F1, MPI_COMM_WORLD, MPI_DOUBLE, 8,
+        my_rank, pfock->nprocs, sizeD1, 
+        pfock->nprocs, 1,
+        &map[0], &map[pfock->nprocs + 1]
+    );
+    map[pfock->nprocs + 2] = sizeD2;
+    Buzz_createBuzzMatrix(
+        &pfock->bm_F2, MPI_COMM_WORLD, MPI_DOUBLE, 8,
+        my_rank, pfock->nprocs, sizeD2, 
+        pfock->nprocs, 1,
+        &map[0], &map[pfock->nprocs + 1]
+    );
+    map[pfock->nprocs + 2] = sizeD3;
+    Buzz_createBuzzMatrix(
+        &pfock->bm_F3, MPI_COMM_WORLD, MPI_DOUBLE, 8,
+        my_rank, pfock->nprocs, sizeD3, 
+        pfock->nprocs, 1,
+        &map[0], &map[pfock->nprocs + 1]
+    );
+    free(map);
 
     return PFOCK_STATUS_SUCCESS; 
 }
@@ -767,13 +810,17 @@ static void destroy_buffers (PFock_t pfock)
         GA_Destroy(pfock->ga_F2[i]);
         GA_Destroy(pfock->ga_F3[i]);
     }
+    Buzz_destroyBuzzMatrix(pfock->bm_F1);
+    Buzz_destroyBuzzMatrix(pfock->bm_F2);
+    Buzz_destroyBuzzMatrix(pfock->bm_F3);
+
     PFOCK_FREE(pfock->ga_D1);
     PFOCK_FREE(pfock->ga_D2);
     PFOCK_FREE(pfock->ga_D3);
     PFOCK_FREE(pfock->ga_F1);
     PFOCK_FREE(pfock->ga_F2);
     PFOCK_FREE(pfock->ga_F3);
-        
+    
     PFOCK_FREE(pfock->rowpos);
     PFOCK_FREE(pfock->colpos);
     PFOCK_FREE(pfock->rowptr);
@@ -1355,7 +1402,6 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     int ldX5 = maxcolsize;
     int ldX6 = maxcolfuncs;
     double dzero = 0.0;
-    double done = 1.0;
     int lo[2];
     int hi[2];
     
@@ -1374,6 +1420,14 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
         GA_Fill(pfock->ga_F2[i], &dzero);
         GA_Fill(pfock->ga_F3[i], &dzero);
     }
+    
+    Buzz_fillBuzzMatrix(pfock->bm_Fmat, &dzero);
+    Buzz_fillBuzzMatrix(pfock->bm_Kmat, &dzero);
+    Buzz_fillBuzzMatrix(pfock->bm_F1, &dzero);
+    Buzz_fillBuzzMatrix(pfock->bm_F2, &dzero);
+    Buzz_fillBuzzMatrix(pfock->bm_F3, &dzero);
+    Buzz_Sync(pfock->bm_F3);
+    
     // local my D
     load_full_DenMat(pfock);
     lo[0] = myrank;
@@ -1424,6 +1478,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     lo[0] = myrank;
     hi[0] = myrank;
     lo[1] = 0;    
+    /*
     for (int i = 0; i < pfock->num_dmat2; i++) {
         hi[1] = sizeX1 - 1;
 #ifdef GA_NB
@@ -1447,6 +1502,12 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     }
     pfock->ngacalls += 3;
     pfock->volumega += (sizeX1 + sizeX2 + sizeX3) * sizeof(double);
+    */
+    
+    Buzz_accumulateBlock(pfock->bm_F1, myrank, 1, 0, sizeX1, F1, sizeX1);
+    Buzz_accumulateBlock(pfock->bm_F2, myrank, 1, 0, sizeX2, F2, sizeX2);
+    Buzz_accumulateBlock(pfock->bm_F3, myrank, 1, 0, sizeX3, F3, sizeX3);
+    
     gettimeofday (&tv4, NULL);
     pfock->timereduce += (tv4.tv_sec - tv3.tv_sec) +
         (tv4.tv_usec - tv3.tv_usec) / 1000.0 / 1000.0;
@@ -1510,7 +1571,9 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
             
             lo[1] = 0;
             hi[1] = sizeX1 - 1;
-            if (vrow != myrow) {
+            if (vrow != myrow) 
+            {
+                /*
                 lo[0] = vpid;
                 hi[0] = vpid;
                 for (int i = 0; i < pfock->num_dmat2; i++) {
@@ -1524,7 +1587,10 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                     pfock->ngacalls += 1;
                     pfock->volumega += sizeX1 * sizeof(double);
                 }
+                */
+                Buzz_accumulateBlock(pfock->bm_F1, vpid, 1, 0, sizeX1, F1, sizeX1);
             } else {
+                /*
                 lo[0] = myrank;
                 hi[0] = myrank;
                 for (int i = 0; i < pfock->num_dmat2; i++) {
@@ -1536,10 +1602,14 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                             &F1[i * sizeX1], &sizeX1, &done);
                 #endif             
                 }
+                */
+                Buzz_accumulateBlock(pfock->bm_F1, myrank, 1, 0, sizeX1, F1, sizeX1);
             }
             lo[1] = 0;
             hi[1] = sizeX2 - 1;
-            if (vcol != mycol) {
+            if (vcol != mycol) 
+            {
+                /*
                 lo[0] = vpid;
                 hi[0] = vpid;
                 for (int i = 0; i < pfock->num_dmat2; i++) {
@@ -1553,7 +1623,10 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                     pfock->ngacalls += 1;
                     pfock->volumega += sizeX2 * sizeof(double);
                 }
+                */
+                Buzz_accumulateBlock(pfock->bm_F2, vpid, 1, 0, sizeX2, F2, sizeX2);
             } else {
+                /*
                 lo[0] = myrank;
                 hi[0] = myrank;
                 for (int i = 0; i < pfock->num_dmat2; i++) {
@@ -1565,11 +1638,14 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                             &F2[i * sizeX2], &sizeX2, &done);
                 #endif
                 }
+                */
+                Buzz_accumulateBlock(pfock->bm_F2, myrank, 1, 0, sizeX2, F2, sizeX2);
             }
             lo[0] = vpid;
             hi[0] = vpid;
             lo[1] = 0;
             hi[1] = sizeX3 - 1;
+            /*
             for (int i = 0; i < pfock->num_dmat2; i++) {
             #ifdef GA_NB
                 NGA_NbAcc(pfock->ga_F3[i], lo, hi,
@@ -1581,6 +1657,8 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
                 pfock->ngacalls += 1;
                 pfock->volumega += sizeX3 * sizeof(double);
             }
+            */
+            Buzz_accumulateBlock(pfock->bm_F3, vpid, 1, 0, sizeX3, F3, sizeX3);
             prevrow = vrow;
             prevcol = vcol;
         }
@@ -1590,12 +1668,17 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis,
     } /* steal tasks */    
 #endif /* #ifdef __DYNAMIC__ */
 
+    Buzz_Sync(pfock->bm_F3);
+
+    /*
 #ifdef GA_NB
     // wait for last NbAcc F
     NGA_NbWait (&nbhdlF1);
     NGA_NbWait (&nbhdlF2);
     NGA_NbWait (&nbhdlF3);
 #endif
+    */
+    
     lo[0] = myrank;
     hi[0] = myrank;
     lo[1] = 0;

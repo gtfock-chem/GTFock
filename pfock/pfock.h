@@ -155,7 +155,12 @@ struct PFock {
     int *ga_F3;
     
     
-    Buzz_Matrix_t bm_Dmat;
+    Buzz_Matrix_t bm_Dmat;   // Global density matrix
+    Buzz_Matrix_t bm_Fmat;   // Global Coulomb matrix & Fock matrix
+    Buzz_Matrix_t bm_Kmat;   // Global exchange matrix
+    Buzz_Matrix_t bm_F1;     // Each process's buffer for its J_{MN}
+    Buzz_Matrix_t bm_F2;     // Each process's buffer for its J_{PQ}
+    Buzz_Matrix_t bm_F3;     // Each process's buffer for its K_{MP, NP, MQ, NQ}
     
     // statistics
     double mem_cpu;

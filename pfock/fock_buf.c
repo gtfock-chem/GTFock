@@ -54,6 +54,7 @@ void store_local_bufF(PFock_t pfock)
         double *F1;
         double *F2;
         double *F3;
+        
         hi[1] = pfock->sizeX1 - 1;
         NGA_Access(pfock->ga_F1[i], lo, hi, &F1, &ldF);
         lo[1] = 0;
@@ -62,9 +63,15 @@ void store_local_bufF(PFock_t pfock)
         lo[1] = 0;
         hi[1] = pfock->sizeX3 - 1;
         NGA_Access(pfock->ga_F3[i], lo, hi, &F3, &ldF);
+        
         int ldF1 = pfock->ldX1;
         int ldF2 = pfock->ldX2;
         int ldF3 = pfock->ldX3;    
+        
+        F1 = pfock->bm_F1->mat_block;
+        F2 = pfock->bm_F2->mat_block;
+        F3 = pfock->bm_F3->mat_block;
+        
         // update F1
         double done = 1.0;
         lo[0] = pfock->sfunc_row;
