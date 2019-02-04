@@ -37,6 +37,7 @@ int    *F_MNPQ_blocks_to_F3; // Mapping blocks in F_MNPQ_blocks to F3
 int    *visited_Mpairs;      // Flags for marking if (M, i) is updated 
 int    *visited_Npairs;      // Flags for marking if (N, i) is updated 
 double *D_blocks;            // Packed density matrix (D) blocks
+double *D_scrval;            // Maximum (in absolute) value of each D block
 double *F_PQ_blocks;         // Packed F_PQ (J_PQ) blocks
 double *F_MNPQ_blocks;       // Packed F_{MP, NP, MQ, NQ} (K_{MP, NP, MQ, NQ}) blocks
 double *F_M_band_blocks;     // Thread-private buffer for F_MP and F_MQ blocks with the same M
@@ -190,6 +191,7 @@ void init_block_buf(BasisSet_t _basis, PFock_t pfock)
     shell_bf_num  = (int*) malloc(sizeof(int) * nshells);
     mat_block_ptr = (int*) malloc(sizeof(int) * nsp);
     D_blocks      = (double*) malloc(sizeof(double) * nbf2);
+    D_scrval      = (double*) malloc(sizeof(double) * nshells * nshells);
     F_PQ_blocks   = (double*) malloc(sizeof(double) * F_PQ_block_size * num_dup_F);
     F_MNPQ_blocks = (double*) malloc(sizeof(double) * nbf2);
     F_PQ_blocks_to_F2   = (int*) malloc(sizeof(int) * nsp);
@@ -197,6 +199,7 @@ void init_block_buf(BasisSet_t _basis, PFock_t pfock)
     assert(mat_block_ptr != NULL);
     assert(shell_bf_num  != NULL);
     assert(D_blocks      != NULL);
+    assert(D_scrval      != NULL);
     assert(F_PQ_blocks   != NULL);
     assert(F_MNPQ_blocks != NULL);
     assert(F_PQ_blocks_to_F2   != NULL);
@@ -285,6 +288,14 @@ void pack_D_blocks()
             double *D_src = D_mat    + f_idx_M * nbf + f_idx_N;
             double *D_dst = D_blocks + mat_block_ptr[MN_id];
             copy_matrix_block(D_dst, dimN, D_src, nbf, dimM, dimN);
+            
+            double maxval = 0.0;
+            for (int i = 0; i < dimM * dimN; i++)
+            {
+                double absval = fabs(D_dst[i]);
+                if (absval > maxval) maxval = absval;
+            }
+            D_scrval[MN_id] = maxval;
         }
     }
 }
@@ -431,7 +442,18 @@ void fock_task(
                 int flag3 = (M == P && Q == N) ? 0 : 1;                    
                 int flag2 = (value2 < 0.0) ? 1 : 0;
                 
-                if (fabs(value1 * value2) >= tolscr2) 
+                double D_scrvals[6], Dval;
+                D_scrvals[0] = fabs(D_scrval[M * nshells + N]);
+                D_scrvals[1] = fabs(D_scrval[M * nshells + P]);
+                D_scrvals[2] = fabs(D_scrval[M * nshells + Q]);
+                D_scrvals[3] = fabs(D_scrval[N * nshells + P]);
+                D_scrvals[4] = fabs(D_scrval[N * nshells + Q]);
+                D_scrvals[5] = fabs(D_scrval[P * nshells + Q]);
+                Dval = D_scrvals[0];
+                for (int Dval_i = 1; Dval_i < 6; Dval_i++)
+                    if (D_scrvals[Dval_i] > Dval) Dval = D_scrvals[Dval_i];
+                
+                if (fabs(value1 * value2 * Dval) >= tolscr2) 
                 {
                     mynsq  += 1.0;
                     mynitl += dimM * dimN * dimP * dimQ;
