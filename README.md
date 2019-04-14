@@ -6,18 +6,7 @@ Set `WORK_TOP` to where you will install the files.
 
 Please compile required libraries in the following sequence.
 
-### 1.(a) OptERD (deprecated)
-
-Notice: the compatibility of OptERD and GTFock is not tested after GTFock commit version e8398cb ([GTFock commit versions](https://github.com/gtfock-chem/gtfock/commits/master)), you can skip this if you do not need to test OptERD's performance
-
-```shell
-cd $WORK_TOP
-git clone https://github.com/gtfock-chem/OptErd_Makefile.git
-cd OptErd_Makefile
-# Adjust the make.in according to your system
-```
-
-### 1.(b) Simint
+### 1. Simint
 
 Notice: If possible, use ICC 17 instead of ICC 18 to compile Simint. It seems that there are some problems with Simint compiled by ICC 18.
 
@@ -55,59 +44,24 @@ make -j16 install
 cd $WORK_TOP
 git clone https://github.com/gtfock-chem/libcint.git
 cd libcint
-# Adjust the Makefile according to the directory you compiled Simint (and OptERD) and your system
+# Adjust the Makefile according to the directory you compiled Simint and your system
 make libcint.a 
 ```
 
 
 
-### 3. ARMCI-MPI
+### 3. GTMatrix
 
-The following commands will use ICC and Intel MPI to compile ARMCI-MPI. You can use other compilers and MPI environments. 
-
-```shell
-cd $WORK_TOP
-git clone git://git.mpich.org/armci-mpi.git 
-cd armci-mpi
-git checkout mpi3rma
-./autogen.sh
-mkdir build
-cd build
-../configure CC=mpiicc --prefix=$WORK_TOP/ARMCI-MPI
-make -j16 install
-```
-
-For Cori, use `CC=cc` to replace `CC=mpicc`. 
-
-
-
-### 4. Global Array
-
-The following commands will use ICC and Intel MPI to compile ARMCI-MPI. You can use other compilers and MPI environments. Make sure that the compiler and MPI environment are the same as compiling ARMCI-MPI.
+The following commands will use ICC and Intel MPI to compile GTMatrix. You can use other compilers and MPI environments. 
 
 ```shell
 cd $WORK_TOP
-# Dont's use the latest version of Global Array, we haven't test it yet
-wget http://hpc.pnl.gov/globalarrays/download/ga-5-3.tgz
-tar xzf ga-5-3.tgz
-cd ga-5-3
-# Carefully set the mpi executables that you want to use
-# Recommend using a build dir
-mkdir build
-cd build
-../configure CC=mpiicc MPICC=mpiicc CXX=mpiicpc MPICXX=mpiicpc F77=mpiifort MPIF77=mpiifort --with-mpi --with-armci=$WORK_TOP/ARMCI-MPI --prefix=$WORK_TOP/GAlib
-make -j16 install
+git clone https://github.com/gtfock-chem/GTMatrix.git
+cd GTMatrix
+make
 ```
 
-For Cori, use
-```shell
-CC=cc MPICC=cc CXX=CC MPICXX=CC F77=ftn MPIF77=ftn
-```
-to replace 
-```shell
-CC=mpiicc MPICC=mpiicc CXX=mpiicpc MPICXX=mpiicpc F77=mpiifort MPIF77=mpiifort
-```
-For `configure`. 
+On Cori, use `MPICC=cc` to replace `MPICC=mpiicc` in `Makefile`.
 
 
 
@@ -122,15 +76,15 @@ git clone https://github.com/gtfock-chem/gtfock.git
 cd gtfock
 ```
 
-### Compiling GTFock on Regular Cluster
+### Compiling GTFock 
 
-If your computing platform does not contain special network hardward or settings, you should compile ARMCI-MPI and Global Array yourself and then compile GTFock. Modify `make.in` according to the configuration of your system and the path of required libraries. File `make.in.KNL5` is a sample configuration file that used to compile GTFock on a single Xeon Phi Kinghts Landing node. Make sure that the compiler and MPI environment are the same as compiling ARMCI-MPI and Global Array.
+ Modify `make.in` according to the configuration of your system and the path of required libraries. Make sure that the compiler and MPI environment are the same as compiling GTMatrix.
 
 ### Compiling GTFock on Cori
 
-You can use ICC + Intel MPI to compile ARMCI-MPI, Global Array and GTFock on Cori, but it is likely that you cannot run the program on multiple nodes. 
+You can use ICC + Intel MPI to compile GTFock and GTFock on Cori, but it is likely that you cannot run the program on multiple nodes. 
 
-To run GTFock on Cori using multiple nodes, you should use Cray compiler wrapper, Cray MPI and Cray SciLib (providing ScaLAPACK and BLASC). Use Cray MPI to compile your own ARMCI-MPI and Global Arrays, DO NOT use the Global Arrays provided by Cray (the `cray-ga` module). Cray compiler wrapper, Cray SciLib and Cray MPI are loaded by default. Use `make.in.Cori` as a template to modify the `make.in`, then you can compile the GTFock.
+To run GTFock on Cori using multiple nodes, you should use Cray compiler wrapper, Cray MPI and Cray SciLib (providing ScaLAPACK and BLASC). Cray compiler wrapper, Cray SciLib and Cray MPI are loaded by default. Modify the `make.in` before compile GTFock on Cori.
 
 
 The gtfock libraries will be installed in `$WORK_TOP/gtfock/install/`, The example SCF code can be found in `$WORK_TOP/gtfock/pscf/`.
@@ -160,5 +114,3 @@ Note:
 * `nprow` x `npcol` must be equal to `nprocs`
 * `np2` x `np2` x `np2` should be close to `nprocs` but must be smaller than nprocs
 * suggested values for `ntasks`: 3, 4, 5
-
-To run the example SCF program on Cori,  `Cori-KNL-9N.pbs`, `Cori-KNL-3N.pbs` and `Cori-KNL-1N.pbs` are three example slurm batch file. For more information about writing job script for Cori, please refer to [this page](http://www.nersc.gov/users/computational-systems/cori/running-jobs/).

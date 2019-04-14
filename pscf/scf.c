@@ -14,6 +14,12 @@
 #include "CInt.h"
 #include "purif.h"
 
+#include "GTMatrix.h"
+#include "utils.h"
+
+// Notice: for these four parameters, optimizations in pfock are tested 
+// with current values, I'm not sure if we can change these values
+// huangh223, 2018-05-01
 #define MAX_NUM_D    1
 #define NUM_D        1
 #define USE_D_ID     0
@@ -37,41 +43,54 @@ static void initial_guess(PFock_t pfock, BasisSet_t basis, int ispurif,
 {
     int myrank;
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-
-    PFock_fillDenMat(0.0, USE_D_ID, pfock);
+    
+    double dzero = 0.0;
+    GTM_fillGTMatrix(pfock->gtm_Dmat, &dzero);
+    
+    int nbf = pfock->nbf;
     
     // load initial guess, only process 0
     double R = 1.0;
-    if (myrank == 0) {
+    if (myrank == 0) 
+    {
         int num_atoms = CInt_getNumAtoms(basis);
         int N_neutral = CInt_getNneutral(basis); 
         int Q = CInt_getTotalCharge(basis);
-        if (Q != 0 && N_neutral != 0) {
-            R = (N_neutral - Q)/(double)N_neutral;
-        }
-        for (int i = 0; i < num_atoms; i++) {
+        if (Q != 0 && N_neutral != 0) 
+            R = (N_neutral - Q) / (double)N_neutral;
+        
+        memset(pfock->D_mat, 0, sizeof(double) * nbf * nbf);
+        
+        for (int i = 0; i < num_atoms; i++) 
+        {
             double *guess;
-            int spos;
-            int epos;
+            int spos, epos, ld;
             CInt_getInitialGuess(basis, i, &guess, &spos, &epos);
-            int ld = epos - spos + 1;
-            PFock_putDenMat(spos, epos, spos, epos, ld,
-                            guess, USE_D_ID, pfock);
+            ld = epos - spos + 1;
+            double *Dmat_ptr = pfock->D_mat + spos * nbf + spos;
+            copy_double_matrix_block(Dmat_ptr, nbf, guess, ld, ld, ld);
         }
+        GTM_putBlock(pfock->gtm_Dmat, 0, nbf, 0, nbf, pfock->D_mat, nbf);
     }
-    PFock_sync(pfock);
+    GTM_Sync(pfock->gtm_Dmat);
+    
     MPI_Bcast(&R, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    if (1 == ispurif) {
-        PFock_getMat(pfock, PFOCK_MAT_TYPE_D, USE_D_ID,
-                     rowstart, rowend, colstart, colend,
-                     ldD, D_block);
-        for (int x = rowstart; x <= rowend; x++) {
-            for (int y = colstart; y <= colend; y++) {
-                D_block[(x - rowstart) * ldD + (y - colstart)] *= R/2.0;
-            }
-        }
+    if (1 == ispurif) 
+    {
+        GTM_getBlock(
+            pfock->gtm_Dmat, 
+            rowstart, rowend - rowstart + 1,
+            colstart, colend - colstart + 1,
+            D_block,  ldD, 1
+        );
+        R *= 0.5;
+        for (int x = rowstart; x <= rowend; x++) 
+            #pragma simd
+            for (int y = colstart; y <= colend; y++) 
+                D_block[(x - rowstart) * ldD + (y - colstart)] *= R;
     }
+    GTM_Sync(pfock->gtm_Dmat);
 }
 
 
@@ -85,13 +104,18 @@ static double compute_energy(purif_t * purif, double *F_block, double *D_block)
     int ncols = purif->ncols_purif;
     int ldx = purif->ldx;
 
-    if (1 == purif->runpurif) {
+    if (1 == purif->runpurif) 
+    {
         #pragma omp parallel for reduction(+: etmp)
-        for (int i = 0; i < nrows; i++) {
-            for (int j = 0; j < ncols; j++) {
-                F_block[i * ldx + j] += H_block[i * ldx + j];
-                etmp += D_block[i * ldx + j] *
-                    (H_block[i * ldx + j] + F_block[i * ldx + j]);
+        for (int i = 0; i < nrows; i++) 
+        {
+            int ldx_i = i * ldx;
+            #pragma simd
+            for (int j = 0; j < ncols; j++) 
+            {
+                F_block[ldx_i + j] += H_block[ldx_i + j];
+                etmp += D_block[ldx_i + j] *
+                    (H_block[ldx_i + j] + F_block[ldx_i + j]);
             }
         }
     }
@@ -108,21 +132,35 @@ static void fock_build(PFock_t pfock, BasisSet_t basis,
                        double *D_block, double *F_block)
 {
     // put density matrix
-    if (1 == ispurif) {
-        PFock_putDenMat(rowstart, rowend, colstart, colend,
-                        stride, D_block, USE_D_ID, pfock);
+    if (1 == ispurif) 
+    {
+        GTM_startBatchUpdate(pfock->gtm_Dmat);
+        GTM_addPutBlockRequest(
+            pfock->gtm_Dmat, 
+            rowstart, rowend - rowstart + 1,
+            colstart, colend - colstart + 1,
+            D_block,  stride
+        );
+        GTM_execBatchUpdate(pfock->gtm_Dmat);
+        GTM_stopBatchUpdate(pfock->gtm_Dmat);
     }
-    PFock_commitDenMats(pfock);
+    GTM_Sync(pfock->gtm_Dmat);
 
     // compute Fock matrix
     PFock_computeFock(basis, pfock);
     
     // get Fock matrix
-    if (1 == ispurif) {
-        PFock_getMat(pfock, PFOCK_MAT_TYPE_F, USE_D_ID,
-                     rowstart, rowend, colstart, colend,
-                     stride, F_block);
+    if (1 == ispurif) 
+    {
+        PFock_GTM_getFockMat(
+            pfock, rowstart, rowend, 
+            colstart, colend, stride, F_block
+        );
     }
+    GTM_Sync(pfock->gtm_Fmat);
+    #ifndef __SCF__
+    GTM_Sync(pfock->gtm_Kmat);
+    #endif
 }
 
 
@@ -148,38 +186,44 @@ static void init_oedmat(BasisSet_t basis, PFock_t pfock,
 
     // compute S and X
     if (myrank == 0) {
-        printf("  computing H\n");
+        printf("  Computing S and X\n");
     }
     t1 = MPI_Wtime();
     PFock_createOvlMat(pfock, basis);
-    if (purif->runpurif == 1) {
+    if (purif->runpurif == 1) 
+    {
         PFock_getOvlMat(pfock, srow_purif, erow_purif, scol_purif, ecol_purif,
                         ldx, purif->S_block);
         PFock_getOvlMat2(pfock, srow_purif, erow_purif, scol_purif, ecol_purif,
                          ldx, purif->X_block);
     }
+    GTM_Sync(pfock->gtm_Xmat);
+    GTM_Sync(pfock->gtm_Smat);
     PFock_destroyOvlMat(pfock);
     t2 = MPI_Wtime();
-    if (myrank == 0) {
+    if (myrank == 0) 
+    {
         printf("  takes %.3f secs\n", t2 - t1);
-        printf("  Done\n");
+        printf("  Computing S and X done\n");
     }
     
     // Compute H
-    if (myrank == 0) {
-        printf("  computing H\n");
-    }
+    if (myrank == 0) printf("  Computing Hcore\n");
+    
     t1 = MPI_Wtime();
     PFock_createCoreHMat(pfock, basis);
-    if (purif->runpurif == 1) {
+    if (purif->runpurif == 1) 
+    {
         PFock_getCoreHMat(pfock, srow_purif, erow_purif,
                           scol_purif, ecol_purif, ldx, purif->H_block);
     }
+    GTM_Sync(pfock->gtm_Hmat);
     PFock_destroyCoreHMat(pfock);
     t2 = MPI_Wtime();
-    if (myrank == 0) {
+    if (myrank == 0) 
+    {
         printf("  takes %.3f secs\n", t2 - t1);
-        printf("  Done\n");
+        printf("  Computing Hcore done\n");
     }
 }
 
@@ -326,28 +370,24 @@ int main (int argc, char **argv)
     double diis_flops;
 
     // set initial guess
-    if (myrank == 0) {
-        printf("  initialing D ...\n");
-    }
-    PFock_setNumDenMat(NUM_D, pfock);
+    if (myrank == 0) printf("  initialing D ...\n");
+    pfock->num_dmat  = NUM_D;
+    pfock->num_dmat2 = NUM_D * (pfock->nosymm + 1);
     initial_guess(pfock, basis, purif->runpurif,
                   rowstart, rowend, colstart, colend,
                   purif->D_block, purif->ldx);
 
     // compute nuc energy
     double ene_nuc = CInt_getNucEnergy(basis);
-    if (myrank == 0) {
-        printf("  nuc energy = %.10f\n", ene_nuc);
-
-    }
+    if (myrank == 0) printf("  nuc energy = %.10f\n", ene_nuc);
 
     MPI_Barrier(MPI_COMM_WORLD);
     // main loop
     double t1, t2, t3, t4;
-    for (int iter = 0; iter < niters; iter++) {
-        if (myrank == 0) {
-            printf("  iter %d\n", iter);
-        }
+    for (int iter = 0; iter < niters; iter++) 
+    {
+        if (myrank == 0) printf("  iter %d\n", iter);
+        
         t3 = MPI_Wtime();
 
         // fock matrix construction
@@ -391,22 +431,19 @@ int main (int argc, char **argv)
         }
         
     #ifdef __SCF_OUT__
-        if (myrank == 0) {
+        if (myrank == 0) 
+        {
             //double outbuf[nfunctions];
-            double *outbuf = (double*) malloc(sizeof(double) * nfunctions);
+            double *outbuf = (double*) malloc(sizeof(double) * nfunctions * nfunctions);
+            PFock_GTM_getFockMat(pfock, 0, nfunctions, 0, nfunctions, nfunctions, outbuf);
+            
             assert(outbuf != NULL);
             char fname[1024];
             sprintf(fname, "XFX_%d_%d.dat", nfunctions, iter);
             FILE *fp = fopen(fname, "w+");
             assert(fp != NULL);
-            for (int i = 0; i < nfunctions; i++) {
-                PFock_getMat(pfock, PFOCK_MAT_TYPE_F, USE_D_ID,
-                             i, i, USE_D_ID, nfunctions - 1,
-                             nfunctions, outbuf);
-                for (int j = 0; j < nfunctions; j++) {
-                    fprintf(fp, "%.10e\n", outbuf[j]);
-                }
-            }
+            for (int i = 0; i < nfunctions * nfunctions; i++)
+                fprintf(fp, "%.10e\n", outbuf[i]);
             fclose(fp);
             free(outbuf);
         }

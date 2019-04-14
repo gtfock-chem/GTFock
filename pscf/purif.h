@@ -66,6 +66,9 @@ typedef struct _purif_t
     __declspec (align (64)) double b_mat[LDBMAT * LDBMAT]; // only on rank 0
     int bmax_id;
     double bmax; // only on rank 0
+	
+    double *h;
+    double *_h;
 
     // statistics
     double timedgemm;
@@ -75,15 +78,13 @@ typedef struct _purif_t
 } purif_t;
 
 
-purif_t *create_purif(BasisSet_t basis, int nprow_purif,
-                      int npcol_purif, int npgrd_purif);
+purif_t *create_purif(BasisSet_t basis, int nprow_purif, int npcol_purif, int npgrd_purif);
 
 void destroy_purif(purif_t * purif);
 
 int compute_purification(purif_t * purif, double *F_block, double *D_block);
 
-void compute_diis(PFock_t pfock, purif_t * purif,
-                  double *D_block, double *F_block, int iter);
+void compute_diis(PFock_t pfock, purif_t * purif, double *D_block, double *F_block, int iter);
 
 extern int numroc_(int *n, int *nb, int *iproc, int *isrcproc, int *nprocs);
 
