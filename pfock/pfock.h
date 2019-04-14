@@ -5,8 +5,8 @@
 #include <omp.h>
 #include "CInt.h"
 
-#include "Buzz_Matrix.h"
-#include "Buzz_Task_Queue.h"
+#include "GTMatrix.h"
+#include "GTM_Task_Queue.h"
 #include "utils.h"
 
 /** 
@@ -131,21 +131,21 @@ struct PFock {
     int ncpu_f;
 
     // Task queue
-    Buzz_Task_Queue_t task_queue;
+    GTM_Task_Queue_t task_queue;
 
-    // Buzz Matrices 
-    Buzz_Matrix_t bm_Hmat;   // Global core Hamilton matrix
-    Buzz_Matrix_t bm_Xmat;   // Global basis transformation matrix
-    Buzz_Matrix_t bm_Smat;   // Global overlap matrix
-    Buzz_Matrix_t bm_tmp1;   // Global Temp matrix 1
-    Buzz_Matrix_t bm_tmp2;   // Global Temp matrix 1
-    Buzz_Matrix_t bm_Dmat;   // Global density matrix
-    Buzz_Matrix_t bm_Fmat;   // Global Coulomb matrix & Fock matrix
-    Buzz_Matrix_t bm_Kmat;   // Global exchange matrix
-    Buzz_Matrix_t bm_F1;     // Each process's buffer for its J_{MN}
-    Buzz_Matrix_t bm_F2;     // Each process's buffer for its J_{PQ}
-    Buzz_Matrix_t bm_F3;     // Each process's buffer for its K_{MP, NP, MQ, NQ}
-    Buzz_Matrix_t bm_scrval; // Screening values
+    // GTMatrix
+    GTMatrix_t gtm_Hmat;   // Global core Hamilton matrix
+    GTMatrix_t gtm_Xmat;   // Global basis transformation matrix
+    GTMatrix_t gtm_Smat;   // Global overlap matrix
+    GTMatrix_t gtm_tmp1;   // Global Temp matrix 1
+    GTMatrix_t gtm_tmp2;   // Global Temp matrix 1
+    GTMatrix_t gtm_Dmat;   // Global density matrix
+    GTMatrix_t gtm_Fmat;   // Global Coulomb matrix & Fock matrix
+    GTMatrix_t gtm_Kmat;   // Global exchange matrix
+    GTMatrix_t gtm_F1;     // Each process's buffer for its J_{MN}
+    GTMatrix_t gtm_F2;     // Each process's buffer for its J_{PQ}
+    GTMatrix_t gtm_F3;     // Each process's buffer for its K_{MP, NP, MQ, NQ}
+    GTMatrix_t gtm_scrval; // Screening values
     
     int getFockMatBufSize;
     double *getFockMatBuf;
@@ -269,7 +269,7 @@ PFockStatus_t PFock_destroy(PFock_t pfock);
  * @param[in] stride    the leading dimension of the local data
  * @param[out] mat      the pointer to the local data
  */
-void PFock_Buzz_getFockMat(
+void PFock_GTM_getFockMat(
     PFock_t pfock,
     int rowstart, int rowend,
     int colstart, int colend,

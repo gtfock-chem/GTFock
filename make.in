@@ -56,6 +56,6 @@ ERD_LIBDIR = /home/huangh/libcint
 ERD_INCDIR = /home/huangh/libcint
 ERD_LIBS = ${ERD_LIBDIR}/libcint.a /home/huangh/gtfock-simint/build-avx512/install/lib64/libsimint.a
 
-BUZZ_LIBDIR = /home/huangh/Buzz_Matrix
-BUZZ_INCDIR = /home/huangh/Buzz_Matrix
-BUZZ_LIBS   = ${BUZZ_LIBDIR}/libBuzzMatrix.a
+GTM_LIBDIR = /home/huangh/GTMatrix
+GTM_INCDIR = /home/huangh/GTMatrix
+GTM_LIBS   = ${GTM_LIBDIR}/libGTMatrix.a

@@ -19,14 +19,14 @@ INC = -I./                  \
       -I${MPI_INCDIR}       \
       -I${SCALAPACK_INCDIR} \
       -I${BLAS_INCDIR}      \
-      -I${BUZZ_INCDIR}      
+      -I${GTM_INCDIR}      
 #      -I${GA_INCDIR}       \
 
 LDFLAGS = -L${MPI_LIBDIR}       \
           -L${SCALAPACK_LIBDIR} \
           -L${BLAS_LIBDIR}      \
           -L${ERD_LIBDIR}       \
-          -L${BUZZ_LIBDIR}
+          -L${GTM_LIBDIR}
 #          -L${GA_LIBDIR}        \
 #          -L${ARMCI_LIBDIR}     \
 
@@ -37,7 +37,7 @@ LIBS = ${MPI_LIBS}       \
        ${SCALAPACK_LIBS} \
        ${PFOCK_LIBS}     \
        ${ERD_LIBS}       \
-       ${BUZZ_LIBS}      \
+       ${GTM_LIBS}       \
        -lifcore -limf
 #       ${GA_LIBS}        \
 #       ${ARMCI_LIBS}     \

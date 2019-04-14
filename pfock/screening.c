@@ -13,7 +13,7 @@
 
 #include "cint_basisset.h"
 
-#include "Buzz_Matrix.h"
+#include "GTMatrix.h"
 
 /* Note on 4-index permutation to rearrange output from integral library:
 
@@ -84,8 +84,8 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     int nprow = pfock->nprow;
     int npcol = pfock->npcol;
     int nshells = pfock->nshells;
-    Buzz_createBuzzMatrix(
-        &pfock->bm_scrval, MPI_COMM_WORLD, MPI_DOUBLE, 8,
+    GTM_createGTMatrix(
+        &pfock->gtm_scrval, MPI_COMM_WORLD, MPI_DOUBLE, 8,
         myrank, nshells, nshells, nprow, npcol,
         pfock->rowptr_sh, pfock->colptr_sh
     );
@@ -136,16 +136,16 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     int lo[2] = {startM, startN};
     int hi[2] = {endM, endN};
     int ld = endN - startN + 1;
-    Buzz_startBatchUpdate(pfock->bm_scrval);
-    Buzz_addPutBlockRequest(
-        pfock->bm_scrval, 
+    GTM_startBatchUpdate(pfock->gtm_scrval);
+    GTM_addPutBlockRequest(
+        pfock->gtm_scrval, 
         lo[0], hi[0] - lo[0] + 1,
         lo[1], hi[1] - lo[1] + 1,
         sq_values, ld
     );
-    Buzz_execBatchUpdate(pfock->bm_scrval);
-    Buzz_stopBatchUpdate(pfock->bm_scrval);
-    Buzz_Sync(pfock->bm_scrval);
+    GTM_execBatchUpdate(pfock->gtm_scrval);
+    GTM_stopBatchUpdate(pfock->gtm_scrval);
+    GTM_Sync(pfock->gtm_scrval);
     
     // max value
     MPI_Allreduce(&maxtmp, &(pfock->maxvalue), 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
@@ -162,11 +162,11 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     if (NULL == pfock->shellptr) return -1;
     memset(pfock->shellptr, 0, sizeof(int) * (nshells + 1));
     
-    Buzz_startBatchGet(pfock->bm_scrval);
-    Buzz_addGetBlockRequest(pfock->bm_scrval, 0, nshells, 0, nshells, sq_values, nshells);
-    Buzz_execBatchGet(pfock->bm_scrval);
-    Buzz_stopBatchGet(pfock->bm_scrval);
-    Buzz_Sync(pfock->bm_scrval);
+    GTM_startBatchGet(pfock->gtm_scrval);
+    GTM_addGetBlockRequest(pfock->gtm_scrval, 0, nshells, 0, nshells, sq_values, nshells);
+    GTM_execBatchGet(pfock->gtm_scrval);
+    GTM_stopBatchGet(pfock->gtm_scrval);
+    GTM_Sync(pfock->gtm_scrval);
     
     for (int M = 0; M < nshells; M++) 
     {
@@ -293,7 +293,7 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     
     PFOCK_FREE(sq_values);
     CInt_destroySIMINT(simint, 0);
-    Buzz_destroyBuzzMatrix(pfock->bm_scrval);
+    GTM_destroyGTMatrix(pfock->gtm_scrval);
     
     return 0;
 }

@@ -19,7 +19,7 @@ INC = -I./                  \
       -I${SCALAPACK_INCDIR} \
       -I${BLAS_INCDIR}      \
       -I${ERD_INCDIR}       \
-      -I${BUZZ_INCDIR}
+      -I${GTM_INCDIR}
 #      -I${GA_INCDIR}        \
 
 

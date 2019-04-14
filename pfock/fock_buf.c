@@ -14,17 +14,17 @@
 #include "taskq.h"
 #include "fock_buf.h"
 
-#include "Buzz_Matrix.h"
+#include "GTMatrix.h"
 
 // NOTICE: load_full_DenMat() and store_local_bufF() needs that num_dmat2==1
 
 void load_full_DenMat(PFock_t pfock)
 {
-    Buzz_startBatchGet(pfock->bm_Dmat);
-    Buzz_addGetBlockRequest(pfock->bm_Dmat, 0, pfock->nbf, 0, pfock->nbf, pfock->D_mat, pfock->nbf);
-    Buzz_execBatchGet(pfock->bm_Dmat);
-    Buzz_stopBatchGet(pfock->bm_Dmat);
-    Buzz_Sync(pfock->bm_Dmat);
+    GTM_startBatchGet(pfock->gtm_Dmat);
+    GTM_addGetBlockRequest(pfock->gtm_Dmat, 0, pfock->nbf, 0, pfock->nbf, pfock->D_mat, pfock->nbf);
+    GTM_execBatchGet(pfock->gtm_Dmat);
+    GTM_stopBatchGet(pfock->gtm_Dmat);
+    GTM_Sync(pfock->gtm_Dmat);
 }
 
 void store_local_bufF(PFock_t pfock)
@@ -38,11 +38,11 @@ void store_local_bufF(PFock_t pfock)
     int lo[2];
     int hi[2];
     
-    Buzz_Matrix_t bm_J = pfock->bm_Fmat;
+    GTMatrix_t gtm_J = pfock->gtm_Fmat;
     #ifdef __SCF__
-    Buzz_Matrix_t bm_K = pfock->bm_Fmat;
+    GTMatrix_t gtm_K = pfock->gtm_Fmat;
     #else
-    Buzz_Matrix_t bm_K = pfock->bm_Kmat;
+    GTMatrix_t gtm_K = pfock->gtm_Kmat;
     #endif
     
     lo[0] = myrank;
@@ -53,11 +53,11 @@ void store_local_bufF(PFock_t pfock)
     int ldF1 = pfock->ldX1;
     int ldF2 = pfock->ldX2;
     int ldF3 = pfock->ldX3;    
-    double *F1 = pfock->bm_F1->mat_block;
-    double *F2 = pfock->bm_F2->mat_block;
-    double *F3 = pfock->bm_F3->mat_block;
+    double *F1 = pfock->gtm_F1->mat_block;
+    double *F2 = pfock->gtm_F2->mat_block;
+    double *F3 = pfock->gtm_F3->mat_block;
     
-    Buzz_startBatchUpdate(bm_J);
+    GTM_startBatchUpdate(gtm_J);
     
     // update F1
     lo[0] = pfock->sfunc_row;
@@ -68,8 +68,8 @@ void store_local_bufF(PFock_t pfock)
         hi[1] = loadrow[PLEN * A + P_HI];
         int posrow = loadrow[PLEN * A + P_W];
         
-        Buzz_addAccumulateBlockRequest(
-            bm_J, 
+        GTM_addAccumulateBlockRequest(
+            gtm_J, 
             lo[0], hi[0] - lo[0] + 1,
             lo[1], hi[1] - lo[1] + 1,
             F1 + posrow, ldF1
@@ -85,20 +85,20 @@ void store_local_bufF(PFock_t pfock)
         hi[1] = loadcol[PLEN * B + P_HI];
         int poscol = loadcol[PLEN * B + P_W];
         
-        Buzz_addAccumulateBlockRequest(
-            bm_J, 
+        GTM_addAccumulateBlockRequest(
+            gtm_J, 
             lo[0], hi[0] - lo[0] + 1,
             lo[1], hi[1] - lo[1] + 1,
             F2 + poscol, ldF2
         );
     }
 
-    Buzz_execBatchUpdate(bm_J);
-    Buzz_stopBatchUpdate(bm_J);
-    Buzz_Sync(bm_J);
+    GTM_execBatchUpdate(gtm_J);
+    GTM_stopBatchUpdate(gtm_J);
+    GTM_Sync(gtm_J);
     
     // update F3
-    Buzz_startBatchUpdate(bm_K);
+    GTM_startBatchUpdate(gtm_K);
     for (int A = 0; A < sizerow; A++) 
     {
         lo[0] = loadrow[PLEN * A + P_LO];
@@ -110,17 +110,17 @@ void store_local_bufF(PFock_t pfock)
             hi[1] = loadcol[PLEN * B + P_HI];
             int poscol = loadcol[PLEN * B + P_W];
             
-            Buzz_addAccumulateBlockRequest(
-                bm_K, 
+            GTM_addAccumulateBlockRequest(
+                gtm_K, 
                 lo[0], hi[0] - lo[0] + 1,
                 lo[1], hi[1] - lo[1] + 1,
                 F3 + posrow * ldF3 + poscol, ldF3
             );
         }
     }
-    Buzz_execBatchUpdate(bm_K);
-    Buzz_stopBatchUpdate(bm_K);
-    Buzz_Sync(bm_K);
+    GTM_execBatchUpdate(gtm_K);
+    GTM_stopBatchUpdate(gtm_K);
+    GTM_Sync(gtm_K);
 }
 
 

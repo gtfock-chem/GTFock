@@ -14,7 +14,7 @@
 #include "CInt.h"
 #include "purif.h"
 
-#include "Buzz_Matrix.h"
+#include "GTMatrix.h"
 #include "utils.h"
 
 // Notice: for these four parameters, optimizations in pfock are tested 
@@ -45,7 +45,7 @@ static void initial_guess(PFock_t pfock, BasisSet_t basis, int ispurif,
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
     
     double dzero = 0.0;
-    Buzz_fillBuzzMatrix(pfock->bm_Dmat, &dzero);
+    GTM_fillGTMatrix(pfock->gtm_Dmat, &dzero);
     
     int nbf = pfock->nbf;
     
@@ -70,16 +70,16 @@ static void initial_guess(PFock_t pfock, BasisSet_t basis, int ispurif,
             double *Dmat_ptr = pfock->D_mat + spos * nbf + spos;
             copy_double_matrix_block(Dmat_ptr, nbf, guess, ld, ld, ld);
         }
-        Buzz_putBlock(pfock->bm_Dmat, 0, nbf, 0, nbf, pfock->D_mat, nbf);
+        GTM_putBlock(pfock->gtm_Dmat, 0, nbf, 0, nbf, pfock->D_mat, nbf);
     }
-    Buzz_Sync(pfock->bm_Dmat);
+    GTM_Sync(pfock->gtm_Dmat);
     
     MPI_Bcast(&R, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     if (1 == ispurif) 
     {
-        Buzz_getBlock(
-            pfock->bm_Dmat, 
+        GTM_getBlock(
+            pfock->gtm_Dmat, 
             rowstart, rowend - rowstart + 1,
             colstart, colend - colstart + 1,
             D_block,  ldD, 1
@@ -90,7 +90,7 @@ static void initial_guess(PFock_t pfock, BasisSet_t basis, int ispurif,
             for (int y = colstart; y <= colend; y++) 
                 D_block[(x - rowstart) * ldD + (y - colstart)] *= R;
     }
-    Buzz_Sync(pfock->bm_Dmat);
+    GTM_Sync(pfock->gtm_Dmat);
 }
 
 
@@ -134,17 +134,17 @@ static void fock_build(PFock_t pfock, BasisSet_t basis,
     // put density matrix
     if (1 == ispurif) 
     {
-        Buzz_startBatchUpdate(pfock->bm_Dmat);
-        Buzz_addPutBlockRequest(
-            pfock->bm_Dmat, 
+        GTM_startBatchUpdate(pfock->gtm_Dmat);
+        GTM_addPutBlockRequest(
+            pfock->gtm_Dmat, 
             rowstart, rowend - rowstart + 1,
             colstart, colend - colstart + 1,
             D_block,  stride
         );
-        Buzz_execBatchUpdate(pfock->bm_Dmat);
-        Buzz_stopBatchUpdate(pfock->bm_Dmat);
+        GTM_execBatchUpdate(pfock->gtm_Dmat);
+        GTM_stopBatchUpdate(pfock->gtm_Dmat);
     }
-    Buzz_Sync(pfock->bm_Dmat);
+    GTM_Sync(pfock->gtm_Dmat);
 
     // compute Fock matrix
     PFock_computeFock(basis, pfock);
@@ -152,14 +152,14 @@ static void fock_build(PFock_t pfock, BasisSet_t basis,
     // get Fock matrix
     if (1 == ispurif) 
     {
-        PFock_Buzz_getFockMat(
+        PFock_GTM_getFockMat(
             pfock, rowstart, rowend, 
             colstart, colend, stride, F_block
         );
     }
-    Buzz_Sync(pfock->bm_Fmat);
+    GTM_Sync(pfock->gtm_Fmat);
     #ifndef __SCF__
-    Buzz_Sync(pfock->bm_Kmat);
+    GTM_Sync(pfock->gtm_Kmat);
     #endif
 }
 
@@ -197,8 +197,8 @@ static void init_oedmat(BasisSet_t basis, PFock_t pfock,
         PFock_getOvlMat2(pfock, srow_purif, erow_purif, scol_purif, ecol_purif,
                          ldx, purif->X_block);
     }
-    Buzz_Sync(pfock->bm_Xmat);
-    Buzz_Sync(pfock->bm_Smat);
+    GTM_Sync(pfock->gtm_Xmat);
+    GTM_Sync(pfock->gtm_Smat);
     PFock_destroyOvlMat(pfock);
     t2 = MPI_Wtime();
     if (myrank == 0) 
@@ -217,7 +217,7 @@ static void init_oedmat(BasisSet_t basis, PFock_t pfock,
         PFock_getCoreHMat(pfock, srow_purif, erow_purif,
                           scol_purif, ecol_purif, ldx, purif->H_block);
     }
-    Buzz_Sync(pfock->bm_Hmat);
+    GTM_Sync(pfock->gtm_Hmat);
     PFock_destroyCoreHMat(pfock);
     t2 = MPI_Wtime();
     if (myrank == 0) 
@@ -435,7 +435,7 @@ int main (int argc, char **argv)
         {
             //double outbuf[nfunctions];
             double *outbuf = (double*) malloc(sizeof(double) * nfunctions * nfunctions);
-            PFock_Buzz_getFockMat(pfock, 0, nfunctions, 0, nfunctions, nfunctions, outbuf);
+            PFock_GTM_getFockMat(pfock, 0, nfunctions, 0, nfunctions, nfunctions, outbuf);
             
             assert(outbuf != NULL);
             char fname[1024];

@@ -10,7 +10,7 @@
 #include "config.h"
 #include "one_electron.h"
 
-#include "Buzz_Matrix.h"
+#include "GTMatrix.h"
 
 inline void matrix_block_write(double *matrix, int startrow,
                                int startcol, int ldm,
@@ -121,7 +121,7 @@ void compute_H(PFock_t pfock, BasisSet_t basis,
 }
 
 
-void my_peig(Buzz_Matrix_t bm_A, Buzz_Matrix_t bm_B, int n, int nprow, int npcol, double *eval)
+void my_peig(GTMatrix_t gtm_A, GTMatrix_t gtm_B, int n, int nprow, int npcol, double *eval)
 {
     int myrank;
     int ictxt;
@@ -158,7 +158,7 @@ void my_peig(Buzz_Matrix_t bm_A, Buzz_Matrix_t bm_B, int n, int nprow, int npcol
     assert(Z != NULL && A != NULL);
 
     // distribute source matrix
-    Buzz_startBatchGet(bm_A);
+    GTM_startBatchGet(gtm_A);
     for (int i = 1; i <= nrows; i += nb) 
     {
         lo[0] = indxl2g_(&i, &nb, &myrow, &izero, &nprow) - 1;
@@ -170,17 +170,17 @@ void my_peig(Buzz_Matrix_t bm_A, Buzz_Matrix_t bm_B, int n, int nprow, int npcol
             hi[1] = lo[1] + nb - 1;
             hi[1] = hi[1] >= n ? n - 1 : hi[1];
             ld = ncols;
-            Buzz_addGetBlockRequest(
-                bm_A, 
+            GTM_addGetBlockRequest(
+                gtm_A, 
                 lo[0], hi[0] - lo[0] + 1,
                 lo[1], hi[1] - lo[1] + 1,
                 &(Z[(i - 1) * ncols + j - 1]), ld
             );
         }
     }
-    Buzz_execBatchGet(bm_A);
-    Buzz_stopBatchGet(bm_A);
-    Buzz_Sync(bm_A);
+    GTM_execBatchGet(gtm_A);
+    GTM_stopBatchGet(gtm_A);
+    GTM_Sync(gtm_A);
     
     for (int i = 0; i < nrows; i++) 
     {
@@ -233,7 +233,7 @@ void my_peig(Buzz_Matrix_t bm_A, Buzz_Matrix_t bm_B, int n, int nprow, int npcol
             A[i * ncols + j] = Z[j * nrows + i];
     }
     
-    Buzz_startBatchUpdate(bm_B);
+    GTM_startBatchUpdate(gtm_B);
     for (int i = 1; i <= nrows; i += nb) 
     {
         lo[0] = indxl2g_ (&i, &nb, &myrow, &izero, &nprow) - 1;
@@ -245,17 +245,17 @@ void my_peig(Buzz_Matrix_t bm_A, Buzz_Matrix_t bm_B, int n, int nprow, int npcol
             hi[1] = lo[1] + nb - 1;
             hi[1] = hi[1] >= n ? n - 1 : hi[1];
             ld = ncols;
-            Buzz_addPutBlockRequest(
-                bm_B, 
+            GTM_addPutBlockRequest(
+                gtm_B, 
                 lo[0], hi[0] - lo[0] + 1,
                 lo[1], hi[1] - lo[1] + 1,
                 &(A[(i - 1) * ncols + j - 1]), ld
             );
         }
     }
-    Buzz_execBatchUpdate(bm_B);
-    Buzz_stopBatchUpdate(bm_B);
-    Buzz_Sync(bm_B);
+    GTM_execBatchUpdate(gtm_B);
+    GTM_stopBatchUpdate(gtm_B);
+    GTM_Sync(gtm_B);
 
     _mm_free(A);
     _mm_free(Z);
