@@ -5,6 +5,7 @@
 #include "CInt.h"
 #include "pfock.h"
 
+#include "GTMatrix.h"
 
 void compute_S(PFock_t pfock, BasisSet_t basis,
                int startshellrow, int endshellrow,
@@ -16,16 +17,15 @@ void compute_H(PFock_t pfock, BasisSet_t basis,
                int startshellcol, int endshellcol,
                int ldH, double *H);
 
-void my_peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval);
+//void my_peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval);
 
-extern int indxg2p_(int *indxglob, int *nb, int *iproc, int *isrcproc,
-                    int *nprocs);
+void my_peig(GTMatrix_t gtm_A, GTMatrix_t gtm_B, int n, int nprow, int npcol, double *eval);
 
-extern int indxg2l_(int *indxglob, int *nb, int *iproc, int *isrcproc,
-                    int *nprocs);
+extern int indxg2p_(int *indxglob, int *nb, int *iproc, int *isrcproc, int *nprocs);
 
-extern int indxl2g_(int *indxlocal, int *nb, int *iproc, int *isrcproc,
-                    int *nprocs);
+extern int indxg2l_(int *indxglob, int *nb, int *iproc, int *isrcproc, int *nprocs);
+
+extern int indxl2g_(int *indxlocal, int *nb, int *iproc, int *isrcproc, int *nprocs);
 
 extern int numroc_(int *n, int *nb, int *iproc, int *isrcproc, int *nprocs);
 
@@ -37,11 +37,9 @@ extern void Cblacs_pinfo(int *mypnum, int *nprocs);
 
 extern void Cblacs_get(int context, int request, int *value);
 
-extern int Cblacs_gridinit(int *context, char *order, int np_row,
-                           int np_col);
+extern int Cblacs_gridinit(int *context, char *order, int np_row, int np_col);
 
-extern void Cblacs_gridinfo(int context, int *np_row, int *np_col,
-                            int *my_row, int *my_col);
+extern void Cblacs_gridinfo(int context, int *np_row, int *np_col, int *my_row, int *my_col);
 
 extern void Cblacs_gridexit(int context);
 

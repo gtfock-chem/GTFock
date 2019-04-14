@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <ga.h>
+//#include <ga.h>
 #include <mkl.h>
 #include <omp.h>
 #include <mpi.h>
@@ -10,6 +10,7 @@
 #include "config.h"
 #include "one_electron.h"
 
+#include "GTMatrix.h"
 
 inline void matrix_block_write(double *matrix, int startrow,
                                int startcol, int ldm,
@@ -120,7 +121,7 @@ void compute_H(PFock_t pfock, BasisSet_t basis,
 }
 
 
-void my_peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
+void my_peig(GTMatrix_t gtm_A, GTMatrix_t gtm_B, int n, int nprow, int npcol, double *eval)
 {
     int myrank;
     int ictxt;
@@ -136,9 +137,6 @@ void my_peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
     int hi[2];
     int ld;
     int ione = 1;
-#ifdef GA_NB
-    ga_nbhdl_t nbnb;
-#endif
 
     // init blacs
     int nb = MIN(n / nprow, n / npcol);
@@ -156,38 +154,39 @@ void my_peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
     descinit_(descZ, &n, &n, &nb, &nb, &izero, &izero, &ictxt, &itemp, &info);
     int blocksize = nrows * ncols;
     double *A = (double *)_mm_malloc(blocksize * sizeof (double), 64);
-    assert (A != NULL);
     double *Z = (double *)_mm_malloc(blocksize * sizeof (double), 64);
-    assert (Z != NULL);
+    assert(Z != NULL && A != NULL);
 
     // distribute source matrix
-    for (int i = 1; i <= nrows; i += nb) {
+    GTM_startBatchGet(gtm_A);
+    for (int i = 1; i <= nrows; i += nb) 
+    {
         lo[0] = indxl2g_(&i, &nb, &myrow, &izero, &nprow) - 1;
         hi[0] = lo[0] + nb - 1;
         hi[0] = hi[0] >= n ? n - 1 : hi[0];
-        for (int j = 1; j <= ncols; j += nb) {
+        for (int j = 1; j <= ncols; j += nb) 
+        {
             lo[1] = indxl2g_(&j, &nb, &mycol, &izero, &npcol) - 1;
             hi[1] = lo[1] + nb - 1;
             hi[1] = hi[1] >= n ? n - 1 : hi[1];
             ld = ncols;
-#ifdef GA_NB
-            NGA_NbGet(ga_A, lo, hi, &(Z[(i - 1) * ncols + j - 1]), &ld, &nbnb);
-#else
-            NGA_Get(ga_A, lo, hi, &(Z[(i - 1) * ncols + j - 1]), &ld);
-#endif
+            GTM_addGetBlockRequest(
+                gtm_A, 
+                lo[0], hi[0] - lo[0] + 1,
+                lo[1], hi[1] - lo[1] + 1,
+                &(Z[(i - 1) * ncols + j - 1]), ld
+            );
         }
-        /* Jeff: Location of NGA_NbWait for flow-control. */
     }
-#ifdef GA_NB
-    /* Jeff: If one sees flow-control problems with too many
-     *       outstanding NbGet operations, then move this call
-     *       to the location noted above. */
-    NGA_NbWait(&nbnb);
-#endif
-    for (int i = 0; i < nrows; i++) {
-        for (int j = 0; j < ncols; j++) {
+    GTM_execBatchGet(gtm_A);
+    GTM_stopBatchGet(gtm_A);
+    GTM_Sync(gtm_A);
+    
+    for (int i = 0; i < nrows; i++) 
+    {
+        #pragma simd
+        for (int j = 0; j < ncols; j++) 
             A[j * nrows + i] = Z[i * ncols + j];
-        }
     }
 
     double t1 = MPI_Wtime();
@@ -225,40 +224,38 @@ void my_peig(int ga_A, int ga_B, int n, int nprow, int npcol, double *eval)
             work, &lwork, iwork, &liwork, &info); 
 #endif
     double t2 = MPI_Wtime();
-    if (myrank == 0) {
-        printf("  pdsyev_ takes %.3lf secs\n", t2 - t1);
-    }
+    if (myrank == 0) printf("  pdsyev_ takes %.3lf secs\n", t2 - t1);
 
     // store desination matrix
-    for (int i = 0; i < nrows; i++) {
-        for (int j = 0; j < ncols; j++) {
+    for (int i = 0; i < nrows; i++) 
+    {
+        for (int j = 0; j < ncols; j++)
             A[i * ncols + j] = Z[j * nrows + i];
-        }
     }
-    for (int i = 1; i <= nrows; i += nb) {
+    
+    GTM_startBatchUpdate(gtm_B);
+    for (int i = 1; i <= nrows; i += nb) 
+    {
         lo[0] = indxl2g_ (&i, &nb, &myrow, &izero, &nprow) - 1;
         hi[0] = lo[0] + nb - 1;
         hi[0] = hi[0] >= n ? n - 1 : hi[0];
-        for (int j = 1; j <= ncols; j += nb) {
+        for (int j = 1; j <= ncols; j += nb) 
+        {
             lo[1] = indxl2g_ (&j, &nb, &mycol, &izero, &npcol) - 1;
             hi[1] = lo[1] + nb - 1;
             hi[1] = hi[1] >= n ? n - 1 : hi[1];
             ld = ncols;
-#ifdef GA_NB
-            NGA_NbPut(ga_B, lo, hi, &(A[(i - 1) * ncols + j - 1]), &ld, &nbnb);
-#else
-            NGA_Put(ga_B, lo, hi, &(A[(i - 1) * ncols + j - 1]), &ld);
-#endif
+            GTM_addPutBlockRequest(
+                gtm_B, 
+                lo[0], hi[0] - lo[0] + 1,
+                lo[1], hi[1] - lo[1] + 1,
+                &(A[(i - 1) * ncols + j - 1]), ld
+            );
         }
-        /* Jeff: Location of NGA_NbWait for flow-control. */
     }
-#ifdef GA_NB
-    /* Jeff: If one sees flow-control problems with too many
-     *       outstanding NbPut operations, then move this call
-     *       to the location noted above. */
-    NGA_NbWait(&nbnb);
-#endif
-    GA_Sync();
+    GTM_execBatchUpdate(gtm_B);
+    GTM_stopBatchUpdate(gtm_B);
+    GTM_Sync(gtm_B);
 
     _mm_free(A);
     _mm_free(Z);

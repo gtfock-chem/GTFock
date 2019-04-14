@@ -5,6 +5,10 @@
 #include <omp.h>
 #include "CInt.h"
 
+#include "GTMatrix.h"
+#include "GTM_Task_Queue.h"
+#include "utils.h"
+
 /** 
  * @struct  PFock
  * @brief   PFock computing engine.
@@ -78,10 +82,6 @@ struct PFock {
     int nfuncs_col;
     int sizemyrow;
     int sizemycol;
-    
-    //task queue
-    int ga_taskid;
-    int icount;
 
     // integrals
     // ERD_t erd;
@@ -105,16 +105,6 @@ struct PFock {
     int sizeloadcol;
     
     double *D_mat;
-
-    // global arrays
-    int *ga_F;
-    int *ga_D;
-    int *ga_K;
-    int *gatable[4];
-    int ga_H;
-    int ga_S;
-    int ga_X;
-
     double *FT_block;
 
     // buf D and F
@@ -134,23 +124,31 @@ struct PFock {
     int ldX4;
     int ldX5;
     int ldX6;
-    double **D1;
-    double **D2;
-    double **D3;
     double *F1;
     double *F2;
     double *F3;
-    double *F4;
-    double *F5;
-    double *F6;
     int numF;
     int ncpu_f;
-    int *ga_D1;
-    int *ga_D2;
-    int *ga_D3;
-    int *ga_F1;
-    int *ga_F2;
-    int *ga_F3;
+
+    // Task queue
+    GTM_Task_Queue_t task_queue;
+
+    // GTMatrix
+    GTMatrix_t gtm_Hmat;   // Global core Hamilton matrix
+    GTMatrix_t gtm_Xmat;   // Global basis transformation matrix
+    GTMatrix_t gtm_Smat;   // Global overlap matrix
+    GTMatrix_t gtm_tmp1;   // Global Temp matrix 1
+    GTMatrix_t gtm_tmp2;   // Global Temp matrix 1
+    GTMatrix_t gtm_Dmat;   // Global density matrix
+    GTMatrix_t gtm_Fmat;   // Global Coulomb matrix & Fock matrix
+    GTMatrix_t gtm_Kmat;   // Global exchange matrix
+    GTMatrix_t gtm_F1;     // Each process's buffer for its J_{MN}
+    GTMatrix_t gtm_F2;     // Each process's buffer for its J_{PQ}
+    GTMatrix_t gtm_F3;     // Each process's buffer for its K_{MP, NP, MQ, NQ}
+    GTMatrix_t gtm_scrval; // Screening values
+    
+    int getFockMatBufSize;
+    double *getFockMatBuf;
     
     // statistics
     double mem_cpu;
@@ -257,88 +255,9 @@ PFockStatus_t PFock_create(BasisSet_t basis, int nprow, int npcol, int ntasks,
 PFockStatus_t PFock_destroy(PFock_t pfock);
 
 /**
- * @brief  Set the number of density matrices.
- *
- * @param[in] numdmat  the specified number of density matrices
- * @param[in] pfock    the pointer to the PFock_t compute engine
- *
- * @return    the function return status 
- */
-PFockStatus_t PFock_setNumDenMat(int numdmat, PFock_t pfock);
-
-/**
- * @brief  Put the data into a specific global density matrix.
- *
- * @param[in] rowstart  the starting row index of the
- *                      global density matrix section
- * @param[in] rowend    the ending row index of the
- *                      global density matrix section
- * @param[in] colstart  the starting column index of the
- *                      global density matrix section
- * @param[in] colend    the ending column index of the
- *                      global density matrix section
- * @param[in] dmat      the pointer to the local data
- * @param[in] stride    the leading dimension of the local data
- * @param[in] index     the index of the density matrix
- * @param[in] pfock     the pointer to the PFock_t compute engine
- *
- * @return    the function return status
- */
-PFockStatus_t PFock_putDenMat(int rowstart, int rowend,
-                              int colstart, int colend,
-                              int stride, double *dmat,
-                              int index, PFock_t pfock);
-
-/**
- * @brief  Put the data into a specific global density matrix.
- *
- * @param[in] ga     the global array contains the density matrix
- * @param[in] index  the index of the density matrix
- * @param[in] pfock  the pointer to the PFock_t compute engine
- *
- * @return    the function return status
- */
-PFockStatus_t PFock_putDenMatGA(int ga, int index, PFock_t pfock);
-
-/**
- * @brief  Fill the speficied global density matrix a specific value.
- *
- * @param[in] value  the value to be filled 
- * @param[in] index  the index of the density matrix
- * @param[in] pfock  the pointer to the PFock_t compute engine
- *
- * @return    the function return status
- */
-PFockStatus_t PFock_fillDenMat(double value, int index,
-                               PFock_t pfock);
-
-/**
- * @brief  Commit the change of the density matrices.
- *
- * This function is called loosely synchronously by all processes
- * after all PFockPutDenMat calls.
- *
- * @param[in] pfock  the pointer to the PFock_t compute engine
- *
- * @return    the function return status 
- */ 
-PFockStatus_t PFock_commitDenMats(PFock_t pfock);
-
-/**
- * @brief  Sync all the global array operations.
- *
- * @param[in] pfock  the pointer to the PFock_t compute engine
- *
- * @return    the function return status 
- */
-PFockStatus_t PFock_sync(PFock_t pfock);
-
-/**
- * @brief  Get the data from a specific global density matrix.
+ * @brief  Get a block from global Fock (Coulomb, exchange) matrix.
  *
  * @param[in] pfock     the pointer to the PFock_t compute engine
- * @param[in] type      the type of the matrix
- * @param[in] index     the index of the density matrix
  * @param[in] rowstart  the starting row index of the
  *                      global density matrix section
  * @param[in] rowend    the ending row index of the
@@ -349,88 +268,13 @@ PFockStatus_t PFock_sync(PFock_t pfock);
  *                      global density matrix section
  * @param[in] stride    the leading dimension of the local data
  * @param[out] mat      the pointer to the local data
- *
- * @return    the function return status  
  */
-PFockStatus_t PFock_getMat(PFock_t pfock,
-                           PFockMatType_t type,
-                           int index,
-                           int rowstart,
-                           int rowend,
-                           int colstart,
-                           int colend,
-                           int stride,
-                           double *mat);
-
-/**
- * @brief  Get the data from a specific global density matrix.
- *
- * @param[in] pfock  the pointer to the PFock_t compute engine
- * @param[in] type   the type of the matrix
- * @param[in] index  the index of the density matrix
- * @param[in] ga     the global array returns the global density matrix
- *
- * @return    the function return status  
- */
-PFockStatus_t PFock_getMatGA(PFock_t pfock, PFockMatType_t type,
-                             int index, int ga);
-
-/**
- * @brief  Return the local data range on a specified process.
- *
- * @param[in] pfock      the pointer to the PFock_t compute engine
- * @param[out] rowstart  the pointer to the starting row index of the local data
- * @param[out] rowend    the pointer to the ending row index of the local data
- * @param[out] colstart  the pointer to the starting column index
- *                       of the local data
- * @param[out] colend    the pointer to the ending column index
- *                       of the local data
- *
- * @return    the function return status
- */
-PFockStatus_t PFock_getLocalMatInds(PFock_t pfock,
-                                    int *rowstart,
-                                    int *rowend,
-                                    int *colstart,
-                                    int *colend);
-
-/**
- * @brief  Return the pointer to the local data.
- *
- * @param[in] pfock      the pointer to the PFock_t compute engine
- * @param[in] type       the type of the matrix
- * @param[in] index      the index of the density matrix 
- * @param[out] rowstart  the pointer to the starting row index of the local data
- * @param[out] rowend    the pointer to the ending row index of the local data
- * @param[out] colstart  the pointer to the starting column index
- *                       of the local data
- * @param[out] colend    the pointer to the ending column index
- *                       of the local data
- * @param[out] stride    the pointer to the leading dimension of the local data
- * @param[out] mat       the pointer to the local data
- *
- * @return    the function return status   
- */
-PFockStatus_t PFock_getLocalMatPtr(PFock_t pfock,
-                                   PFockMatType_t type,
-                                   int index,
-                                   int *rowstart, int *rowend,
-                                   int *colstart, int *colend,
-                                   int *stride, double **mat);
-
-/**
- * @brief  Returns the gloal array handle.
- *
- * @param[in] pfock  the pointer to the PFock_t compute engine
- * @param[in] type   the type of the matrix
- * @param[in] index  the index of the density matrix 
- * @param[out] ga    the pointer to the gloal array handle
- *
- * @return    the function return status   
- */
-PFockStatus_t PFock_getMatGAHandle(PFock_t pfock,
-                                   PFockMatType_t type, int index,
-                                   int *ga);
+void PFock_GTM_getFockMat(
+    PFock_t pfock,
+    int rowstart, int rowend,
+    int colstart, int colend,
+    int stride,   double *mat
+);
 
 /**
  * @brief  Computes all J and K matrices
@@ -443,8 +287,7 @@ PFockStatus_t PFock_getMatGAHandle(PFock_t pfock,
  *
  * @return    the function return status
  */
-PFockStatus_t PFock_computeFock(BasisSet_t basis,
-                                PFock_t pfock);
+PFockStatus_t PFock_computeFock(BasisSet_t basis, PFock_t pfock);
 
 /**
  * @brief  Creates a Core Hamilton matrix
