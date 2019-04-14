@@ -37,24 +37,16 @@ CFLAGS    = -O3 -Wall -qopenmp -std=gnu99 -fasm-blocks -g -xHost
 CFLAGS   += -Wunknown-pragmas -Wunused-variable
 CFLAGS   += ${OPTFLAGS}
 
-BLAS_LIBS        = -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm 
-SCALAPACK_LIBS   = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+BLAS_LIBS      = -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm 
+SCALAPACK_LIBS = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
 
 MPI_INCDIR = .
 MPI_LIBDIR = .
-MPI_LIBS =
-
-#GA_INCDIR = /home/huangh/GAlib/include
-#GA_LIBDIR = /home/huangh/GAlib/lib
-#GA_LIBS = -lga
-
-#ARMCI_INCDIR = /home/huangh/external-armci/include
-#ARMCI_LIBDIR = /home/huangh/external-armci/lib
-#ARMCI_LIBS = -larmci
+MPI_LIBS   =
 
 ERD_LIBDIR = /home/huangh/libcint
 ERD_INCDIR = /home/huangh/libcint
-ERD_LIBS = ${ERD_LIBDIR}/libcint.a /home/huangh/gtfock-simint/build-avx512/install/lib64/libsimint.a
+ERD_LIBS   = ${ERD_LIBDIR}/libcint.a /home/huangh/gtfock-simint/build-avx512/install/lib64/libsimint.a
 
 GTM_LIBDIR = /home/huangh/GTMatrix
 GTM_INCDIR = /home/huangh/GTMatrix
