@@ -82,7 +82,7 @@ static void initial_guess(PFock_t pfock, BasisSet_t basis, int ispurif,
             pfock->gtm_Dmat, 
             rowstart, rowend - rowstart + 1,
             colstart, colend - colstart + 1,
-            D_block,  ldD, 1
+            D_block,  ldD
         );
         R *= 0.5;
         for (int x = rowstart; x <= rowend; x++) 
