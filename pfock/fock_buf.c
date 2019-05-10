@@ -24,7 +24,7 @@ void load_full_DenMat(PFock_t pfock)
     GTM_addGetBlockRequest(pfock->gtm_Dmat, 0, pfock->nbf, 0, pfock->nbf, pfock->D_mat, pfock->nbf);
     GTM_execBatchGet(pfock->gtm_Dmat);
     GTM_stopBatchGet(pfock->gtm_Dmat);
-    GTM_Sync(pfock->gtm_Dmat);
+    GTM_sync(pfock->gtm_Dmat);
 }
 
 void store_local_bufF(PFock_t pfock)
@@ -95,7 +95,7 @@ void store_local_bufF(PFock_t pfock)
 
     GTM_execBatchUpdate(gtm_J);
     GTM_stopBatchUpdate(gtm_J);
-    GTM_Sync(gtm_J);
+    GTM_sync(gtm_J);
     
     // update F3
     GTM_startBatchUpdate(gtm_K);
@@ -120,7 +120,7 @@ void store_local_bufF(PFock_t pfock)
     }
     GTM_execBatchUpdate(gtm_K);
     GTM_stopBatchUpdate(gtm_K);
-    GTM_Sync(gtm_K);
+    GTM_sync(gtm_K);
 }
 
 

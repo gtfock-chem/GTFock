@@ -180,7 +180,7 @@ void my_peig(GTMatrix_t gtm_A, GTMatrix_t gtm_B, int n, int nprow, int npcol, do
     }
     GTM_execBatchGet(gtm_A);
     GTM_stopBatchGet(gtm_A);
-    GTM_Sync(gtm_A);
+    GTM_sync(gtm_A);
     
     for (int i = 0; i < nrows; i++) 
     {
@@ -255,7 +255,7 @@ void my_peig(GTMatrix_t gtm_A, GTMatrix_t gtm_B, int n, int nprow, int npcol, do
     }
     GTM_execBatchUpdate(gtm_B);
     GTM_stopBatchUpdate(gtm_B);
-    GTM_Sync(gtm_B);
+    GTM_sync(gtm_B);
 
     _mm_free(A);
     _mm_free(Z);

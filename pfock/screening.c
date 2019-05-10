@@ -84,7 +84,7 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     int nprow = pfock->nprow;
     int npcol = pfock->npcol;
     int nshells = pfock->nshells;
-    GTM_createGTMatrix(
+    GTM_create(
         &pfock->gtm_scrval, MPI_COMM_WORLD, MPI_DOUBLE, 8,
         myrank, nshells, nshells, nprow, npcol,
         pfock->rowptr_sh, pfock->colptr_sh
@@ -145,7 +145,7 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     );
     GTM_execBatchUpdate(pfock->gtm_scrval);
     GTM_stopBatchUpdate(pfock->gtm_scrval);
-    GTM_Sync(pfock->gtm_scrval);
+    GTM_sync(pfock->gtm_scrval);
     
     // max value
     MPI_Allreduce(&maxtmp, &(pfock->maxvalue), 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
@@ -166,7 +166,7 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     GTM_addGetBlockRequest(pfock->gtm_scrval, 0, nshells, 0, nshells, sq_values, nshells);
     GTM_execBatchGet(pfock->gtm_scrval);
     GTM_stopBatchGet(pfock->gtm_scrval);
-    GTM_Sync(pfock->gtm_scrval);
+    GTM_sync(pfock->gtm_scrval);
     
     for (int M = 0; M < nshells; M++) 
     {
@@ -200,11 +200,11 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     // Check environment variables to see if we need to swap
     // shell pairs according to their angular momentum
     char *swap_by_AM_str = getenv("SWAP_BY_AM");
-    int swap_by_AM = 0;
+    int swap_by_AM = 1;
     if (swap_by_AM_str != NULL)
     {
         swap_by_AM = atoi(swap_by_AM_str);
-        if ((swap_by_AM != 0) && (swap_by_AM != 1)) swap_by_AM = 0;
+        if ((swap_by_AM != 0) && (swap_by_AM != 1)) swap_by_AM = 1;
     }
     if (myrank == 0)
     {
@@ -293,7 +293,7 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     
     PFOCK_FREE(sq_values);
     CInt_destroySIMINT(simint, 0);
-    GTM_destroyGTMatrix(pfock->gtm_scrval);
+    GTM_destroy(pfock->gtm_scrval);
     
     return 0;
 }
