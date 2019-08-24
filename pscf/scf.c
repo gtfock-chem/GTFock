@@ -134,15 +134,15 @@ static void fock_build(PFock_t pfock, BasisSet_t basis,
     // put density matrix
     if (1 == ispurif) 
     {
-        GTM_startBatchUpdate(pfock->gtm_Dmat);
+        GTM_startBatchPut(pfock->gtm_Dmat);
         GTM_addPutBlockRequest(
             pfock->gtm_Dmat, 
             rowstart, rowend - rowstart + 1,
             colstart, colend - colstart + 1,
             D_block,  stride
         );
-        GTM_execBatchUpdate(pfock->gtm_Dmat);
-        GTM_stopBatchUpdate(pfock->gtm_Dmat);
+        GTM_execBatchPut(pfock->gtm_Dmat);
+        GTM_stopBatchPut(pfock->gtm_Dmat);
     }
     GTM_sync(pfock->gtm_Dmat);
 

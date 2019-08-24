@@ -233,7 +233,7 @@ void my_peig(GTMatrix_t gtm_A, GTMatrix_t gtm_B, int n, int nprow, int npcol, do
             A[i * ncols + j] = Z[j * nrows + i];
     }
     
-    GTM_startBatchUpdate(gtm_B);
+    GTM_startBatchPut(gtm_B);
     for (int i = 1; i <= nrows; i += nb) 
     {
         lo[0] = indxl2g_ (&i, &nb, &myrow, &izero, &nprow) - 1;
@@ -253,8 +253,8 @@ void my_peig(GTMatrix_t gtm_A, GTMatrix_t gtm_B, int n, int nprow, int npcol, do
             );
         }
     }
-    GTM_execBatchUpdate(gtm_B);
-    GTM_stopBatchUpdate(gtm_B);
+    GTM_execBatchPut(gtm_B);
+    GTM_stopBatchPut(gtm_B);
     GTM_sync(gtm_B);
 
     _mm_free(A);

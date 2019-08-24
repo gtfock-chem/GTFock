@@ -981,9 +981,9 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis, PFock_t pfock)
     
     reduce_F(F1, F2, F3, maxrowsize, maxcolsize, ldX3, ldX4, ldX5, ldX6);
     
-    GTM_accumulateBlock(pfock->gtm_F1, myrank, 1, 0, sizeX1, F1, sizeX1);
-    GTM_accumulateBlock(pfock->gtm_F2, myrank, 1, 0, sizeX2, F2, sizeX2);
-    GTM_accumulateBlock(pfock->gtm_F3, myrank, 1, 0, sizeX3, F3, sizeX3);
+    GTM_accBlock(pfock->gtm_F1, myrank, 1, 0, sizeX1, F1, sizeX1);
+    GTM_accBlock(pfock->gtm_F2, myrank, 1, 0, sizeX2, F2, sizeX2);
+    GTM_accBlock(pfock->gtm_F3, myrank, 1, 0, sizeX3, F3, sizeX3);
     
     gettimeofday (&tv4, NULL);
     pfock->timereduce += (tv4.tv_sec - tv3.tv_sec) +
@@ -1040,19 +1040,19 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis, PFock_t pfock)
 
             if (vrow != myrow) 
             {
-                GTM_accumulateBlock(pfock->gtm_F1, vpid, 1, 0, sizeX1, F1, sizeX1);
+                GTM_accBlock(pfock->gtm_F1, vpid, 1, 0, sizeX1, F1, sizeX1);
             } else {
-                GTM_accumulateBlock(pfock->gtm_F1, myrank, 1, 0, sizeX1, F1, sizeX1);
+                GTM_accBlock(pfock->gtm_F1, myrank, 1, 0, sizeX1, F1, sizeX1);
             }
             
             if (vcol != mycol) 
             {
-                GTM_accumulateBlock(pfock->gtm_F2, vpid, 1, 0, sizeX2, F2, sizeX2);
+                GTM_accBlock(pfock->gtm_F2, vpid, 1, 0, sizeX2, F2, sizeX2);
             } else {
-                GTM_accumulateBlock(pfock->gtm_F2, myrank, 1, 0, sizeX2, F2, sizeX2);
+                GTM_accBlock(pfock->gtm_F2, myrank, 1, 0, sizeX2, F2, sizeX2);
             }
             
-            GTM_accumulateBlock(pfock->gtm_F3, vpid, 1, 0, sizeX3, F3, sizeX3);
+            GTM_accBlock(pfock->gtm_F3, vpid, 1, 0, sizeX3, F3, sizeX3);
             prevrow = vrow;
             prevcol = vcol;
         }

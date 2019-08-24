@@ -136,15 +136,15 @@ int schwartz_screening(PFock_t pfock, BasisSet_t basis)
     int lo[2] = {startM, startN};
     int hi[2] = {endM, endN};
     int ld = endN - startN + 1;
-    GTM_startBatchUpdate(pfock->gtm_scrval);
+    GTM_startBatchPut(pfock->gtm_scrval);
     GTM_addPutBlockRequest(
         pfock->gtm_scrval, 
         lo[0], hi[0] - lo[0] + 1,
         lo[1], hi[1] - lo[1] + 1,
         sq_values, ld
     );
-    GTM_execBatchUpdate(pfock->gtm_scrval);
-    GTM_stopBatchUpdate(pfock->gtm_scrval);
+    GTM_execBatchPut(pfock->gtm_scrval);
+    GTM_stopBatchPut(pfock->gtm_scrval);
     GTM_sync(pfock->gtm_scrval);
     
     // max value
