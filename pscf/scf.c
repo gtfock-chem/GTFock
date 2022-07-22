@@ -86,7 +86,7 @@ static void initial_guess(PFock_t pfock, BasisSet_t basis, int ispurif,
         );
         R *= 0.5;
         for (int x = rowstart; x <= rowend; x++) 
-            #pragma simd
+            #pragma omp simd
             for (int y = colstart; y <= colend; y++) 
                 D_block[(x - rowstart) * ldD + (y - colstart)] *= R;
     }
@@ -110,7 +110,7 @@ static double compute_energy(purif_t * purif, double *F_block, double *D_block)
         for (int i = 0; i < nrows; i++) 
         {
             int ldx_i = i * ldx;
-            #pragma simd
+            #pragma omp simd
             for (int j = 0; j < ncols; j++) 
             {
                 F_block[ldx_i + j] += H_block[ldx_i + j];

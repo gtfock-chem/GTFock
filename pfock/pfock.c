@@ -1191,14 +1191,14 @@ PFockStatus_t PFock_createOvlMat(PFock_t pfock, BasisSet_t basis)
     double *lambda_vector = (double *)malloc(nfuncs_col * sizeof (double));
     assert (lambda_vector != NULL);   
 
-    #pragma simd
+    #pragma omp simd
     for (int j = 0; j < nfuncs_col; j++) 
         lambda_vector[j] = 1.0 / sqrt(eval[j + lo1tmp]);
     free(eval);
     
     for (int i = 0; i < nfuncs_row; i++)  
     {
-        #pragma simd
+        #pragma omp simd
         for (int j = 0; j < nfuncs_col; j++) 
             blockS[i * ld + j] = blocktmp[i * ld + j] * lambda_vector[j];
     }
