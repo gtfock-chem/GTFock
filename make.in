@@ -1,6 +1,3 @@
-# make.in for compilation on KNL5
-# use Intel MPI, i.e., "module load impi" to access mpiicc and mpiicpc
-
 CC  = icc   
 CXX = icpc  
 FC  = ifort 
@@ -10,29 +7,11 @@ MPICC  = mpiicc
 MPICXX = mpiicpc
 
 DYNAMIC     = 1
-DO_SCF      = 0
-SCF_TIMMING = 0
+DO_SCF      = 1
+SCF_TIMMING = 1
 SCF_OUT     = 0
 
-#OPTFLAGS = -offload-option,mic# make.in for compilation on KNL5
-# use Intel MPI, i.e., "module load impi" to access mpiicc and mpiicpc
-
-CC  = icc   
-CXX = icpc  
-FC  = ifort 
-AR  = xiar rcs
-
-MPICC  = mpiicc
-MPICXX = mpiicpc
-
-DYNAMIC     = 1
-DO_SCF      = 0
-SCF_TIMMING = 0
-SCF_OUT     = 0
-
-#OPTFLAGS = -offload-option,mic,compiler,"-z defs -no-opt-prefetch"
-OPTFLAGS  = -qno-offload
-#OPTFLAGS += -m64 -xHost
+OPTFLAGS  = 
 CFLAGS    = -O3 -Wall -qopenmp -std=gnu99 -fasm-blocks -g -xHost
 CFLAGS   += -Wunknown-pragmas -Wunused-variable
 CFLAGS   += ${OPTFLAGS}
@@ -44,10 +23,11 @@ MPI_INCDIR = .
 MPI_LIBDIR = .
 MPI_LIBS   =
 
-ERD_LIBDIR = /home/huangh/libcint
-ERD_INCDIR = /home/huangh/libcint
-ERD_LIBS   = ${ERD_LIBDIR}/libcint.a /home/huangh/gtfock-simint/build-avx512/install/lib64/libsimint.a
+ERD_LIBDIR = /storage/home/hcoda1/8/hhuang368/scratch/libcint
+ERD_INCDIR = /storage/home/hcoda1/8/hhuang368/scratch/libcint
+ERD_LIBS   = $(ERD_LIBDIR)/libcint.a
+ERD_LIBS   += /storage/home/hcoda1/8/hhuang368/scratch/simint-2022Apr14/build-avx512/install/lib64/libsimint.a
 
-GTM_LIBDIR = /home/huangh/GTMatrix
-GTM_INCDIR = /home/huangh/GTMatrix
-GTM_LIBS   = ${GTM_LIBDIR}/libGTMatrix.a
+GTM_LIBDIR = /storage/home/hcoda1/8/hhuang368/scratch/GTMatrix
+GTM_INCDIR = /storage/home/hcoda1/8/hhuang368/scratch/GTMatrix
+GTM_LIBS   = $(GTM_LIBDIR)/libGTMatrix.a

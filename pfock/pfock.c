@@ -343,7 +343,7 @@ static PFockStatus_t create_GA (PFock_t pfock)
     gtm_ptrs[7] = &pfock->gtm_tmp2;
     for (int i = 0; i < 8; i++)
     {
-        GTM_createGTMatrix(
+        GTM_create(
             gtm_ptrs[i], MPI_COMM_WORLD, MPI_DOUBLE, 8,
             my_rank, pfock->nbf, pfock->nbf, 
             pfock->nprow, pfock->npcol,
@@ -357,9 +357,9 @@ static PFockStatus_t create_GA (PFock_t pfock)
 
 static void destroy_GA(PFock_t pfock)
 { 
-    GTM_destroyGTMatrix(pfock->gtm_Dmat);
-    GTM_destroyGTMatrix(pfock->gtm_Fmat);
-    GTM_destroyGTMatrix(pfock->gtm_Kmat);
+    GTM_destroy(pfock->gtm_Dmat);
+    GTM_destroy(pfock->gtm_Fmat);
+    GTM_destroy(pfock->gtm_Kmat);
 }
 
 
@@ -376,21 +376,21 @@ static PFockStatus_t create_FD_GArrays (PFock_t pfock)
     for (int i = 0; i <= pfock->nprocs; i++) map[i] = i;
     map[pfock->nprocs + 1] = 0;
     map[pfock->nprocs + 2] = sizeD1;
-    GTM_createGTMatrix(
+    GTM_create(
         &pfock->gtm_F1, MPI_COMM_WORLD, MPI_DOUBLE, 8,
         my_rank, pfock->nprocs, sizeD1, 
         pfock->nprocs, 1,
         &map[0], &map[pfock->nprocs + 1]
     );
     map[pfock->nprocs + 2] = sizeD2;
-    GTM_createGTMatrix(
+    GTM_create(
         &pfock->gtm_F2, MPI_COMM_WORLD, MPI_DOUBLE, 8,
         my_rank, pfock->nprocs, sizeD2, 
         pfock->nprocs, 1,
         &map[0], &map[pfock->nprocs + 1]
     );
     map[pfock->nprocs + 2] = sizeD3;
-    GTM_createGTMatrix(
+    GTM_create(
         &pfock->gtm_F3, MPI_COMM_WORLD, MPI_DOUBLE, 8,
         my_rank, pfock->nprocs, sizeD3, 
         pfock->nprocs, 1,
@@ -572,9 +572,9 @@ static PFockStatus_t create_buffers (PFock_t pfock)
 
 static void destroy_buffers (PFock_t pfock)
 {
-    GTM_destroyGTMatrix(pfock->gtm_F1);
-    GTM_destroyGTMatrix(pfock->gtm_F2);
-    GTM_destroyGTMatrix(pfock->gtm_F3);
+    GTM_destroy(pfock->gtm_F1);
+    GTM_destroy(pfock->gtm_F2);
+    GTM_destroy(pfock->gtm_F3);
     if (pfock->getFockMatBuf != NULL) PFOCK_FREE(pfock->getFockMatBuf);
     
     PFOCK_FREE(pfock->rowpos);
@@ -863,7 +863,7 @@ void PFock_GTM_getFockMat(
     GTM_execBatchGet(pfock->gtm_Fmat);
     GTM_stopBatchGet(pfock->gtm_Fmat);
     // Not all processes call this function, don't sync here
-    //GTM_Sync(pfock->gtm_Fmat);
+    //GTM_sync(pfock->gtm_Fmat);
     
     #ifndef __SCF__
     if (nrows * ncols > pfock->getFockMatBufSize)
@@ -884,7 +884,7 @@ void PFock_GTM_getFockMat(
     GTM_execBatchGet(pfock->gtm_Kmat);
     GTM_stopBatchGet(pfock->gtm_Kmat);
     // Not all processes call this function, don't sync here
-    //GTM_Sync(pfock->gtm_Kmat);
+    //GTM_sync(pfock->gtm_Kmat);
     for (int i = 0; i < nrows; i++)
         #pragma vector
         for (int j = 0; j < ncols; j++)
@@ -938,12 +938,12 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis, PFock_t pfock)
     gettimeofday (&tv1, NULL);    
     gettimeofday (&tv3, NULL);
     
-    GTM_fillGTMatrix(pfock->gtm_Fmat, &dzero);
-    GTM_fillGTMatrix(pfock->gtm_Kmat, &dzero);
-    GTM_fillGTMatrix(pfock->gtm_F1, &dzero);
-    GTM_fillGTMatrix(pfock->gtm_F2, &dzero);
-    GTM_fillGTMatrix(pfock->gtm_F3, &dzero);
-    GTM_Sync(pfock->gtm_F3);
+    GTM_fill(pfock->gtm_Fmat, &dzero);
+    GTM_fill(pfock->gtm_Kmat, &dzero);
+    GTM_fill(pfock->gtm_F1, &dzero);
+    GTM_fill(pfock->gtm_F2, &dzero);
+    GTM_fill(pfock->gtm_F3, &dzero);
+    GTM_sync(pfock->gtm_F3);
     
     // local my D
     load_full_DenMat(pfock);
@@ -981,9 +981,9 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis, PFock_t pfock)
     
     reduce_F(F1, F2, F3, maxrowsize, maxcolsize, ldX3, ldX4, ldX5, ldX6);
     
-    GTM_accumulateBlock(pfock->gtm_F1, myrank, 1, 0, sizeX1, F1, sizeX1);
-    GTM_accumulateBlock(pfock->gtm_F2, myrank, 1, 0, sizeX2, F2, sizeX2);
-    GTM_accumulateBlock(pfock->gtm_F3, myrank, 1, 0, sizeX3, F3, sizeX3);
+    GTM_accBlock(pfock->gtm_F1, myrank, 1, 0, sizeX1, F1, sizeX1);
+    GTM_accBlock(pfock->gtm_F2, myrank, 1, 0, sizeX2, F2, sizeX2);
+    GTM_accBlock(pfock->gtm_F3, myrank, 1, 0, sizeX3, F3, sizeX3);
     
     gettimeofday (&tv4, NULL);
     pfock->timereduce += (tv4.tv_sec - tv3.tv_sec) +
@@ -1040,19 +1040,19 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis, PFock_t pfock)
 
             if (vrow != myrow) 
             {
-                GTM_accumulateBlock(pfock->gtm_F1, vpid, 1, 0, sizeX1, F1, sizeX1);
+                GTM_accBlock(pfock->gtm_F1, vpid, 1, 0, sizeX1, F1, sizeX1);
             } else {
-                GTM_accumulateBlock(pfock->gtm_F1, myrank, 1, 0, sizeX1, F1, sizeX1);
+                GTM_accBlock(pfock->gtm_F1, myrank, 1, 0, sizeX1, F1, sizeX1);
             }
             
             if (vcol != mycol) 
             {
-                GTM_accumulateBlock(pfock->gtm_F2, vpid, 1, 0, sizeX2, F2, sizeX2);
+                GTM_accBlock(pfock->gtm_F2, vpid, 1, 0, sizeX2, F2, sizeX2);
             } else {
-                GTM_accumulateBlock(pfock->gtm_F2, myrank, 1, 0, sizeX2, F2, sizeX2);
+                GTM_accBlock(pfock->gtm_F2, myrank, 1, 0, sizeX2, F2, sizeX2);
             }
             
-            GTM_accumulateBlock(pfock->gtm_F3, vpid, 1, 0, sizeX3, F3, sizeX3);
+            GTM_accBlock(pfock->gtm_F3, vpid, 1, 0, sizeX3, F3, sizeX3);
             prevrow = vrow;
             prevcol = vcol;
         }
@@ -1062,7 +1062,7 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis, PFock_t pfock)
     } /* steal tasks */    
 #endif /* #ifdef __DYNAMIC__ */
 
-    GTM_Sync(pfock->gtm_F3);
+    GTM_sync(pfock->gtm_F3);
     
     gettimeofday (&tv2, NULL);
     pfock->timepass = (tv2.tv_sec - tv1.tv_sec) +
@@ -1098,9 +1098,9 @@ PFockStatus_t PFock_computeFock(BasisSet_t basis, PFock_t pfock)
         */
     } else {
         // correct F
-        GTM_symmetrizeGTMatrix(pfock->gtm_Fmat);
+        GTM_symmetrize(pfock->gtm_Fmat);
         #ifndef __SCF__
-        GTM_symmetrizeGTMatrix(pfock->gtm_Kmat);
+        GTM_symmetrize(pfock->gtm_Kmat);
         #endif
     }
     
@@ -1113,12 +1113,12 @@ PFockStatus_t PFock_createCoreHMat(PFock_t pfock, BasisSet_t basis)
     int stride;
     double *mat, dzero = 0.0;
 
-    GTM_fillGTMatrix(pfock->gtm_Hmat, &dzero);
+    GTM_fill(pfock->gtm_Hmat, &dzero);
     mat    = pfock->gtm_Hmat->mat_block;
     stride = pfock->gtm_Hmat->ld_local;
     compute_H(pfock, basis, pfock->sshell_row, pfock->eshell_row,
               pfock->sshell_col, pfock->eshell_col, stride, mat);
-    GTM_Sync(pfock->gtm_Hmat);
+    GTM_sync(pfock->gtm_Hmat);
     
     return PFOCK_STATUS_SUCCESS;
 }
@@ -1126,7 +1126,7 @@ PFockStatus_t PFock_createCoreHMat(PFock_t pfock, BasisSet_t basis)
 
 PFockStatus_t PFock_destroyCoreHMat(PFock_t pfock)
 {
-    GTM_destroyGTMatrix(pfock->gtm_Hmat);
+    GTM_destroy(pfock->gtm_Hmat);
     return PFOCK_STATUS_SUCCESS;    
 }
 
@@ -1145,7 +1145,7 @@ PFockStatus_t PFock_getCoreHMat(PFock_t pfock, int rowstart, int rowend,
     GTM_execBatchGet(pfock->gtm_Hmat);
     GTM_stopBatchGet(pfock->gtm_Hmat);
     // Not all processes call this function, don't sync here
-    //GTM_Sync(pfock->gtm_Hmat);
+    //GTM_sync(pfock->gtm_Hmat);
 
     return PFOCK_STATUS_SUCCESS;    
 }
@@ -1161,12 +1161,12 @@ PFockStatus_t PFock_createOvlMat(PFock_t pfock, BasisSet_t basis)
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
     
     // (1) Compute S
-    GTM_fillGTMatrix(pfock->gtm_Smat, &dzero);
+    GTM_fill(pfock->gtm_Smat, &dzero);
     mat    = pfock->gtm_Smat->mat_block;
     stride = pfock->gtm_Smat->ld_local;
     compute_S(pfock, basis, pfock->sshell_row, pfock->eshell_row,
               pfock->sshell_col, pfock->eshell_col, stride, mat);
-    GTM_Sync(pfock->gtm_Smat);
+    GTM_sync(pfock->gtm_Smat);
     
     // (2) Compute X         
     int nbf = CInt_getNumFuncs(basis);
@@ -1191,14 +1191,14 @@ PFockStatus_t PFock_createOvlMat(PFock_t pfock, BasisSet_t basis)
     double *lambda_vector = (double *)malloc(nfuncs_col * sizeof (double));
     assert (lambda_vector != NULL);   
 
-    #pragma simd
+    #pragma omp simd
     for (int j = 0; j < nfuncs_col; j++) 
         lambda_vector[j] = 1.0 / sqrt(eval[j + lo1tmp]);
     free(eval);
     
     for (int i = 0; i < nfuncs_row; i++)  
     {
-        #pragma simd
+        #pragma omp simd
         for (int j = 0; j < nfuncs_col; j++) 
             blockS[i * ld + j] = blocktmp[i * ld + j] * lambda_vector[j];
     }
@@ -1218,18 +1218,18 @@ PFockStatus_t PFock_createOvlMat(PFock_t pfock, BasisSet_t basis)
     GTM_addGetBlockRequest(gtm_tmp1, X_row_s, nrows_X, 0, nbf, tmp1_buf, nbf);
     GTM_execBatchGet(gtm_tmp1);
     GTM_stopBatchGet(gtm_tmp1);
-    GTM_Sync(gtm_tmp1);
+    GTM_sync(gtm_tmp1);
 
     GTM_startBatchGet(gtm_tmp2);
     GTM_addGetBlockRequest(gtm_tmp2, X_col_s, ncols_X, 0, nbf, tmp2_buf, nbf);
     GTM_execBatchGet(gtm_tmp2);
     GTM_stopBatchGet(gtm_tmp2);
-    GTM_Sync(gtm_tmp2);
+    GTM_sync(gtm_tmp2);
 
     double *gtm_X_block = gtm_Xmat->mat_block;
     int gtm_X_ld = gtm_Xmat->ld_local;
 
-    GTM_fillGTMatrix(gtm_Xmat, &dzero);
+    GTM_fill(gtm_Xmat, &dzero);
     cblas_dgemm(
         CblasRowMajor, CblasNoTrans, CblasTrans,
         nrows_X, ncols_X, nbf,
@@ -1243,15 +1243,15 @@ PFockStatus_t PFock_createOvlMat(PFock_t pfock, BasisSet_t basis)
     _mm_free(tmp1_buf);
     _mm_free(tmp2_buf);
     
-    GTM_Sync(pfock->gtm_Xmat);
+    GTM_sync(pfock->gtm_Xmat);
 
     double t2 = MPI_Wtime() - t1;
     double tmax;
     MPI_Reduce(&t2, &tmax, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (myrank == 0) printf("  My PDGEMM used time = %lf (s)\n", tmax);
     
-    GTM_destroyGTMatrix(pfock->gtm_tmp1);
-    GTM_destroyGTMatrix(pfock->gtm_tmp2);
+    GTM_destroy(pfock->gtm_tmp1);
+    GTM_destroy(pfock->gtm_tmp2);
 
     return PFOCK_STATUS_SUCCESS;
 }
@@ -1259,8 +1259,8 @@ PFockStatus_t PFock_createOvlMat(PFock_t pfock, BasisSet_t basis)
 
 PFockStatus_t PFock_destroyOvlMat(PFock_t pfock)
 {
-    GTM_destroyGTMatrix(pfock->gtm_Xmat);
-    GTM_destroyGTMatrix(pfock->gtm_Smat);
+    GTM_destroy(pfock->gtm_Xmat);
+    GTM_destroy(pfock->gtm_Smat);
 
     return PFOCK_STATUS_SUCCESS;    
 }
@@ -1280,7 +1280,7 @@ PFockStatus_t PFock_getOvlMat(PFock_t pfock, int rowstart, int rowend,
     GTM_execBatchGet(pfock->gtm_Smat);
     GTM_stopBatchGet(pfock->gtm_Smat);
     // Not all processes call this function, don't sync here
-    //GTM_Sync(pfock->gtm_Smat);
+    //GTM_sync(pfock->gtm_Smat);
 
     return PFOCK_STATUS_SUCCESS;    
 }
@@ -1300,7 +1300,7 @@ PFockStatus_t PFock_getOvlMat2(PFock_t pfock, int rowstart, int rowend,
     GTM_execBatchGet(pfock->gtm_Xmat);
     GTM_stopBatchGet(pfock->gtm_Xmat);
     // Not all processes call this function, don't sync here
-    //GTM_Sync(pfock->gtm_Xmat);
+    //GTM_sync(pfock->gtm_Xmat);
 
     return PFOCK_STATUS_SUCCESS;    
 }

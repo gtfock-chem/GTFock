@@ -24,7 +24,7 @@ void load_full_DenMat(PFock_t pfock)
     GTM_addGetBlockRequest(pfock->gtm_Dmat, 0, pfock->nbf, 0, pfock->nbf, pfock->D_mat, pfock->nbf);
     GTM_execBatchGet(pfock->gtm_Dmat);
     GTM_stopBatchGet(pfock->gtm_Dmat);
-    GTM_Sync(pfock->gtm_Dmat);
+    GTM_sync(pfock->gtm_Dmat);
 }
 
 void store_local_bufF(PFock_t pfock)
@@ -57,7 +57,7 @@ void store_local_bufF(PFock_t pfock)
     double *F2 = pfock->gtm_F2->mat_block;
     double *F3 = pfock->gtm_F3->mat_block;
     
-    GTM_startBatchUpdate(gtm_J);
+    GTM_startBatchAcc(gtm_J);
     
     // update F1
     lo[0] = pfock->sfunc_row;
@@ -68,7 +68,7 @@ void store_local_bufF(PFock_t pfock)
         hi[1] = loadrow[PLEN * A + P_HI];
         int posrow = loadrow[PLEN * A + P_W];
         
-        GTM_addAccumulateBlockRequest(
+        GTM_addAccBlockRequest(
             gtm_J, 
             lo[0], hi[0] - lo[0] + 1,
             lo[1], hi[1] - lo[1] + 1,
@@ -85,7 +85,7 @@ void store_local_bufF(PFock_t pfock)
         hi[1] = loadcol[PLEN * B + P_HI];
         int poscol = loadcol[PLEN * B + P_W];
         
-        GTM_addAccumulateBlockRequest(
+        GTM_addAccBlockRequest(
             gtm_J, 
             lo[0], hi[0] - lo[0] + 1,
             lo[1], hi[1] - lo[1] + 1,
@@ -93,12 +93,12 @@ void store_local_bufF(PFock_t pfock)
         );
     }
 
-    GTM_execBatchUpdate(gtm_J);
-    GTM_stopBatchUpdate(gtm_J);
-    GTM_Sync(gtm_J);
+    GTM_execBatchAcc(gtm_J);
+    GTM_stopBatchAcc(gtm_J);
+    GTM_sync(gtm_J);
     
     // update F3
-    GTM_startBatchUpdate(gtm_K);
+    GTM_startBatchAcc(gtm_K);
     for (int A = 0; A < sizerow; A++) 
     {
         lo[0] = loadrow[PLEN * A + P_LO];
@@ -110,7 +110,7 @@ void store_local_bufF(PFock_t pfock)
             hi[1] = loadcol[PLEN * B + P_HI];
             int poscol = loadcol[PLEN * B + P_W];
             
-            GTM_addAccumulateBlockRequest(
+            GTM_addAccBlockRequest(
                 gtm_K, 
                 lo[0], hi[0] - lo[0] + 1,
                 lo[1], hi[1] - lo[1] + 1,
@@ -118,9 +118,9 @@ void store_local_bufF(PFock_t pfock)
             );
         }
     }
-    GTM_execBatchUpdate(gtm_K);
-    GTM_stopBatchUpdate(gtm_K);
-    GTM_Sync(gtm_K);
+    GTM_execBatchAcc(gtm_K);
+    GTM_stopBatchAcc(gtm_K);
+    GTM_sync(gtm_K);
 }
 
 

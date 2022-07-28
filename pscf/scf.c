@@ -45,7 +45,7 @@ static void initial_guess(PFock_t pfock, BasisSet_t basis, int ispurif,
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
     
     double dzero = 0.0;
-    GTM_fillGTMatrix(pfock->gtm_Dmat, &dzero);
+    GTM_fill(pfock->gtm_Dmat, &dzero);
     
     int nbf = pfock->nbf;
     
@@ -72,7 +72,7 @@ static void initial_guess(PFock_t pfock, BasisSet_t basis, int ispurif,
         }
         GTM_putBlock(pfock->gtm_Dmat, 0, nbf, 0, nbf, pfock->D_mat, nbf);
     }
-    GTM_Sync(pfock->gtm_Dmat);
+    GTM_sync(pfock->gtm_Dmat);
     
     MPI_Bcast(&R, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
@@ -82,15 +82,15 @@ static void initial_guess(PFock_t pfock, BasisSet_t basis, int ispurif,
             pfock->gtm_Dmat, 
             rowstart, rowend - rowstart + 1,
             colstart, colend - colstart + 1,
-            D_block,  ldD, 1
+            D_block,  ldD
         );
         R *= 0.5;
         for (int x = rowstart; x <= rowend; x++) 
-            #pragma simd
+            #pragma omp simd
             for (int y = colstart; y <= colend; y++) 
                 D_block[(x - rowstart) * ldD + (y - colstart)] *= R;
     }
-    GTM_Sync(pfock->gtm_Dmat);
+    GTM_sync(pfock->gtm_Dmat);
 }
 
 
@@ -110,7 +110,7 @@ static double compute_energy(purif_t * purif, double *F_block, double *D_block)
         for (int i = 0; i < nrows; i++) 
         {
             int ldx_i = i * ldx;
-            #pragma simd
+            #pragma omp simd
             for (int j = 0; j < ncols; j++) 
             {
                 F_block[ldx_i + j] += H_block[ldx_i + j];
@@ -134,17 +134,17 @@ static void fock_build(PFock_t pfock, BasisSet_t basis,
     // put density matrix
     if (1 == ispurif) 
     {
-        GTM_startBatchUpdate(pfock->gtm_Dmat);
+        GTM_startBatchPut(pfock->gtm_Dmat);
         GTM_addPutBlockRequest(
             pfock->gtm_Dmat, 
             rowstart, rowend - rowstart + 1,
             colstart, colend - colstart + 1,
             D_block,  stride
         );
-        GTM_execBatchUpdate(pfock->gtm_Dmat);
-        GTM_stopBatchUpdate(pfock->gtm_Dmat);
+        GTM_execBatchPut(pfock->gtm_Dmat);
+        GTM_stopBatchPut(pfock->gtm_Dmat);
     }
-    GTM_Sync(pfock->gtm_Dmat);
+    GTM_sync(pfock->gtm_Dmat);
 
     // compute Fock matrix
     PFock_computeFock(basis, pfock);
@@ -157,9 +157,9 @@ static void fock_build(PFock_t pfock, BasisSet_t basis,
             colstart, colend, stride, F_block
         );
     }
-    GTM_Sync(pfock->gtm_Fmat);
+    GTM_sync(pfock->gtm_Fmat);
     #ifndef __SCF__
-    GTM_Sync(pfock->gtm_Kmat);
+    GTM_sync(pfock->gtm_Kmat);
     #endif
 }
 
@@ -197,8 +197,8 @@ static void init_oedmat(BasisSet_t basis, PFock_t pfock,
         PFock_getOvlMat2(pfock, srow_purif, erow_purif, scol_purif, ecol_purif,
                          ldx, purif->X_block);
     }
-    GTM_Sync(pfock->gtm_Xmat);
-    GTM_Sync(pfock->gtm_Smat);
+    GTM_sync(pfock->gtm_Xmat);
+    GTM_sync(pfock->gtm_Smat);
     PFock_destroyOvlMat(pfock);
     t2 = MPI_Wtime();
     if (myrank == 0) 
@@ -217,7 +217,7 @@ static void init_oedmat(BasisSet_t basis, PFock_t pfock,
         PFock_getCoreHMat(pfock, srow_purif, erow_purif,
                           scol_purif, ecol_purif, ldx, purif->H_block);
     }
-    GTM_Sync(pfock->gtm_Hmat);
+    GTM_sync(pfock->gtm_Hmat);
     PFock_destroyCoreHMat(pfock);
     t2 = MPI_Wtime();
     if (myrank == 0) 

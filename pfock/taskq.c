@@ -9,20 +9,20 @@
 
 int init_taskq(PFock_t pfock)
 {
-    GTM_createGTMTaskQueue(&pfock->task_queue, MPI_COMM_WORLD);
+    GTM_createTaskQueue(&pfock->task_queue, MPI_COMM_WORLD);
     return 0;
 }
 
 
 void clean_taskq(PFock_t pfock)
 {
-    GTM_destroyGTMTaskQueue(pfock->task_queue);
+    GTM_destroyTaskQueue(pfock->task_queue);
 }
 
 
 void reset_taskq(PFock_t pfock)
 {
-    GTM_resetGTMTaskQueue(pfock->task_queue);
+    GTM_resetTaskQueue(pfock->task_queue);
 }
 
 

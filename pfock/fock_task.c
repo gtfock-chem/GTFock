@@ -670,7 +670,7 @@ void reduce_F(double *F1, double *F2, double *F3, int maxrowsize, int maxcolsize
         for (int p = 1; p < num_dup_F; p++)
         {
             int offset = p * F_PQ_block_size;
-            #pragma simd
+            #pragma omp simd
             for (int k = spos; k < epos; k++)
                 F_PQ_blocks[k] += F_PQ_blocks[offset + k];
         }

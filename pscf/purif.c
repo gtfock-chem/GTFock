@@ -20,7 +20,7 @@
 #define MIN(a, b)    ((a) < (b) ? (a) : (b))
 #define MAX(a, b)    ((a) > (b) ? (a) : (b))
 
-static void config_purif(purif_t * purif, int purif_offload)
+static void config_purif(purif_t *purif)
 {
     int nbf, nrows, ncols, nb, nprow, npcol;
     int *nr, *nc, startrow, endrow, startcol, endcol;
@@ -111,8 +111,7 @@ static void config_purif(purif_t * purif, int purif_offload)
         purif->b_mat[i * LDBMAT + i] = 0.0;
     }
 
-    #pragma omp parallel for schedule(static)
-    #pragma simd
+    #pragma omp parallel for schedule(static) 
     for(int i=0; i < nrows * ncols; i++)
     {
         purif->D_block[i]  = 0.0;
@@ -180,7 +179,7 @@ purif_t *create_purif(BasisSet_t basis, int nprow_purif, int npcol_purif, int np
         MPI_Cart_sub(purif->comm_purif, belongsC, &(purif->comm_purif_col));
         MPI_Cart_sub(purif->comm_purif, belongsG, &(purif->comm_purif_grd));
         MPI_Comm_split(purif->comm_purif, mygrd, plane_rank, &(purif->comm_purif_plane));
-        config_purif(purif, 0);
+        config_purif(purif);
     }
     
     if (myrank == 0) printf ("  Done\n");
@@ -388,7 +387,6 @@ int compute_purification(purif_t * purif, double *F_block, double *D_block)
                 if (c < 0.5) 
                 {
                     #pragma omp parallel for reduction(+: errnorm_local)
-                    #pragma simd
                     for (int i = 0; i < nrows * ncols; i++) 
                     {
                         double D_D2 = D_block[i] - D2_block[i];
@@ -399,7 +397,6 @@ int compute_purification(purif_t * purif, double *F_block, double *D_block)
                     }
                 } else {
                     #pragma omp parallel for reduction(+: errnorm_local)
-                    #pragma simd
                     for (int i = 0; i < nrows * ncols; i++) 
                     {
                         double D_D2 = D_block[i] - D2_block[i];
